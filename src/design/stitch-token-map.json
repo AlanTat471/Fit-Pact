@@ -1,0 +1,53 @@
+{
+  "meta": {
+    "name": "fitpact-stitch-token-map",
+    "source": [
+      "src/index.css",
+      "tailwind.config.ts"
+    ],
+    "notes": "Map Stitch visual outputs to existing Tailwind/CSS variables."
+  },
+  "color": {
+    "background": "hsl(var(--background))",
+    "foreground": "hsl(var(--foreground))",
+    "primary": "hsl(var(--primary))",
+    "primaryGlow": "hsl(var(--primary-glow))",
+    "secondary": "hsl(var(--secondary))",
+    "accent": "hsl(var(--accent))",
+    "muted": "hsl(var(--muted))",
+    "mutedForeground": "hsl(var(--muted-foreground))",
+    "border": "hsl(var(--border))",
+    "card": "hsl(var(--card))"
+  },
+  "gradient": {
+    "primary": "var(--gradient-primary)",
+    "secondary": "var(--gradient-secondary)",
+    "hero": "var(--gradient-hero)"
+  },
+  "shadow": {
+    "primary": "var(--shadow-primary)",
+    "glow": "var(--shadow-glow)"
+  },
+  "radius": {
+    "sm": "calc(var(--radius) - 4px)",
+    "md": "calc(var(--radius) - 2px)",
+    "lg": "var(--radius)"
+  },
+  "typography": {
+    "heroTitle": "text-3xl md:text-4xl font-bold tracking-tight",
+    "sectionTitle": "text-xl md:text-2xl font-semibold",
+    "body": "text-sm md:text-base",
+    "meta": "text-xs text-muted-foreground"
+  },
+  "spacing": {
+    "page": "space-y-6",
+    "section": "space-y-4",
+    "cardContent": "space-y-4",
+    "gridGap": "gap-6"
+  },
+  "motion": {
+    "cardHover": "transition-all duration-300 hover:-translate-y-1 hover:shadow-primary",
+    "buttonHover": "transition-colors duration-200",
+    "sectionFadeInHint": "animate-in fade-in-0 duration-500"
+  }
+}
