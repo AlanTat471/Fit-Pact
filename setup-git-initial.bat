@@ -15,12 +15,19 @@ if exist ".git" (
 git add .
 if errorlevel 1 goto :error
 
-git commit -m "Initial commit"
+REM "git commit" exits with 1 when there is nothing new to commit — that is OK, not an error.
+git diff --cached --quiet
 if errorlevel 1 (
-  echo.
-  echo If commit failed, you may need: git config user.email "you@example.com"
-  echo and: git config user.name "Your Name"
-  goto :error
+  git commit -m "Initial commit"
+  if errorlevel 1 (
+    echo.
+    echo Commit failed. Set your Git identity, then run this script again:
+    echo   git config user.email "you@example.com"
+    echo   git config user.name "Your Name"
+    goto :error
+  )
+) else (
+  echo Nothing new to commit — working tree is already clean. Your repo is ready.
 )
 
 echo.
@@ -30,6 +37,6 @@ exit /b 0
 
 :error
 echo.
-echo Something failed. Make sure Git is installed: https://git-scm.com/download/win
+echo Something failed. If you see "git is not recognized", install Git: https://git-scm.com/download/win
 pause
 exit /b 1
