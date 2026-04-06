@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Weight Loss Buddy
 
 Your AI Fitness Companion — personalized workout plans, progress tracking, and coaching.
@@ -44,3 +45,7 @@ npm run dev
 - `src/hooks/` – custom React hooks
 
 See **cursor-migration.md** for a full codebase overview and migration notes.
+=======
+# Fit-Pact
+Weight Loss App
+>>>>>>> dd76a1bda8b5ea63bdab29b3844a71ebb403b5d7
