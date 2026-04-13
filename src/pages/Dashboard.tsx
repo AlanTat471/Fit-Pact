@@ -234,6 +234,15 @@ const Dashboard = () => {
     [weightLossStartDate]
   );
 
+  const earliestAllowedStartDate = useMemo(() => {
+    if (archivedPhases.length === 0) return "";
+    const lastArchived = archivedPhases[archivedPhases.length - 1];
+    const metrics = computeArchivedPhaseDisplayMetrics(lastArchived);
+    const lastEnd = metrics.maintenanceEndIso ?? metrics.phaseEndIso ?? null;
+    if (!lastEnd) return "";
+    return addDaysIso(lastEnd, 1);
+  }, [archivedPhases]);
+
   // State for daily tracking
   const [dailyData, setDailyData] = useState({
     steps: 4500,
@@ -1223,6 +1232,7 @@ const Dashboard = () => {
     setIsWeek4Complete(false);
     setJourneyComplete(false);
     setWeightLossStartDate("");
+    localStorage.removeItem("dashboardWeightLossStartDate");
     setStartingWeight(fourAvg > 0 ? fourAvg.toFixed(2) : "");
     setMaintenancePhase({
       active: false,
@@ -2154,7 +2164,15 @@ const Dashboard = () => {
                   id="startDate"
                   type="date"
                   value={weightLossStartDate}
-                  onChange={(e) => setWeightLossStartDate(e.target.value)}
+                  min={earliestAllowedStartDate || undefined}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (earliestAllowedStartDate && val && val < earliestAllowedStartDate) {
+                      alert(`Your new phase cannot start before your previous phase ended. The earliest allowed date is ${earliestAllowedStartDate.split("-").reverse().join("/")}.`);
+                      return;
+                    }
+                    setWeightLossStartDate(val);
+                  }}
                   readOnly={!!weightLossStartDate && completedWeeks.length < 12}
                   className={`w-full h-9 ${weightLossStartDate && completedWeeks.length < 12 ? 'bg-muted' : ''}`}
                 />
@@ -4321,18 +4339,26 @@ const Dashboard = () => {
             <AlertDialogTitle className="text-foreground">Ready to Start?</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70 space-y-4">
               <p>Please enter your journey start date — Day 1 of your 4-week Acclimation Phase. Your 12-week Weight Loss Phase begins 28 days later.</p>
+              {earliestAllowedStartDate && (
+                <p className="text-sm text-yellow-500">Your previous phase has been completed. The earliest you can start your new phase is {earliestAllowedStartDate.split("-").reverse().join("/")}.</p>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="readyToStartDate" className="text-sm font-medium text-foreground">Journey start (Acclimation Day 1)</Label>
                 <Input
                   id="readyToStartDate"
                   type="date"
                   className="w-full"
+                  min={earliestAllowedStartDate || undefined}
                   value={weightLossStartDate}
                   onChange={(e) => {
-                    if (e.target.value) {
-                      setWeightLossStartDate(e.target.value);
-                      localStorage.setItem('dashboardWeightLossStartDate', e.target.value);
+                    const val = e.target.value;
+                    if (!val) return;
+                    if (earliestAllowedStartDate && val < earliestAllowedStartDate) {
+                      alert(`Your new phase cannot start before your previous phase ended. The earliest allowed date is ${earliestAllowedStartDate.split("-").reverse().join("/")}.`);
+                      return;
                     }
+                    setWeightLossStartDate(val);
+                    localStorage.setItem('dashboardWeightLossStartDate', val);
                   }}
                 />
               </div>
