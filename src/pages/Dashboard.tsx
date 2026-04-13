@@ -2173,8 +2173,8 @@ const Dashboard = () => {
                     }
                     setWeightLossStartDate(val);
                   }}
-                  readOnly={!!weightLossStartDate && completedWeeks.length < 12}
-                  className={`w-full h-9 ${weightLossStartDate && completedWeeks.length < 12 ? 'bg-muted' : ''}`}
+                  readOnly={!!weightLossStartDate && completedWeeks.length > 0 && completedWeeks.length < 12}
+                  className={`w-full h-9 ${weightLossStartDate && completedWeeks.length > 0 && completedWeeks.length < 12 ? 'bg-muted' : ''}`}
                 />
               </div>
               
