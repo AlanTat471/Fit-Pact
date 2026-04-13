@@ -234,15 +234,6 @@ const Dashboard = () => {
     [weightLossStartDate]
   );
 
-  const earliestAllowedStartDate = useMemo(() => {
-    if (archivedPhases.length === 0) return "";
-    const lastArchived = archivedPhases[archivedPhases.length - 1];
-    const metrics = computeArchivedPhaseDisplayMetrics(lastArchived);
-    const lastEnd = metrics.maintenanceEndIso ?? metrics.phaseEndIso ?? null;
-    if (!lastEnd) return "";
-    return addDaysIso(lastEnd, 1);
-  }, [archivedPhases]);
-
   // State for daily tracking
   const [dailyData, setDailyData] = useState({
     steps: 4500,
@@ -474,6 +465,15 @@ const Dashboard = () => {
     } catch {}
     return [];
   });
+
+  const earliestAllowedStartDate = useMemo(() => {
+    if (archivedPhases.length === 0) return "";
+    const lastArchived = archivedPhases[archivedPhases.length - 1];
+    const metrics = computeArchivedPhaseDisplayMetrics(lastArchived);
+    const lastEnd = metrics.maintenanceEndIso ?? metrics.phaseEndIso ?? null;
+    if (!lastEnd) return "";
+    return addDaysIso(lastEnd, 1);
+  }, [archivedPhases]);
   
   // State for editing maintenance weeks
   const [editingMaintenanceWeek, setEditingMaintenanceWeek] = useState<{
