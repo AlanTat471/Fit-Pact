@@ -146,12 +146,14 @@ function computeArchivedPhaseDisplayMetrics(b: ArchivedPhaseBundle) {
     b.phaseSumDays ??
     (acclDays != null && wlDays != null && maintDays != null ? acclDays + wlDays + maintDays : null);
 
+  const effectiveEnd = maintEnd ?? phaseEnd;
+
   const wlStartToMaintenanceEndDays =
     b.wlStartToMaintenanceEndDays ??
-    (wlPhaseStart && phaseEnd ? inclusiveDaysBetween(wlPhaseStart, phaseEnd) : null);
+    (wlPhaseStart && effectiveEnd ? inclusiveDaysBetween(wlPhaseStart, effectiveEnd) : null);
 
   const totalCalendarSpanDays =
-    b.totalCalendarSpanDays ?? (acclStart && phaseEnd ? inclusiveDaysBetween(acclStart, phaseEnd) : null);
+    b.totalCalendarSpanDays ?? (acclStart && effectiveEnd ? inclusiveDaysBetween(acclStart, effectiveEnd) : null);
 
   return {
     phaseSumDays,
