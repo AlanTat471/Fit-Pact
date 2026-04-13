@@ -3353,13 +3353,23 @@ const Dashboard = () => {
                           <span>Phase {num}</span>
                           <span className="text-muted-foreground">—</span>
                           <span className="text-green-600 font-semibold">COMPLETED</span>
-                          <span className="text-muted-foreground">—</span>
-                          <span className="font-normal text-foreground">
-                            total (
-                            {totalCalendarDays != null ? `${totalCalendarDays} days` : "—"})
-                          </span>
                         </div>
                         <div className="text-sm text-foreground space-y-1">
+                          {metrics.acclimationStartIso && (
+                            <div>
+                              Start Date = <span className="font-medium tabular-nums">{metrics.acclimationStartIso.split("-").reverse().join("/")}</span>
+                            </div>
+                          )}
+                          {metrics.maintenanceEndIso && (
+                            <div>
+                              End Date = <span className="font-medium tabular-nums">{metrics.maintenanceEndIso.split("-").reverse().join("/")}</span>
+                            </div>
+                          )}
+                          {totalCalendarDays != null && (
+                            <div>
+                              Total Days = <span className="font-medium tabular-nums">{totalCalendarDays} days</span>
+                            </div>
+                          )}
                           {endW != null && endW > 0 && (
                             <div>
                               End Weight = <span className="font-medium tabular-nums">{endW.toFixed(2)} kg</span>
