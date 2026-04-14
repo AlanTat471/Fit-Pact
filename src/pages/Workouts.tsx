@@ -52,6 +52,7 @@ const TDEE = () => {
   
   // State for TDEE change warning popup
   const [showTdeeChangeWarning, setShowTdeeChangeWarning] = useState(false);
+  const [showUnderweightDialog, setShowUnderweightDialog] = useState(false);
   const [pendingFieldChange, setPendingFieldChange] = useState<{ field: string; value: string } | null>(null);
   
   // Store original values from profile creation
@@ -110,8 +111,12 @@ const TDEE = () => {
   }, [user?.id, profile]);
 
   // When profile weight updates from elsewhere (e.g. Maintenance Phase week 4 sync), keep TDEE form in sync
+  // Skip sync briefly after the user edits weight locally to avoid the old DB value overwriting their input
+  const localWeightEditRef = useRef(false);
+  const localWeightEditTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const profileWeight = profile?.current_weight;
   useEffect(() => {
+    if (localWeightEditRef.current) return;
     if (profileWeight == null || profileWeight === "") return;
     setFormData((prev) => {
       if (prev.weight === profileWeight) return prev;
@@ -122,6 +127,7 @@ const TDEE = () => {
   // Listen for changes to userProfile in localStorage
   useEffect(() => {
     const handleStorageChange = () => {
+      if (localWeightEditRef.current) return;
       const profile = localStorage.getItem('userProfile');
       if (profile) {
         try {
@@ -162,6 +168,36 @@ const TDEE = () => {
     yourClassification: "",
     estimatedBodyFat: ""
   });
+
+  const displayVal = (v: string): string => {
+    if (!v) return "";
+    const n = parseFloat(v);
+    if (isNaN(n) || n <= 0) return "Unable to calculate";
+    return v;
+  };
+
+  const hasInvalidCalcs = (() => {
+    const { currentBMI, estimatedBodyFat, idealWeightMin, idealWeightMax, idealBMIMin, idealBMIMax } = calculatedValues;
+    if (!currentBMI || !estimatedBodyFat) return true;
+    const bmi = parseFloat(currentBMI);
+    const bf = parseFloat(estimatedBodyFat);
+    const iwMin = parseFloat(idealWeightMin);
+    const iwMax = parseFloat(idealWeightMax);
+    const bmiMin = parseFloat(idealBMIMin);
+    const bmiMax = parseFloat(idealBMIMax);
+    if (isNaN(bmi) || bmi <= 0) return true;
+    if (isNaN(bf) || bf <= 0) return true;
+    if (isNaN(iwMin) || iwMin <= 0 || isNaN(iwMax) || iwMax <= 0) return true;
+    if (isNaN(bmiMin) || bmiMin <= 0 || isNaN(bmiMax) || bmiMax <= 0) return true;
+    const weight = parseFloat(formData.weight);
+    const midWeight = (iwMin + iwMax) / 2;
+    const suggestedGoal = Math.max(0, weight - midWeight);
+    if (suggestedGoal <= 0) return true;
+    if (bmi < bmiMin || bf < parseFloat(calculatedValues.idealBodyFatMin)) return true;
+    return false;
+  })();
+
+  const isUnderweight = calculatedValues.yourClassification === "Underweight";
 
   // Calculate BMR using Mifflin-St Jeor Equation
   const calculateBMR = (weight: number, height: number, age: number, gender: string) => {
@@ -315,6 +351,14 @@ const TDEE = () => {
     };
   }, [formData, saveTdee]);
 
+  const prevClassRef = useRef(calculatedValues.yourClassification);
+  useEffect(() => {
+    if (calculatedValues.yourClassification === "Underweight" && prevClassRef.current !== "Underweight") {
+      setShowUnderweightDialog(true);
+    }
+    prevClassRef.current = calculatedValues.yourClassification;
+  }, [calculatedValues.yourClassification]);
+
   // Handle field change with warning popup (only shows once, then user has already acknowledged)
   const handleFieldChangeWithWarning = (field: string, value: string) => {
     const alreadyAcknowledged = localStorage.getItem('tdeeChangeWarningAcknowledged') === 'true';
@@ -331,6 +375,12 @@ const TDEE = () => {
   const applyFieldChange = (field: string, value: string) => {
     const newFormData = { ...formData, [field]: value };
     setFormData(newFormData);
+
+    if (field === "weight") {
+      localWeightEditRef.current = true;
+      if (localWeightEditTimerRef.current) clearTimeout(localWeightEditTimerRef.current);
+      localWeightEditTimerRef.current = setTimeout(() => { localWeightEditRef.current = false; }, 2000);
+    }
     
     // Update profile in Supabase (source of truth)
     const fieldMap: Record<string, string> = {
@@ -345,7 +395,7 @@ const TDEE = () => {
       const payload: Record<string, string | number> = {};
       payload[profileField] = field === 'age' ? parseInt(value, 10) : value;
       upsertProfile(user.id, payload as Parameters<typeof upsertProfile>[1]);
-      refreshProfile();
+      if (field !== "weight") refreshProfile();
     }
     // Also update localStorage for legacy compatibility
     const stored = localStorage.getItem('userProfile');
@@ -633,11 +683,12 @@ const TDEE = () => {
                 id="bmr"
                 type="text"
                 inputMode="numeric"
-                value={parseInt(calculatedValues.bmr || '0').toLocaleString()}
+                value={displayVal(calculatedValues.bmr) === "Unable to calculate" ? "Unable to calculate" : parseInt(calculatedValues.bmr || '0').toLocaleString()}
                 onChange={(e) => {
                   const rawValue = e.target.value.replace(/,/g, '').replace(/[^0-9]/g, '');
                   setCalculatedValues(prev => ({ ...prev, bmr: rawValue }));
                 }}
+                readOnly={displayVal(calculatedValues.bmr) === "Unable to calculate"}
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
@@ -651,11 +702,12 @@ const TDEE = () => {
                 id="tdee"
                 type="text"
                 inputMode="numeric"
-                value={parseInt(calculatedValues.tdee || '0').toLocaleString()}
+                value={displayVal(calculatedValues.tdee) === "Unable to calculate" ? "Unable to calculate" : parseInt(calculatedValues.tdee || '0').toLocaleString()}
                 onChange={(e) => {
                   const rawValue = e.target.value.replace(/,/g, '').replace(/[^0-9]/g, '');
                   setCalculatedValues(prev => ({ ...prev, tdee: rawValue }));
                 }}
+                readOnly={displayVal(calculatedValues.tdee) === "Unable to calculate"}
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
@@ -669,14 +721,14 @@ const TDEE = () => {
                 id="startingCalories"
                 type="text"
                 inputMode="numeric"
-                value={parseInt(calculatedValues.startingCalories || '0').toLocaleString()}
+                value={displayVal(calculatedValues.startingCalories) === "Unable to calculate" ? "Unable to calculate" : parseInt(calculatedValues.startingCalories || '0').toLocaleString()}
                 onChange={(e) => {
                   const rawValue = e.target.value.replace(/,/g, '');
                   const numValue = rawValue.replace(/[^0-9]/g, '');
                   setCalculatedValues(prev => ({ ...prev, startingCalories: numValue }));
-                  // Update localStorage when manually edited
                   localStorage.setItem('startingCalorieIntake', numValue);
                 }}
+                readOnly={displayVal(calculatedValues.startingCalories) === "Unable to calculate"}
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
@@ -688,10 +740,10 @@ const TDEE = () => {
               </TooltipField>
               <Input
                 id="currentBMI"
-                type="number"
-                step="0.1"
-                value={calculatedValues.currentBMI}
+                type="text"
+                value={displayVal(calculatedValues.currentBMI)}
                 onChange={(e) => setCalculatedValues(prev => ({ ...prev, currentBMI: e.target.value }))}
+                readOnly={displayVal(calculatedValues.currentBMI) === "Unable to calculate"}
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
@@ -703,10 +755,10 @@ const TDEE = () => {
               </TooltipField>
               <Input
                 id="estimatedBodyFat"
-                type="number"
-                step="0.1"
-                value={calculatedValues.estimatedBodyFat}
+                type="text"
+                value={displayVal(calculatedValues.estimatedBodyFat)}
                 onChange={(e) => setCalculatedValues(prev => ({ ...prev, estimatedBodyFat: e.target.value }))}
+                readOnly={displayVal(calculatedValues.estimatedBodyFat) === "Unable to calculate"}
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
@@ -743,10 +795,10 @@ const TDEE = () => {
                   <Label>From (kg)</Label>
                 </TooltipField>
                 <Input
-                  type="number"
-                  step="0.1"
-                  value={calculatedValues.idealWeightMin}
+                  type="text"
+                  value={displayVal(calculatedValues.idealWeightMin)}
                   onChange={(e) => setCalculatedValues(prev => ({ ...prev, idealWeightMin: e.target.value }))}
+                  readOnly={displayVal(calculatedValues.idealWeightMin) === "Unable to calculate"}
                   className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
@@ -755,10 +807,10 @@ const TDEE = () => {
                   <Label>Up to (kg)</Label>
                 </TooltipField>
                 <Input
-                  type="number"
-                  step="0.1"
-                  value={calculatedValues.idealWeightMax}
+                  type="text"
+                  value={displayVal(calculatedValues.idealWeightMax)}
                   onChange={(e) => setCalculatedValues(prev => ({ ...prev, idealWeightMax: e.target.value }))}
+                  readOnly={displayVal(calculatedValues.idealWeightMax) === "Unable to calculate"}
                   className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
@@ -778,10 +830,10 @@ const TDEE = () => {
                   <Label>From (%)</Label>
                 </TooltipField>
                 <Input
-                  type="number"
-                  step="0.1"
-                  value={calculatedValues.idealBodyFatMin}
+                  type="text"
+                  value={displayVal(calculatedValues.idealBodyFatMin)}
                   onChange={(e) => setCalculatedValues(prev => ({ ...prev, idealBodyFatMin: e.target.value }))}
+                  readOnly={displayVal(calculatedValues.idealBodyFatMin) === "Unable to calculate"}
                   className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
@@ -790,10 +842,10 @@ const TDEE = () => {
                   <Label>Up to (%)</Label>
                 </TooltipField>
                 <Input
-                  type="number"
-                  step="0.1"
-                  value={calculatedValues.idealBodyFatMax}
+                  type="text"
+                  value={displayVal(calculatedValues.idealBodyFatMax)}
                   onChange={(e) => setCalculatedValues(prev => ({ ...prev, idealBodyFatMax: e.target.value }))}
+                  readOnly={displayVal(calculatedValues.idealBodyFatMax) === "Unable to calculate"}
                   className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
@@ -816,10 +868,10 @@ const TDEE = () => {
                   <Label>From</Label>
                 </TooltipField>
                 <Input
-                  type="number"
-                  step="0.1"
-                  value={calculatedValues.idealBMIMin}
+                  type="text"
+                  value={displayVal(calculatedValues.idealBMIMin)}
                   onChange={(e) => setCalculatedValues(prev => ({ ...prev, idealBMIMin: e.target.value }))}
+                  readOnly={displayVal(calculatedValues.idealBMIMin) === "Unable to calculate"}
                   className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
@@ -828,10 +880,10 @@ const TDEE = () => {
                   <Label>Up to</Label>
                 </TooltipField>
                 <Input
-                  type="number"
-                  step="0.1"
-                  value={calculatedValues.idealBMIMax}
+                  type="text"
+                  value={displayVal(calculatedValues.idealBMIMax)}
                   onChange={(e) => setCalculatedValues(prev => ({ ...prev, idealBMIMax: e.target.value }))}
+                  readOnly={displayVal(calculatedValues.idealBMIMax) === "Unable to calculate"}
                   className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
@@ -851,14 +903,15 @@ const TDEE = () => {
                   <Label>Weight to Lose (kg)</Label>
                 </TooltipField>
                 <Input
-                  type="number"
-                  step="0.1"
+                  type="text"
                   value={(() => {
                     const currentWeight = parseFloat(formData.weight);
                     const minWeight = parseFloat(calculatedValues.idealWeightMin);
                     const maxWeight = parseFloat(calculatedValues.idealWeightMax);
+                    if (isNaN(currentWeight) || isNaN(minWeight) || isNaN(maxWeight) || minWeight <= 0 || maxWeight <= 0) return "Unable to calculate";
                     const midWeight = (minWeight + maxWeight) / 2;
                     const weightToLose = Math.max(0, currentWeight - midWeight);
+                    if (weightToLose <= 0) return "0.00";
                     return weightToLose.toFixed(2);
                   })()}
                   readOnly
@@ -930,9 +983,13 @@ const TDEE = () => {
           Clear Fields
         </Button>
         <button 
-          className="flex items-center justify-center gap-2 text-foreground hover:text-primary transition-colors text-lg font-medium"
+          className={`flex items-center justify-center gap-2 transition-colors text-lg font-medium ${hasInvalidCalcs || isUnderweight ? 'text-muted-foreground cursor-not-allowed opacity-50' : 'text-foreground hover:text-primary'}`}
+          disabled={hasInvalidCalcs || isUnderweight}
           onClick={() => {
-            // Prompt for journey anchor if neither local nor server has a start date
+            if (isUnderweight) {
+              setShowUnderweightDialog(true);
+              return;
+            }
             const existingLocal = localStorage.getItem("dashboardWeightLossStartDate");
             const hasServerAnchor = journey ? !!resolveJourneyAnchorFromRow(journey) : false;
             if (!existingLocal && !hasServerAnchor) {
@@ -945,6 +1002,23 @@ const TDEE = () => {
           <MaterialIcon name="arrow_forward" size="sm" />
         </button>
       </div>
+
+      {/* Underweight Classification Dialog */}
+      <AlertDialog open={showUnderweightDialog} onOpenChange={setShowUnderweightDialog}>
+        <AlertDialogContent className="bg-background text-foreground border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Underweight Classification</AlertDialogTitle>
+            <AlertDialogDescription className="text-foreground/70">
+              You are classified as 'Underweight'. You will not be able to continue losing weight. It is strongly recommended you first start a weight gain phase. Please consult your doctor first should you wish to go on a fat loss journey.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction className="bg-primary text-primary-foreground hover:bg-primary/90">
+              I understand
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

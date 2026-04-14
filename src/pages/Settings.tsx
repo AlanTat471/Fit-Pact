@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -96,8 +96,14 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
 
-  // Load profile from AuthContext (login) or localStorage
+  const settingsHydratedForUserRef = useRef<string | null>(null);
   useEffect(() => {
+    if (!user?.id) settingsHydratedForUserRef.current = null;
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (settingsHydratedForUserRef.current === (user?.id ?? "local")) return;
+    settingsHydratedForUserRef.current = user?.id ?? "local";
     if (profile) {
       setFirstName(profile.first_name || "");
       setLastName(profile.last_name || "");
@@ -112,7 +118,7 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
       setHeight(stored.height || "");
       setWeight(stored.currentWeight || stored.weight || "");
     }
-  }, [profile]);
+  }, [profile, user?.id]);
 
   // Load activePlan, paymentMethods from Supabase (or localStorage fallback)
   useEffect(() => {

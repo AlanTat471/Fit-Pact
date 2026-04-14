@@ -428,6 +428,8 @@ const Dashboard = () => {
   const [showThankYouDialog, setShowThankYouDialog] = useState(false);
   const [showFinalRedirectDialog, setShowFinalRedirectDialog] = useState(false);
   const [showMaintenanceCompleteDialog, setShowMaintenanceCompleteDialog] = useState(false);
+  const [showClearAllStep1, setShowClearAllStep1] = useState(false);
+  const [showClearAllStep2, setShowClearAllStep2] = useState(false);
 
   // Low calorie headroom safety warning – shown when acclimation calories are within 200 of the minimum floor
   const [showLowCalorieHeadroomDialog, setShowLowCalorieHeadroomDialog] = useState(false);
@@ -1295,8 +1297,7 @@ const Dashboard = () => {
     await refreshJourney();
   };
 
-  // Clear dashboard inputs and send user to TDEE; does not remove Archived Phases (fitpactArchivedPhases) or server archived_phases
-  const archiveAndRestart = () => {
+  const clearAllDashboardData = async () => {
     const keysToRemove = [
       'dashboardWeeklyData', 'dashboardPreviousWeekData', 'dashboardCompletedWeeks',
       'dashboardAcclimationData', 'dashboardAcclimationSteps', 'dashboardWeightLossStartDate',
@@ -1306,9 +1307,12 @@ const Dashboard = () => {
       'dashboardRecommendedCalories', 'dashboardRecommendedSteps', 'stepDebugInfo',
       'dashboardJourneyComplete', 'dashboardMaintenancePhase', 'dashboardAcclimationShown', 'dashboardLowCalorieHeadroomWarned',
       'dashboardTdeeOverviewShown', 'readyToStartShown', 'showReadyToStartPopup',
-      'tdeeCalculatedValues', 'startingCalorieIntake', 'fitpactPendingMaintenanceAfterWeek12'
+      'tdeeCalculatedValues', 'startingCalorieIntake', 'fitpactPendingMaintenanceAfterWeek12',
+      'fitpactArchivedPhases',
     ];
     keysToRemove.forEach(key => localStorage.removeItem(key));
+    setArchivedPhases([]);
+    await saveJourney({ archived_phases: [] });
     navigate('/tdee-calculator');
   };
 
@@ -3808,13 +3812,7 @@ const Dashboard = () => {
           <div className="flex justify-center mt-6">
             <Button
               type="button"
-              onClick={() => {
-                if (confirm('Are you sure you want to clear all the data? You will need to go back to "My TDEE Calculator" and re-enter all your details again.')) {
-                  if (confirm('This action cannot be undone. Are you absolutely sure?')) {
-                    archiveAndRestart();
-                  }
-                }
-              }}
+              onClick={() => setShowClearAllStep1(true)}
               variant="destructive"
               size="lg"
             >
@@ -4681,7 +4679,7 @@ const Dashboard = () => {
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
                 setShowFinalRedirectDialog(false);
-                archiveAndRestart();
+                void clearAllDashboardData();
               }}
             >
               Go to TDEE Calculator
@@ -4800,6 +4798,54 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+      {/* Clear All Dashboard Data — Step 1 */}
+      <AlertDialog open={showClearAllStep1} onOpenChange={setShowClearAllStep1}>
+        <AlertDialogContent className="bg-background text-foreground border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Warning</AlertDialogTitle>
+            <AlertDialogDescription className="text-foreground/70">
+              You have clicked 'Clear all Dashboard data'. This will clear everything including 'Archived Phases' and you will need to re-enter all your details and information again via the TDEE page. Are you sure you want to proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>No, go back</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                setShowClearAllStep1(false);
+                setShowClearAllStep2(true);
+              }}
+            >
+              Yes, I want to proceed
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Clear All Dashboard Data — Step 2 (final confirmation) */}
+      <AlertDialog open={showClearAllStep2} onOpenChange={setShowClearAllStep2}>
+        <AlertDialogContent className="bg-background text-foreground border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Final Confirmation</AlertDialogTitle>
+            <AlertDialogDescription className="text-foreground/70">
+              You are about to clear all your data inputs. Are you sure you want to proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>No, go back</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                setShowClearAllStep2(false);
+                void clearAllDashboardData();
+              }}
+            >
+              Yes, clear everything
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       </div>
     </TooltipProvider>
   );
