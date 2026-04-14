@@ -1307,12 +1307,54 @@ const Dashboard = () => {
       'dashboardRecommendedCalories', 'dashboardRecommendedSteps', 'stepDebugInfo',
       'dashboardJourneyComplete', 'dashboardMaintenancePhase', 'dashboardAcclimationShown', 'dashboardLowCalorieHeadroomWarned',
       'dashboardTdeeOverviewShown', 'readyToStartShown', 'showReadyToStartPopup',
-      'tdeeCalculatedValues', 'startingCalorieIntake', 'fitpactPendingMaintenanceAfterWeek12',
-      'fitpactArchivedPhases',
+      'tdeeCalculatedValues', 'startingCalorieIntake', 'suggestedWeightGoal',
+      'fitpactPendingMaintenanceAfterWeek12', 'fitpactArchivedPhases',
+      'tdeeChangeWarningAcknowledged',
     ];
     keysToRemove.forEach(key => localStorage.removeItem(key));
     setArchivedPhases([]);
-    await saveJourney({ archived_phases: [] });
+
+    await saveJourney({
+      archived_phases: [],
+      acclimation_data: { week1: {}, week2: {}, week3: {}, week4: {} },
+      weekly_data: {},
+      previous_week_data: {},
+      completed_weeks: [],
+      recommended_steps: 4000,
+      recommended_calories: null,
+      weight_loss_start_date: null,
+      weight_loss_start_is_anchor: true,
+      acclimation_phase_start_date: null,
+      acclimation_phase_end_date: null,
+      current_streak: 0,
+      longest_streak: 0,
+      week1_complete: false,
+      week2_complete: false,
+      week3_complete: false,
+      week4_complete: false,
+      starting_weight: null,
+      journey_complete: false,
+      maintenance_phase: null,
+      step_debug: null,
+      acclimation_steps: 4000,
+      acclimation_calories: null,
+    });
+
+    saveTdee({
+      values_json: null,
+      starting_calorie_intake: null,
+      suggested_weight_goal: null,
+      current_weight: null,
+      weight_to_lose: null,
+      height: null,
+    });
+
+    if (user?.id) {
+      void setUserPref(user.id, "readyToStartShown", "false");
+      void setUserPref(user.id, "dashboardWelcomeShown", "false");
+      void setUserPref(user.id, "dashboardAcclimationShown", "false");
+    }
+
     navigate('/tdee-calculator');
   };
 
@@ -4342,23 +4384,42 @@ const Dashboard = () => {
               )}
               <div className="space-y-2">
                 <Label htmlFor="readyToStartDate" className="text-sm font-medium text-foreground">Journey start (Acclimation Day 1)</Label>
-                <Input
-                  id="readyToStartDate"
-                  type="date"
-                  className="w-full"
-                  min={earliestAllowedStartDate || undefined}
-                  value={weightLossStartDate}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (!val) return;
-                    if (earliestAllowedStartDate && val < earliestAllowedStartDate) {
-                      alert(`Your new phase cannot start before your previous phase ended. The earliest allowed date is ${earliestAllowedStartDate.split("-").reverse().join("/")}.`);
-                      return;
-                    }
-                    setWeightLossStartDate(val);
-                    localStorage.setItem('dashboardWeightLossStartDate', val);
-                  }}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="readyToStartDate"
+                    type="date"
+                    className="flex-1"
+                    min={earliestAllowedStartDate || undefined}
+                    value={weightLossStartDate}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!val) return;
+                      if (earliestAllowedStartDate && val < earliestAllowedStartDate) {
+                        alert(`Your new phase cannot start before your previous phase ended. The earliest allowed date is ${earliestAllowedStartDate.split("-").reverse().join("/")}.`);
+                        return;
+                      }
+                      setWeightLossStartDate(val);
+                      localStorage.setItem('dashboardWeightLossStartDate', val);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="whitespace-nowrap"
+                    onClick={() => {
+                      const today = formatLocalIsoDate(new Date());
+                      if (earliestAllowedStartDate && today < earliestAllowedStartDate) {
+                        alert(`Today's date is before your previous phase ended. The earliest allowed date is ${earliestAllowedStartDate.split("-").reverse().join("/")}.`);
+                        return;
+                      }
+                      setWeightLossStartDate(today);
+                      localStorage.setItem('dashboardWeightLossStartDate', today);
+                    }}
+                  >
+                    Today
+                  </Button>
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

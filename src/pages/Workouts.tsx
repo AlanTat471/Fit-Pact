@@ -266,6 +266,7 @@ const TDEE = () => {
   };
 
   const tdeeSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const manualStartingCalRef = useRef<string | null>(null);
 
   useEffect(() => {
     const { gender, height, weight, age, activityLevel } = formData;
@@ -287,7 +288,9 @@ const TDEE = () => {
 
       const multiplier = activityMultipliers[activityLevel as keyof typeof activityMultipliers] || 1.2;
       const tdee = bmr * multiplier;
-      const startingCalories = tdee;
+      const startingCalories = manualStartingCalRef.current
+        ? parseInt(manualStartingCalRef.current, 10)
+        : tdee;
 
       const idealWeight = calculateIdealWeightRangeFromGender(heightNum, gender);
       const idealBodyFat = calculateIdealBodyFatRange(ageNum, gender);
@@ -470,6 +473,7 @@ const TDEE = () => {
   };
 
   const handleClearFields = () => {
+    manualStartingCalRef.current = null;
     const emptyFormData = {
       gender: "",
       height: "",
@@ -682,14 +686,9 @@ const TDEE = () => {
               <Input
                 id="bmr"
                 type="text"
-                inputMode="numeric"
                 value={displayVal(calculatedValues.bmr) === "Unable to calculate" ? "Unable to calculate" : parseInt(calculatedValues.bmr || '0').toLocaleString()}
-                onChange={(e) => {
-                  const rawValue = e.target.value.replace(/,/g, '').replace(/[^0-9]/g, '');
-                  setCalculatedValues(prev => ({ ...prev, bmr: rawValue }));
-                }}
-                readOnly={displayVal(calculatedValues.bmr) === "Unable to calculate"}
-                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                readOnly
+                className="bg-muted"
               />
             </div>
 
@@ -707,6 +706,14 @@ const TDEE = () => {
                   const rawValue = e.target.value.replace(/,/g, '').replace(/[^0-9]/g, '');
                   setCalculatedValues(prev => ({ ...prev, tdee: rawValue }));
                 }}
+                onBlur={() => {
+                  const num = parseInt(calculatedValues.tdee, 10);
+                  const floor = formData.gender === "female" ? 1300 : 1500;
+                  if (!isNaN(num) && num > 0 && num < floor) {
+                    alert(`The minimum allowed value is ${floor.toLocaleString()} calories for ${formData.gender === "female" ? "females" : "males"}. The value has been adjusted.`);
+                    setCalculatedValues(prev => ({ ...prev, tdee: String(floor) }));
+                  }
+                }}
                 readOnly={displayVal(calculatedValues.tdee) === "Unable to calculate"}
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
@@ -714,7 +721,7 @@ const TDEE = () => {
 
             {/* Starting Calories */}
             <div className="space-y-2">
-              <TooltipField tooltip="Use this value to start your two-week 'Acclimation Week'. This is to establish a baseline to start your diet.">
+              <TooltipField tooltip="Use this value to start your four-week 'Acclimation Phase'. This is to establish a baseline to start your diet. You may edit this value if you wish to start at a different calorie intake.">
                 <Label htmlFor="startingCalories">Starting Calorie Intake</Label>
               </TooltipField>
               <Input
@@ -723,10 +730,24 @@ const TDEE = () => {
                 inputMode="numeric"
                 value={displayVal(calculatedValues.startingCalories) === "Unable to calculate" ? "Unable to calculate" : parseInt(calculatedValues.startingCalories || '0').toLocaleString()}
                 onChange={(e) => {
-                  const rawValue = e.target.value.replace(/,/g, '');
-                  const numValue = rawValue.replace(/[^0-9]/g, '');
-                  setCalculatedValues(prev => ({ ...prev, startingCalories: numValue }));
-                  localStorage.setItem('startingCalorieIntake', numValue);
+                  const rawValue = e.target.value.replace(/,/g, '').replace(/[^0-9]/g, '');
+                  manualStartingCalRef.current = rawValue;
+                  setCalculatedValues(prev => ({ ...prev, startingCalories: rawValue }));
+                }}
+                onBlur={() => {
+                  const num = parseInt(calculatedValues.startingCalories, 10);
+                  const floor = formData.gender === "female" ? 1300 : 1500;
+                  if (!isNaN(num) && num > 0 && num < floor) {
+                    alert(`The minimum allowed value is ${floor.toLocaleString()} calories for ${formData.gender === "female" ? "females" : "males"}. The value has been adjusted.`);
+                    manualStartingCalRef.current = String(floor);
+                    setCalculatedValues(prev => ({ ...prev, startingCalories: String(floor) }));
+                  }
+                  const finalVal = (!isNaN(num) && num > 0 && num < floor) ? String(floor) : calculatedValues.startingCalories;
+                  if (finalVal && parseInt(finalVal, 10) > 0) {
+                    manualStartingCalRef.current = finalVal;
+                    localStorage.setItem('startingCalorieIntake', finalVal);
+                    saveTdee({ starting_calorie_intake: finalVal });
+                  }
                 }}
                 readOnly={displayVal(calculatedValues.startingCalories) === "Unable to calculate"}
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -742,9 +763,8 @@ const TDEE = () => {
                 id="currentBMI"
                 type="text"
                 value={displayVal(calculatedValues.currentBMI)}
-                onChange={(e) => setCalculatedValues(prev => ({ ...prev, currentBMI: e.target.value }))}
-                readOnly={displayVal(calculatedValues.currentBMI) === "Unable to calculate"}
-                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                readOnly
+                className="bg-muted"
               />
             </div>
 
@@ -757,9 +777,8 @@ const TDEE = () => {
                 id="estimatedBodyFat"
                 type="text"
                 value={displayVal(calculatedValues.estimatedBodyFat)}
-                onChange={(e) => setCalculatedValues(prev => ({ ...prev, estimatedBodyFat: e.target.value }))}
-                readOnly={displayVal(calculatedValues.estimatedBodyFat) === "Unable to calculate"}
-                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                readOnly
+                className="bg-muted"
               />
             </div>
 
@@ -771,7 +790,8 @@ const TDEE = () => {
               <Input
                 id="yourClassification"
                 value={calculatedValues.yourClassification}
-                onChange={(e) => setCalculatedValues(prev => ({ ...prev, yourClassification: e.target.value }))}
+                readOnly
+                className="bg-muted"
               />
             </div>
           </CardContent>
@@ -797,9 +817,8 @@ const TDEE = () => {
                 <Input
                   type="text"
                   value={displayVal(calculatedValues.idealWeightMin)}
-                  onChange={(e) => setCalculatedValues(prev => ({ ...prev, idealWeightMin: e.target.value }))}
-                  readOnly={displayVal(calculatedValues.idealWeightMin) === "Unable to calculate"}
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  readOnly
+                  className="bg-muted"
                 />
               </div>
               <div className="space-y-2">
@@ -809,9 +828,8 @@ const TDEE = () => {
                 <Input
                   type="text"
                   value={displayVal(calculatedValues.idealWeightMax)}
-                  onChange={(e) => setCalculatedValues(prev => ({ ...prev, idealWeightMax: e.target.value }))}
-                  readOnly={displayVal(calculatedValues.idealWeightMax) === "Unable to calculate"}
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  readOnly
+                  className="bg-muted"
                 />
               </div>
             </div>
@@ -832,9 +850,8 @@ const TDEE = () => {
                 <Input
                   type="text"
                   value={displayVal(calculatedValues.idealBodyFatMin)}
-                  onChange={(e) => setCalculatedValues(prev => ({ ...prev, idealBodyFatMin: e.target.value }))}
-                  readOnly={displayVal(calculatedValues.idealBodyFatMin) === "Unable to calculate"}
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  readOnly
+                  className="bg-muted"
                 />
               </div>
               <div className="space-y-2">
@@ -844,9 +861,8 @@ const TDEE = () => {
                 <Input
                   type="text"
                   value={displayVal(calculatedValues.idealBodyFatMax)}
-                  onChange={(e) => setCalculatedValues(prev => ({ ...prev, idealBodyFatMax: e.target.value }))}
-                  readOnly={displayVal(calculatedValues.idealBodyFatMax) === "Unable to calculate"}
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  readOnly
+                  className="bg-muted"
                 />
               </div>
             </div>
@@ -870,9 +886,8 @@ const TDEE = () => {
                 <Input
                   type="text"
                   value={displayVal(calculatedValues.idealBMIMin)}
-                  onChange={(e) => setCalculatedValues(prev => ({ ...prev, idealBMIMin: e.target.value }))}
-                  readOnly={displayVal(calculatedValues.idealBMIMin) === "Unable to calculate"}
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  readOnly
+                  className="bg-muted"
                 />
               </div>
               <div className="space-y-2">
@@ -882,9 +897,8 @@ const TDEE = () => {
                 <Input
                   type="text"
                   value={displayVal(calculatedValues.idealBMIMax)}
-                  onChange={(e) => setCalculatedValues(prev => ({ ...prev, idealBMIMax: e.target.value }))}
-                  readOnly={displayVal(calculatedValues.idealBMIMax) === "Unable to calculate"}
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  readOnly
+                  className="bg-muted"
                 />
               </div>
             </div>
