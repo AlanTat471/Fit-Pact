@@ -26,7 +26,7 @@ import { upsertProfile } from "@/lib/supabaseProfile";
 
 const TDEE = () => {
   const navigate = useNavigate();
-  const { saveTdee, loading: userDataLoading, journey } = useUserData();
+  const { saveTdee, loading: userDataLoading, journey, tdee } = useUserData();
   const { user, profile, refreshProfile, loading: authLoading } = useAuth();
 
   // Safety timeout: if loading exceeds 5s, force-show the form to avoid infinite spinner
@@ -267,6 +267,26 @@ const TDEE = () => {
 
   const tdeeSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manualStartingCalRef = useRef<string | null>(null);
+  const startingCalHydratedRef = useRef(false);
+
+  useEffect(() => {
+    if (startingCalHydratedRef.current) return;
+    const saved = tdee?.starting_calorie_intake || localStorage.getItem('startingCalorieIntake');
+    if (!saved) return;
+    const { gender, height, weight, age, activityLevel } = formData;
+    if (!gender || !height || !weight || !age || !activityLevel) return;
+    startingCalHydratedRef.current = true;
+    const heightNum = parseFloat(height);
+    const weightNum = parseFloat(weight);
+    const ageNum = parseFloat(age);
+    const bmr = calculateBMR(weightNum, heightNum, ageNum, gender);
+    const actMult: Record<string, number> = { sedentary: 1.2, "lightly-active": 1.375, "moderately-active": 1.55, "very-active": 1.725, "super-active": 1.9 };
+    const computedTdee = bmr * (actMult[activityLevel] || 1.2);
+    const savedNum = parseInt(saved, 10);
+    if (!isNaN(savedNum) && Math.abs(savedNum - computedTdee) > 1) {
+      manualStartingCalRef.current = String(savedNum);
+    }
+  }, [tdee?.starting_calorie_intake, formData]);
 
   useEffect(() => {
     const { gender, height, weight, age, activityLevel } = formData;

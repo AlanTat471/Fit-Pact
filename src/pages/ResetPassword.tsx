@@ -56,8 +56,9 @@ const ResetPassword = () => {
       });
       return;
     }
-    toast({ title: "Password updated. Signing you in…" });
-    navigate("/dashboard");
+    await supabase.auth.signOut();
+    toast({ title: "Password updated", description: "Please log in with your new password." });
+    navigate("/");
   };
 
   if (!ready) {
