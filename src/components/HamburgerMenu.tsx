@@ -25,14 +25,14 @@ export function HamburgerMenu() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <button className="p-2 text-zinc-400 hover:text-primary transition-colors">
+        <button className="p-2 text-primary hover:text-primary/80 transition-colors">
           <MaterialIcon name="menu" size="md" />
         </button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-72 bg-[#131313] border-zinc-800 p-0">
-        <SheetHeader className="px-6 py-6 border-b border-zinc-800">
-          <SheetTitle className="text-2xl font-black tracking-tighter text-primary italic">
-            FITPACT
+      <SheetContent side="left" className="w-72 bg-surface-container-lowest border-outline-variant p-0">
+        <SheetHeader className="px-6 py-6 border-b border-outline-variant">
+          <SheetTitle className="text-2xl font-bold text-primary lowercase tracking-tight">
+            Numi
           </SheetTitle>
         </SheetHeader>
         <nav className="px-4 py-4 space-y-1">
@@ -43,7 +43,7 @@ export function HamburgerMenu() {
                 setOpen(false);
                 navigate(item.path);
               }}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-sm text-zinc-300 hover:text-primary hover:bg-zinc-800/50 transition-colors text-sm font-medium"
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-on-surface hover:text-primary hover:bg-surface-container-high transition-colors text-sm font-medium"
             >
               <MaterialIcon name={item.icon} size="sm" />
               <span>{item.label}</span>

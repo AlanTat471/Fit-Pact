@@ -2,109 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    /* Fitness App Color Palette - Black Background Theme */
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
+    /* Numi Light Theme — Warm palette from Stitch */
+    --background: 38 100% 98%;
+    --foreground: 60 5% 21%;
 
-    --card: 0 0% 0%;
-    --card-foreground: 0 0% 100%;
+    --card: 40 64% 97%;
+    --card-foreground: 60 5% 21%;
 
-    --popover: 0 0% 5%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 60 5% 21%;
 
-    /* Primary: Cyan */
-    --primary: 187 94% 55%;
-    --primary-foreground: 0 0% 0%;
-    --primary-glow: 187 94% 65%;
+    /* Primary: Warm Brown */
+    --primary: 16 19% 40%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 15 74% 86%;
 
-    /* Secondary: Fresh Green */
-    --secondary: 142 76% 36%;
+    /* Secondary: Muted Brown */
+    --secondary: 16 5% 40%;
     --secondary-foreground: 0 0% 100%;
 
-    /* Accent: Electric Purple */
-    --accent: 262 83% 58%;
+    /* Accent: Earthy Tertiary */
+    --accent: 32 8% 39%;
     --accent-foreground: 0 0% 100%;
 
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 70%;
+    --muted: 40 33% 95%;
+    --muted-foreground: 60 4% 38%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 12 65% 41%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 15%;
-    --ring: 187 94% 55%;
+    --border: 47 6% 72%;
+    --input: 40 33% 95%;
+    --ring: 16 19% 40%;
 
-    /* Fitness App Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(187 94% 55%), hsl(262 83% 58%));
-    --gradient-secondary: linear-gradient(135deg, hsl(142 76% 36%), hsl(187 94% 55%));
-    --gradient-hero: linear-gradient(135deg, hsl(187 94% 55% / 0.1), hsl(262 83% 58% / 0.1));
-    
-    /* Shadows */
-    --shadow-primary: 0 10px 30px -10px hsl(187 94% 55% / 0.3);
-    --shadow-glow: 0 0 40px hsl(187 94% 55% / 0.2);
+    /* Stitch M3 Surface Tokens */
+    --surface: 38 100% 98%;
+    --surface-dim: 48 6% 88%;
+    --surface-bright: 38 100% 98%;
+    --surface-container-lowest: 0 0% 100%;
+    --surface-container-low: 40 64% 97%;
+    --surface-container: 40 33% 95%;
+    --surface-container-high: 48 25% 92%;
+    --surface-container-highest: 48 19% 90%;
 
-    --radius: 0.5rem;
+    /* M3 Container Colors */
+    --primary-container: 15 74% 86%;
+    --on-primary-container: 16 24% 30%;
+    --secondary-container: 14 30% 89%;
+    --on-secondary-container: 14 9% 33%;
+    --tertiary-container: 31 47% 91%;
+    --on-tertiary-container: 32 11% 34%;
 
-    --sidebar-background: 0 0% 0%;
+    --on-surface: 60 5% 21%;
+    --on-surface-variant: 60 4% 38%;
+    --outline: 60 3% 49%;
+    --outline-variant: 47 6% 72%;
 
-    --sidebar-foreground: 0 0% 100%;
+    /* Gradients — warm version */
+    --gradient-primary: linear-gradient(135deg, hsl(16 19% 40%), hsl(32 8% 39%));
+    --gradient-secondary: linear-gradient(135deg, hsl(15 74% 86%), hsl(14 30% 89%));
+    --gradient-hero: linear-gradient(135deg, hsl(16 19% 40% / 0.06), hsl(32 8% 39% / 0.06));
 
-    --sidebar-primary: 187 94% 55%;
+    /* Shadows — warm subtle */
+    --shadow-primary: 0 10px 30px -10px hsl(16 19% 40% / 0.12);
+    --shadow-glow: 0 0 40px hsl(16 19% 40% / 0.06);
 
-    --sidebar-primary-foreground: 0 0% 0%;
+    --radius: 1rem;
 
-    --sidebar-accent: 0 0% 15%;
-
-    --sidebar-accent-foreground: 0 0% 100%;
-
-    --sidebar-border: 0 0% 20%;
-
-    --sidebar-ring: 187 94% 55%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 60 5% 21%;
+    --sidebar-primary: 16 19% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 40 33% 95%;
+    --sidebar-accent-foreground: 60 5% 21%;
+    --sidebar-border: 47 6% 72%;
+    --sidebar-ring: 16 19% 40%;
   }
 }
 
@@ -116,13 +90,12 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
-  
-  /* Global: Remove spin buttons from all number inputs */
+
   input[type="number"] {
     -moz-appearance: textfield;
     appearance: textfield;
   }
-  
+
   input[type="number"]::-webkit-outer-spin-button,
   input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;

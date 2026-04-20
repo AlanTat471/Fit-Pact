@@ -570,168 +570,183 @@ const MacroBreakdown = () => {
   return (
     <div className="space-y-6 max-w-md mx-auto">
       <BackButton />
-      
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight flex items-center gap-2 text-zinc-100">
+
+      {/* Hero Summary */}
+      <section className="py-4">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-3xl font-extrabold tracking-tight text-on-surface">
             Macro Breakdown
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <MaterialIcon name="help_outline" size="sm" className="text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs">Adjust your protein, carbohydrate, and fat split while the app preserves a 100% total and recalculates grams/calories automatically.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </h1>
-          <p className="text-zinc-400 text-sm">Calibrated from your daily target calories</p>
+          </h2>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <MaterialIcon name="help_outline" size="sm" className="text-on-surface-variant cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs">Adjust your protein, carbohydrate, and fat split while the app preserves a 100% total and recalculates grams/calories automatically.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <p className="text-on-surface-variant text-lg">Calibrated from your daily target calories</p>
+      </section>
+
+      {/* Bento Grid — Macro Display */}
+      <div className="grid grid-cols-2 gap-4 mb-2">
+        <div className="col-span-2 bg-surface-container-low p-8 rounded-xl flex flex-col items-center justify-center text-center">
+          <span className="text-on-surface-variant font-semibold mb-2">Daily Calories</span>
+          <span className="text-6xl font-extrabold text-primary">
+            {parseInt(dailyCalories || '0') > 0 ? parseInt(dailyCalories).toLocaleString() : '—'}
+          </span>
+          <span className="text-on-surface-variant/60 mt-2 font-medium">kcal total target</span>
+        </div>
+        <div className="bg-tertiary-container p-6 rounded-xl flex flex-col">
+          <span className="text-on-tertiary-container font-semibold">Protein</span>
+          <div className="mt-4 flex items-baseline gap-1">
+            <span className="text-3xl font-bold text-on-tertiary-container">{macros.protein.grams.toLocaleString()}</span>
+            <span className="text-on-tertiary-container/70 font-medium">g</span>
+          </div>
+          <div className="w-full h-3 bg-white/50 rounded-full mt-4 overflow-hidden">
+            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${macros.protein.percentage}%` }}></div>
+          </div>
+        </div>
+        <div className="bg-secondary-container p-6 rounded-xl flex flex-col">
+          <span className="text-on-secondary-container font-semibold">Carbs</span>
+          <div className="mt-4 flex items-baseline gap-1">
+            <span className="text-3xl font-bold text-on-secondary-container">{macros.carbs.grams.toLocaleString()}</span>
+            <span className="text-on-secondary-container/70 font-medium">g</span>
+          </div>
+          <div className="w-full h-3 bg-white/50 rounded-full mt-4 overflow-hidden">
+            <div className="h-full bg-secondary rounded-full transition-all" style={{ width: `${macros.carbs.percentage}%` }}></div>
+          </div>
+        </div>
+        <div className="col-span-2 bg-primary-container p-6 rounded-xl flex flex-col">
+          <span className="text-on-primary-container font-semibold">Fats</span>
+          <div className="mt-4 flex items-baseline gap-1">
+            <span className="text-3xl font-bold text-on-primary-container">{macros.fats.grams.toLocaleString()}</span>
+            <span className="text-on-primary-container/70 font-medium">g</span>
+          </div>
+          <div className="w-full h-3 bg-white/50 rounded-full mt-4 overflow-hidden">
+            <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${macros.fats.percentage}%` }}></div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        {/* Calorie & Goal Information */}
-        <Card className="bg-[#131313] border-zinc-800">
-          <CardHeader>
-            <CardTitle className="text-zinc-100">Calorie & Goal Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Daily Calories */}
-            <div className="space-y-2">
-              <TooltipField tooltip="Your daily calorie target from your TDEE calculation.">
-                <Label htmlFor="dailyCalories">Daily Calories</Label>
-              </TooltipField>
-              <Input
-                id="dailyCalories"
-                type="text"
-                inputMode="numeric"
-                value={parseInt(dailyCalories || '0') > 0 ? parseInt(dailyCalories).toLocaleString() : ''}
-                readOnly
-                className="bg-muted"
-              />
-            </div>
+      {/* Slider Card */}
+      <div className="bg-surface-container-lowest p-8 rounded-xl shadow-card">
+        <div className="flex items-center justify-between mb-8">
+          <h3 className="text-xl font-bold text-on-surface">Fine-tune targets</h3>
+          <MaterialIcon name="tune" size="md" className="text-outline" />
+        </div>
 
-            {/* Macro Breakdown Results */}
-            <div className="space-y-6 pt-4 border-t">
-              <h3 className="font-semibold text-zinc-100 uppercase tracking-wide text-sm">Daily Target</h3>
-              
-              {/* Protein */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label className="font-bold text-primary uppercase tracking-widest text-xs">Protein</Label>
-                  <span className="text-sm text-muted-foreground">{macros.protein.percentage}%</span>
-                </div>
-                <Slider value={[macros.protein.percentage]} min={0} max={100} step={1} onValueChange={(v) => handleMacroSliderChange('protein', v[0] ?? 0)} className="[&_[role=slider]]:border-primary" />
-                <div className="flex justify-between text-sm">
-                  <span>{macros.protein.grams.toLocaleString()}g</span>
-                  <span>{macros.protein.calories.toLocaleString()} calories</span>
-                </div>
-              </div>
+        {/* Protein Slider */}
+        <div className="mb-10">
+          <div className="flex justify-between items-center mb-4">
+            <label className="font-bold text-on-surface-variant">Protein focus</label>
+            <span className="text-primary font-extrabold text-xl">{macros.protein.percentage}%</span>
+          </div>
+          <Slider
+            value={[macros.protein.percentage]}
+            min={0}
+            max={100}
+            step={1}
+            onValueChange={(v) => handleMacroSliderChange('protein', v[0] ?? 0)}
+          />
+          <div className="flex justify-between text-sm text-on-surface-variant mt-2">
+            <span>{macros.protein.grams.toLocaleString()}g</span>
+            <span>{macros.protein.calories.toLocaleString()} cal</span>
+          </div>
+        </div>
 
-              {/* Carbohydrates */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label className="font-bold text-secondary uppercase tracking-widest text-xs">Carbs</Label>
-                  <span className="text-sm text-muted-foreground">{macros.carbs.percentage}%</span>
-                </div>
-                <Slider value={[macros.carbs.percentage]} min={0} max={100} step={1} onValueChange={(v) => handleMacroSliderChange('carbs', v[0] ?? 0)} className="[&_[role=slider]]:border-secondary" />
-                <div className="flex justify-between text-sm">
-                  <span>{macros.carbs.grams.toLocaleString()}g</span>
-                  <span>{macros.carbs.calories.toLocaleString()} calories</span>
-                </div>
-              </div>
+        {/* Carbs Slider */}
+        <div className="mb-10">
+          <div className="flex justify-between items-center mb-4">
+            <label className="font-bold text-on-surface-variant">Carbohydrates</label>
+            <span className="text-secondary font-extrabold text-xl">{macros.carbs.percentage}%</span>
+          </div>
+          <Slider
+            value={[macros.carbs.percentage]}
+            min={0}
+            max={100}
+            step={1}
+            onValueChange={(v) => handleMacroSliderChange('carbs', v[0] ?? 0)}
+          />
+          <div className="flex justify-between text-sm text-on-surface-variant mt-2">
+            <span>{macros.carbs.grams.toLocaleString()}g</span>
+            <span>{macros.carbs.calories.toLocaleString()} cal</span>
+          </div>
+        </div>
 
-              {/* Fats */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label className="font-bold text-accent uppercase tracking-widest text-xs">Fats</Label>
-                  <span className="text-sm text-muted-foreground">{macros.fats.percentage}%</span>
-                </div>
-                <Slider value={[macros.fats.percentage]} min={0} max={100} step={1} onValueChange={(v) => handleMacroSliderChange('fats', v[0] ?? 0)} className="[&_[role=slider]]:border-accent" />
-                <div className="flex justify-between text-sm">
-                  <span>{macros.fats.grams.toLocaleString()}g</span>
-                  <span>{macros.fats.calories.toLocaleString()} calories</span>
-                </div>
-              </div>
+        {/* Fats Slider */}
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <label className="font-bold text-on-surface-variant">Healthy fats</label>
+            <span className="text-on-surface font-extrabold text-xl">{macros.fats.percentage}%</span>
+          </div>
+          <Slider
+            value={[macros.fats.percentage]}
+            min={0}
+            max={100}
+            step={1}
+            onValueChange={(v) => handleMacroSliderChange('fats', v[0] ?? 0)}
+          />
+          <div className="flex justify-between text-sm text-on-surface-variant mt-2">
+            <span>{macros.fats.grams.toLocaleString()}g</span>
+            <span>{macros.fats.calories.toLocaleString()} cal</span>
+          </div>
+        </div>
 
-              {/* Total */}
-              <div className="pt-4 border-t">
-                <div className="flex justify-between items-center font-medium">
-                  <span>Total Daily Calories</span>
-                  <span>{macros.totalCalories.toLocaleString()}</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">Total always remains 100%. When one macro changes, the other two auto-adjust proportionally.</p>
-              </div>
+        {/* Total */}
+        <div className="pt-6 border-t border-outline-variant">
+          <div className="flex justify-between items-center font-semibold text-on-surface">
+            <span>Total Daily Calories</span>
+            <span>{macros.totalCalories.toLocaleString()}</span>
+          </div>
+          <p className="text-xs text-on-surface-variant mt-2">Total always remains 100%. When one macro changes, the other two auto-adjust proportionally.</p>
+        </div>
+      </div>
 
-              {/* Macro Buttons */}
-              <div className="flex justify-center gap-3 pt-4">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button onClick={handleResetToRecommended} variant="outline" className="gap-2">
-                        Recommended
-                        <MaterialIcon name="help_outline" size="sm" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="max-w-xs">Press if you want to follow the 'Recommended macronutrient split' based on activity level and information entered.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <Button onClick={handleOpenCustomPopup} variant="outline">
-                  Customise Macro
+      {/* Insight Card */}
+      <div className="bg-tertiary-container/40 p-6 rounded-xl flex gap-4 items-start border border-white/50 backdrop-blur-sm">
+        <div className="p-3 bg-white rounded-full shrink-0">
+          <MaterialIcon name="analytics" size="md" className="text-primary" filled />
+        </div>
+        <div>
+          <h4 className="font-bold text-on-primary-container mb-1">Activity insight</h4>
+          <p className="text-sm text-on-primary-container/80 leading-relaxed">
+            Your activity level ({activityLevel.charAt(0).toUpperCase() + activityLevel.slice(1)}) suggests a <strong>{defaultPercentages.protein}% Protein / {defaultPercentages.carbs}% Carbs / {defaultPercentages.fats}% Fats</strong> split.
+          </p>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex flex-col gap-3 pt-4 pb-6">
+        <div className="flex justify-center gap-3">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={handleResetToRecommended} variant="outline" className="gap-2 rounded-full px-6 py-3">
+                  Recommended
+                  <MaterialIcon name="help_outline" size="xs" />
                 </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Macro Guidelines */}
-        <Card className="hidden">
-          <CardHeader>
-            <CardTitle>Macro Guidelines</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <h4 className="font-semibold text-primary">Protein</h4>
-                <p className="text-sm text-muted-foreground">
-                  Essential for muscle building and repair. Aim for 0.8-2.2g per kg of body weight depending on activity level.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-secondary">Carbohydrates</h4>
-                <p className="text-sm text-muted-foreground">
-                  Primary energy source for workouts and daily activities. Focus on complex carbs for sustained energy.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-accent">Fats</h4>
-                <p className="text-sm text-muted-foreground">
-                  Important for hormone production and nutrient absorption. Include healthy fats like avocados, nuts, and olive oil.
-                </p>
-              </div>
-              <div className="pt-4 border-t">
-                <p className="text-xs text-muted-foreground">
-                  <strong>Your Activity Level:</strong> {activityLevel.charAt(0).toUpperCase() + activityLevel.slice(1)}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  <strong>Recommended Split:</strong> {defaultPercentages.protein}% Protein, {defaultPercentages.carbs}% Carbs, {defaultPercentages.fats}% Fats
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs">Press if you want to follow the 'Recommended macronutrient split' based on activity level and information entered.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <Button onClick={handleOpenCustomPopup} variant="outline" className="rounded-full px-6 py-3">
+            Customise Macro
+          </Button>
+        </div>
       </div>
 
       {/* Custom Macro Popup */}
       <AlertDialog open={showCustomMacroPopup} onOpenChange={setShowCustomMacroPopup}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Customise Macro</AlertDialogTitle>
-            <AlertDialogDescription className="text-foreground/70">
+            <AlertDialogTitle className="text-on-surface">Customise Macro</AlertDialogTitle>
+            <AlertDialogDescription className="text-on-surface-variant">
               Enter your desired macros. Carbohydrates will be adjusted accordingly and automatically for you. You can adjust your desired macro intake for Protein and Fats and the app will allocate remaining calories to carbohydrates.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -898,10 +913,10 @@ const MacroBreakdown = () => {
 
       {/* Below recommended confirmation */}
       <AlertDialog open={showBelowRecommendedPopup} onOpenChange={setShowBelowRecommendedPopup}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Below Recommended</AlertDialogTitle>
-            <AlertDialogDescription className="text-foreground/70">
+            <AlertDialogTitle className="text-on-surface">Below Recommended</AlertDialogTitle>
+            <AlertDialogDescription className="text-on-surface-variant">
               You have entered values for {belowRecommendedType === 'both' ? 'Protein and Fats' : belowRecommendedType === 'protein' ? 'Protein' : 'Fats'} below the recommended daily intake. This is not ideal and you should at least be eating at recommended daily intake. Do you want the app to adjust to recommended intake?
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -930,10 +945,10 @@ const MacroBreakdown = () => {
 
       {/* Adjustment Choice Popup */}
       <AlertDialog open={showAdjustmentChoicePopup} onOpenChange={setShowAdjustmentChoicePopup}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Adjust Macros</AlertDialogTitle>
-            <AlertDialogDescription className="text-foreground/70">
+            <AlertDialogTitle className="text-on-surface">Adjust Macros</AlertDialogTitle>
+            <AlertDialogDescription className="text-on-surface-variant">
               Which macro would you like the app to adjust to recommended intake?
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1026,10 +1041,10 @@ const MacroBreakdown = () => {
 
       {/* Confirm Proceed Popup */}
       <AlertDialog open={showConfirmProceedPopup} onOpenChange={setShowConfirmProceedPopup}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Are you sure you want to Proceed?</AlertDialogTitle>
-            <AlertDialogDescription className="text-foreground/70">
+            <AlertDialogTitle className="text-on-surface">Are you sure you want to Proceed?</AlertDialogTitle>
+            <AlertDialogDescription className="text-on-surface-variant">
               Your macro values are below the recommended daily intake. Are you sure you want to continue with these values?
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1061,10 +1076,10 @@ const MacroBreakdown = () => {
 
       {/* Error Popup - Exceeds limit */}
       <AlertDialog open={showErrorPopup} onOpenChange={setShowErrorPopup}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Unable to Save</AlertDialogTitle>
-            <AlertDialogDescription className="text-foreground/70">
+            <AlertDialogTitle className="text-on-surface">Unable to Save</AlertDialogTitle>
+            <AlertDialogDescription className="text-on-surface-variant">
               {errorMessage || "The total must add up to 100%. Protein and Fats alone exceed your Daily Calories."}
             </AlertDialogDescription>
           </AlertDialogHeader>

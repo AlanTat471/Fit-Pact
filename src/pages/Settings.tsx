@@ -641,7 +641,7 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
 
       {/* Change Plan Dialog */}
       <AlertDialog open={showChangePlan} onOpenChange={setShowChangePlan}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Change Plan</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70">
@@ -675,7 +675,7 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
 
       {/* Cancel Subscription Dialog */}
       <AlertDialog open={showCancelSub} onOpenChange={setShowCancelSub}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Cancel Subscription</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70">
@@ -691,7 +691,7 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
 
       {/* Edit Card Dialog */}
       <AlertDialog open={showEditCard} onOpenChange={setShowEditCard}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Edit Card Details</AlertDialogTitle>
           </AlertDialogHeader>
@@ -737,7 +737,7 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
 
       {/* Remove Card Dialog */}
       <AlertDialog open={showRemoveCard} onOpenChange={setShowRemoveCard}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Remove Card Details</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70">
@@ -753,7 +753,7 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
 
       {/* Add Card Dialog */}
       <AlertDialog open={showAddCard} onOpenChange={setShowAddCard}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Add Payment Method</AlertDialogTitle>
           </AlertDialogHeader>

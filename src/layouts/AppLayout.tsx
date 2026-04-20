@@ -49,21 +49,23 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col w-full bg-[#0A0A0A] text-zinc-100">
-      <header className="fixed top-0 w-full z-50 bg-[#131313]/70 backdrop-blur-xl px-6 py-4 flex justify-between items-center shadow-[0_0_20px_rgba(34,211,238,0.1)]">
-        <HamburgerMenu />
+    <div className="min-h-screen flex flex-col w-full bg-background text-foreground">
+      <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl px-6 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <HamburgerMenu />
+        </div>
         <h1
-          className="text-2xl font-black tracking-tighter text-primary italic cursor-pointer"
+          className="text-2xl font-bold text-primary lowercase tracking-tight cursor-pointer"
           onClick={() => navigate("/dashboard")}
         >
-          FITPACT
+          Numi
         </h1>
-        <button className="p-2 text-zinc-400 hover:text-primary transition-colors">
+        <button className="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-container-high">
           <MaterialIcon name="notifications" size="md" />
         </button>
       </header>
 
-      <main className="flex-1 pt-20 pb-24 px-4 sm:px-6 overflow-x-hidden">
+      <main className="flex-1 pt-20 pb-32 px-4 sm:px-6 overflow-x-hidden max-w-2xl mx-auto w-full">
         {children}
       </main>
 

@@ -5,14 +5,14 @@ const AboutUs = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">About Weight Loss Buddy</h1>
+        <h1 className="text-3xl font-bold mb-2">About Numi</h1>
         <p className="text-muted-foreground">Your personal fitness companion</p>
       </div>
 
       <Card>
         <CardContent className="pt-6">
           <p className="text-lg leading-relaxed">
-            Weight Loss Buddy is designed to help you achieve your health and fitness goals through
+            Numi is designed to help you achieve your health and fitness goals through
             personalized calculations and tracking. We combine science-based TDEE calculations with
             macro tracking to provide you with the tools you need to succeed.
           </p>
@@ -66,12 +66,12 @@ const AboutUs = () => {
         </CardHeader>
         <CardContent className="prose prose-sm max-w-none">
           <p>
-            Weight Loss Buddy was created by fitness enthusiasts who understand the importance of
+            Numi was created by fitness enthusiasts who understand the importance of
             accurate calorie and macro tracking. We noticed that many fitness apps were either too
             complicated or lacked the precision needed for serious results.
           </p>
           <p className="mt-4">
-            Our team developed Weight Loss Buddy to bridge that gap — providing professional-grade
+            Our team developed Numi to bridge that gap — providing professional-grade
             calculations in an easy-to-use interface that anyone can master.
           </p>
         </CardContent>

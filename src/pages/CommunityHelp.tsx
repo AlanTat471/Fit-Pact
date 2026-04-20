@@ -60,7 +60,7 @@ const CommunityHelp = () => {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <Card className="transition-all duration-300 hover:shadow-primary hover:-translate-y-1">
+        <Card className="transition-all duration-300 hover:shadow-card hover:-translate-y-1">
           <CardHeader>
             <MaterialIcon name="email" className="mb-2 text-primary" size="lg" />
             <CardTitle>Email Support</CardTitle>
@@ -83,7 +83,7 @@ const CommunityHelp = () => {
           </CardContent>
         </Card>
 
-        <Card className="opacity-60 transition-all duration-300 hover:shadow-primary hover:-translate-y-1">
+        <Card className="opacity-60 transition-all duration-300 hover:shadow-card hover:-translate-y-1">
           <CardHeader>
             <div className="flex items-center gap-2">
               <MaterialIcon name="chat" className="mb-2 text-muted-foreground" size="lg" />
@@ -103,7 +103,7 @@ const CommunityHelp = () => {
           </CardContent>
         </Card>
 
-        <Card className="opacity-60 transition-all duration-300 hover:shadow-primary hover:-translate-y-1">
+        <Card className="opacity-60 transition-all duration-300 hover:shadow-card hover:-translate-y-1">
           <CardHeader>
             <MaterialIcon name="menu_book" className="mb-2 text-muted-foreground" size="lg" />
             <div className="flex items-center gap-2">
@@ -121,7 +121,7 @@ const CommunityHelp = () => {
           </CardContent>
         </Card>
 
-        <Card className="opacity-60 transition-all duration-300 hover:shadow-primary hover:-translate-y-1">
+        <Card className="opacity-60 transition-all duration-300 hover:shadow-card hover:-translate-y-1">
           <CardHeader>
             <MaterialIcon name="group" className="mb-2 text-muted-foreground" size="lg" />
             <div className="flex items-center gap-2">
@@ -142,7 +142,7 @@ const CommunityHelp = () => {
 
       {/* Email Support Form Dialog */}
       <AlertDialog open={showSupportForm} onOpenChange={setShowSupportForm}>
-        <AlertDialogContent className="bg-background text-foreground border-border max-w-lg">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-foreground">
               <MaterialIcon name="email" size="sm" className="text-primary" />
@@ -225,7 +225,7 @@ const CommunityHelp = () => {
 
       {/* Confirmation Dialog */}
       <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Thank You!</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70">

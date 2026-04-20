@@ -14,7 +14,7 @@ export function BottomNav() {
   const { pathname } = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#131313]/70 backdrop-blur-xl h-20 flex justify-around items-center px-4 shadow-[0_-10px_30px_rgba(34,211,238,0.05)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-2xl h-20 flex justify-around items-center px-2 shadow-nav rounded-t-3xl">
       {navItems.map((item) => {
         const active = pathname === item.path;
         return (
@@ -22,13 +22,13 @@ export function BottomNav() {
             key={item.path}
             to={item.path}
             className={cn(
-              "flex flex-col items-center justify-center pt-2 text-[10px] uppercase tracking-widest font-bold transition-colors",
+              "flex flex-col items-center justify-center px-3 py-2 rounded-full text-[10px] font-semibold tracking-wide transition-all",
               active
-                ? "text-primary border-t-2 border-primary"
-                : "text-zinc-500 hover:text-zinc-300"
+                ? "bg-primary text-primary-foreground scale-105 shadow-lg"
+                : "text-on-surface-variant hover:bg-surface-container-high active:scale-90"
             )}
           >
-            <MaterialIcon name={item.icon} size="md" />
+            <MaterialIcon name={item.icon} size="sm" filled={active} />
             <span className="mt-0.5">{item.label}</span>
           </NavLink>
         );

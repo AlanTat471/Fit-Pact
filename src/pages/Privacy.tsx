@@ -14,12 +14,12 @@ const Privacy = () => {
         </CardHeader>
         <CardContent className="prose prose-sm max-w-none space-y-3">
           <p>
-            Welcome to Weight Loss Buddy ("we", "our", "us", or the "App"). We are committed to protecting
+            Welcome to Numi ("we", "our", "us", or the "App"). We are committed to protecting
             your personal information and your right to privacy. This Privacy Policy explains what information
             we collect, how we use it, and your rights in relation to it.
           </p>
           <p>
-            By using Weight Loss Buddy, you agree to the collection and use of information in accordance
+            By using Numi, you agree to the collection and use of information in accordance
             with this policy.
           </p>
         </CardContent>
@@ -135,14 +135,14 @@ const Privacy = () => {
         </CardHeader>
         <CardContent className="prose prose-sm max-w-none space-y-3">
           <p>
-            <strong>Weight Loss Buddy is not a medical device, medical service, or substitute for professional
+            <strong>Numi is not a medical device, medical service, or substitute for professional
             medical advice, diagnosis, or treatment.</strong> The App provides general fitness and nutritional
             information based on the data you enter. All calculations (BMR, TDEE, BMI, body fat estimates,
             calorie and macro recommendations) are estimates only and may not be accurate for all individuals.
           </p>
           <p>
             <strong>Limitation of Liability:</strong> To the fullest extent permitted by applicable law,
-            Weight Loss Buddy, its creators, developers, affiliates, and partners shall not be held liable
+            Numi, its creators, developers, affiliates, and partners shall not be held liable
             for any direct, indirect, incidental, consequential, or special damages — including but not
             limited to injury, illness, health complications, hospitalisation, or death — arising from or
             in connection with your use of the App, its recommendations, or any decisions made based on
@@ -155,7 +155,7 @@ const Privacy = () => {
             <li>You use this App entirely at your own risk.</li>
             <li>You should always consult a qualified medical professional, doctor, or registered dietitian before starting any diet, exercise, or weight loss programme.</li>
             <li>The App's calorie and macronutrient recommendations are general guidelines and are not tailored to individual medical conditions, allergies, eating disorders, or other health concerns.</li>
-            <li>Weight Loss Buddy does not diagnose, treat, cure, or prevent any disease or medical condition.</li>
+            <li>Numi does not diagnose, treat, cure, or prevent any disease or medical condition.</li>
             <li>You are solely responsible for monitoring your health and well-being while using this App.</li>
             <li>If you experience any adverse health effects while using this App, discontinue use immediately and seek medical attention.</li>
           </ul>
@@ -168,7 +168,7 @@ const Privacy = () => {
         </CardHeader>
         <CardContent className="prose prose-sm max-w-none space-y-3">
           <p>
-            Weight Loss Buddy is not intended for use by individuals under the age of 18. We do not
+            Numi is not intended for use by individuals under the age of 18. We do not
             knowingly collect personal information from children. If we become aware that we have
             collected data from a person under 18, we will take steps to delete that information promptly.
           </p>

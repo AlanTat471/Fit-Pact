@@ -156,11 +156,11 @@ const PaymentDetails = () => {
     period: string;
     description: string;
   }) => (
-    <Card className={`relative border flex flex-col min-h-[500px] rounded-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-primary ${activePlan === plan ? 'border-primary shadow-glow bg-gradient-hero' : 'border-zinc-800 bg-[#131313]'}`}>
+    <Card className={`relative border flex flex-col min-h-[500px] rounded-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === plan ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
       <CardHeader className="pb-3 min-h-[140px]">
         <CardTitle className="text-xl">{name}</CardTitle>
-        <span className="text-[10px] uppercase tracking-widest text-zinc-500">({statusLabel(plan)})</span>
-        <p className="text-[13px] leading-5 text-zinc-400 mt-1.5 max-w-[30ch]">{description}</p>
+        <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">({statusLabel(plan)})</span>
+        <p className="text-[13px] leading-5 text-on-surface-variant mt-1.5 max-w-[30ch]">{description}</p>
       </CardHeader>
       <CardContent className="space-y-3 flex-1 flex flex-col pb-24">
         <div className="flex items-start gap-1.5">
@@ -218,21 +218,21 @@ const PaymentDetails = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="rounded-sm border border-zinc-800 bg-[#0D0F14] px-5 py-5 shadow-[0_0_20px_rgba(34,211,238,0.08)]">
-        <h1 className="text-3xl font-black mb-1 tracking-tight flex items-center gap-2 text-zinc-100">
+      <div className="rounded-xl border border-outline-variant bg-surface-container-low px-5 py-5 shadow-card">
+        <h1 className="text-3xl font-black mb-1 tracking-tight flex items-center gap-2 text-on-surface">
           Subscription & Billing
         </h1>
-        <p className="text-[11px] uppercase tracking-widest text-zinc-500">Securely managed via Stripe</p>
+        <p className="text-[11px] uppercase tracking-widest text-on-surface-variant">Securely managed via Stripe</p>
       </div>
 
       {/* Plans Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto items-stretch">
         {/* Free Plan */}
-        <Card className={`relative border flex flex-col min-h-[500px] rounded-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-primary ${activePlan === 'free' ? 'border-primary shadow-glow bg-gradient-hero' : 'border-zinc-800 bg-[#131313]'}`}>
+        <Card className={`relative border flex flex-col min-h-[500px] rounded-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === 'free' ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
           <CardHeader className="pb-3 min-h-[140px]">
             <CardTitle className="text-xl">Free Plan</CardTitle>
-            <span className="text-[10px] uppercase tracking-widest text-zinc-500">({statusLabel('free')})</span>
-            <p className="text-[13px] leading-5 text-zinc-400 mt-1.5 max-w-[30ch]">
+            <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">({statusLabel('free')})</span>
+            <p className="text-[13px] leading-5 text-on-surface-variant mt-1.5 max-w-[30ch]">
               There is nothing wrong with trying before buying! Get 14 days limited access to get a feel of the app before you subscribe!
             </p>
           </CardHeader>
@@ -307,7 +307,7 @@ const PaymentDetails = () => {
 
       {/* Update Payment Method Dialog */}
       <AlertDialog open={showUpdatePayment} onOpenChange={setShowUpdatePayment}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-foreground">
               <MaterialIcon name="verified_user" size="sm" className="text-primary" />
@@ -350,7 +350,7 @@ const PaymentDetails = () => {
 
       {/* Cancel Subscription Dialog */}
       <AlertDialog open={showCancelSubscription} onOpenChange={setShowCancelSubscription}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-foreground">
               <MaterialIcon name="verified_user" size="sm" className="text-destructive" />

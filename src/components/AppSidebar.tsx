@@ -41,7 +41,7 @@ export function AppSidebar() {
           <div className="h-16 flex items-center px-4 border-b border-border">
             <div>
               <h2 className="font-bold text-sm bg-gradient-primary bg-clip-text text-transparent">
-                Weight Loss Buddy
+                Numi
               </h2>
               <p className="text-xs text-muted-foreground">Your Fitness Partner</p>
             </div>

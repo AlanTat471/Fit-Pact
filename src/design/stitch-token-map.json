@@ -1,6 +1,6 @@
 {
   "meta": {
-    "name": "fitpact-stitch-token-map",
+    "name": "numi-stitch-token-map",
     "source": [
       "src/index.css",
       "tailwind.config.ts"

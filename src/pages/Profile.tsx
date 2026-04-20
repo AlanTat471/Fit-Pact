@@ -581,7 +581,7 @@ const Profile = () => {
               : userName.firstName || userName.lastName || 'User'}
           </h2>
           <div className="mt-1 flex items-center justify-center gap-2">
-            <p className="text-zinc-500 text-xs italic uppercase tracking-widest">
+            <p className="text-on-surface-variant text-xs italic uppercase tracking-widest">
               {profileDescription || "Tell us about yourself..."}
             </p>
             <TooltipProvider>
@@ -610,11 +610,11 @@ const Profile = () => {
 
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-[#131313] p-4 rounded-sm border-l-2 border-primary text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
+        <div className="bg-surface-container-low p-4 rounded-sm border-l-2 border-primary text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card">
           <span className="block text-2xl font-black text-primary">{getCompletedAchievements().length}</span>
-          <span className="text-[10px] uppercase tracking-widest text-zinc-500">Badges</span>
+          <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">Badges</span>
         </div>
-        <div className="bg-[#131313] p-4 rounded-sm border-l-2 border-accent text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
+        <div className="bg-surface-container-low p-4 rounded-sm border-l-2 border-accent text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card">
           <span className="block text-2xl font-black text-accent">
             {weightUnit === "lbs"
               ? (() => {
@@ -627,11 +627,11 @@ const Profile = () => {
                 })()
               : `${weightLossToDate} ${weightUnit}`}
           </span>
-          <span className="text-[10px] uppercase tracking-widest text-zinc-500">Weight change</span>
+          <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">Weight change</span>
         </div>
-        <div className="bg-[#131313] p-4 rounded-sm border-l-2 border-green-400 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
+        <div className="bg-surface-container-low p-4 rounded-sm border-l-2 border-green-400 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card">
           <span className="block text-2xl font-black text-green-400">{badgeData.currentStreak}</span>
-          <span className="text-[10px] uppercase tracking-widest text-zinc-500">Streak</span>
+          <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">Streak</span>
         </div>
       </div>
 
@@ -662,9 +662,9 @@ const Profile = () => {
 
       {/* My Why Card */}
       <section className="space-y-4">
-        <h3 className="text-xs font-bold tracking-widest text-zinc-500 uppercase">My Why</h3>
-        <div className="bg-[#131313] p-8 rounded-sm border-l-4 border-primary relative transition-all duration-300 hover:shadow-primary hover:-translate-y-1">
-          <p className="text-xl font-medium leading-relaxed italic text-zinc-200 relative z-10">
+        <h3 className="text-xs font-bold tracking-widest text-on-surface-variant uppercase">My Why</h3>
+        <div className="bg-surface-container-low p-8 rounded-sm border-l-4 border-primary relative transition-all duration-300 hover:shadow-card hover:-translate-y-1">
+          <p className="text-xl font-medium leading-relaxed italic text-on-surface relative z-10">
             "{myWhy}"
           </p>
           <button
@@ -682,28 +682,28 @@ const Profile = () => {
       {/* Daily Goals Section */}
       <section className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-xs font-bold tracking-widest text-zinc-500 uppercase">Daily Goals</h3>
+          <h3 className="text-xs font-bold tracking-widest text-on-surface-variant uppercase">Daily Goals</h3>
           <button className="text-primary" onClick={() => setShowGoalsPopup(true)}>
             <MaterialIcon name="add_circle" size="md" />
           </button>
         </div>
         <div className="space-y-2">
           {daysOfWeek.map((day) => (
-            <div key={day} className="bg-[#131313] border border-zinc-800 rounded-sm overflow-hidden transition-all duration-300 hover:shadow-primary">
+            <div key={day} className="bg-surface-container-low border border-outline-variant rounded-sm overflow-hidden transition-all duration-300 hover:shadow-card">
               <div
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-zinc-800/30 transition-colors"
+                className="flex items-center justify-between p-4 cursor-pointer hover:bg-surface-container-high transition-colors"
                 onClick={() => setEditingDay(day)}
               >
                 <h4 className="font-bold text-sm">{day}</h4>
-                <span className="text-xs text-zinc-500">{(dayGoals[day] || []).length} goals</span>
+                <span className="text-xs text-on-surface-variant">{(dayGoals[day] || []).length} goals</span>
               </div>
               {(dayGoals[day] || []).length > 0 && (
                 <div className="px-4 pb-3 space-y-1">
                   {(dayGoals[day] || []).map((goal) => (
-                    <div key={goal.id} className={`flex items-center justify-between p-2 rounded-sm ${goal.completed ? 'border border-primary/30' : 'border border-zinc-800'}`}>
+                    <div key={goal.id} className={`flex items-center justify-between p-2 rounded-sm ${goal.completed ? 'border border-primary/30' : 'border border-outline-variant'}`}>
                       <div className="flex items-center space-x-3">
                         <div
-                          className={`w-5 h-5 rounded-sm flex items-center justify-center cursor-pointer ${goal.completed ? 'bg-primary' : 'border-2 border-zinc-700'}`}
+                          className={`w-5 h-5 rounded-sm flex items-center justify-center cursor-pointer ${goal.completed ? 'bg-primary' : 'border-2 border-outline-variant'}`}
                           onClick={() => {
                             const updatedDayGoals = {
                               ...dayGoals,
@@ -728,12 +728,12 @@ const Profile = () => {
                         >
                           {goal.completed && <MaterialIcon name="check" size="xs" className="text-[#0A0A0A]" />}
                         </div>
-                        <span className={`text-sm font-medium ${goal.completed ? 'line-through text-zinc-500' : ''}`}>
+                        <span className={`text-sm font-medium ${goal.completed ? 'line-through text-on-surface-variant' : ''}`}>
                           {formatNumbersInText(goal.text)}
                         </span>
                       </div>
                       {goal.target !== undefined && (
-                        <span className="text-xs text-zinc-500">
+                        <span className="text-xs text-on-surface-variant">
                           {formatNumberWithCommas((goal.current || 0).toString())}/{formatNumberWithCommas(goal.target.toString())}
                         </span>
                       )}
@@ -764,7 +764,7 @@ const Profile = () => {
 
       {/* Profile Description Popup */}
       <AlertDialog open={showDescriptionPopup} onOpenChange={setShowDescriptionPopup}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Edit Profile Description</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70">
@@ -792,7 +792,7 @@ const Profile = () => {
 
       {/* My Why Popup */}
       <AlertDialog open={showMyWhyPopup} onOpenChange={setShowMyWhyPopup}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Edit My Why</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70">
@@ -820,7 +820,7 @@ const Profile = () => {
 
       {/* Goals Popup - Day Selection */}
       <AlertDialog open={showGoalsPopup} onOpenChange={setShowGoalsPopup}>
-        <AlertDialogContent className="bg-background text-foreground border-border max-w-lg">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Edit My Goals</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70">
@@ -853,7 +853,7 @@ const Profile = () => {
 
       {/* Edit Day Goals Popup */}
       <AlertDialog open={!!editingDay} onOpenChange={(open) => !open && setEditingDay(null)}>
-        <AlertDialogContent className="bg-background text-foreground border-border max-w-lg">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Goals for {editingDay}</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70">

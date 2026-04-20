@@ -580,7 +580,7 @@ const TDEE = () => {
       <BackButton />
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 rounded-xl border border-primary/20 bg-gradient-hero px-4 py-5 shadow-primary">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 rounded-xl border border-outline-variant bg-gradient-hero px-4 py-5 shadow-primary">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             My TDEE Calculator
@@ -588,7 +588,7 @@ const TDEE = () => {
               <TooltipTrigger asChild>
                 <MaterialIcon name="help_outline" size="sm" className="text-muted-foreground cursor-help" />
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs bg-background text-foreground border-border">
+              <TooltipContent className="max-w-xs bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
                 <p className="text-sm">This calculator estimates your baseline calories and body metrics used by your dashboard and macro planning.</p>
               </TooltipContent>
             </Tooltip>
@@ -599,7 +599,7 @@ const TDEE = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Input Form */}
-        <Card className="border-primary/20 transition-all duration-300 hover:shadow-primary">
+        <Card className="border-outline-variant transition-all duration-300 hover:shadow-card">
           <CardHeader>
             <CardTitle>Personal Information</CardTitle>
           </CardHeader>
@@ -693,7 +693,7 @@ const TDEE = () => {
         </Card>
 
         {/* Calculated Results */}
-        <Card className="border-primary/20 transition-all duration-300 hover:shadow-primary">
+        <Card className="border-outline-variant transition-all duration-300 hover:shadow-card">
           <CardHeader>
             <CardTitle>Calculated Values</CardTitle>
           </CardHeader>
@@ -821,7 +821,7 @@ const TDEE = () => {
       {/* Ideal Ranges */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Ideal Weight Range */}
-        <Card className="md:col-span-1 border-primary/20 transition-all duration-300 hover:shadow-primary">
+        <Card className="md:col-span-1 border-outline-variant transition-all duration-300 hover:shadow-card">
           <CardHeader>
             <CardTitle>Ideal Weight Range</CardTitle>
             <p className="text-xs text-muted-foreground font-normal mt-1">
@@ -857,7 +857,7 @@ const TDEE = () => {
         </Card>
 
         {/* Ideal Body Fat Range */}
-        <Card className="md:col-span-1 border-primary/20 transition-all duration-300 hover:shadow-primary hover:-translate-y-1">
+        <Card className="md:col-span-1 border-outline-variant transition-all duration-300 hover:shadow-card hover:-translate-y-1">
           <CardHeader>
             <CardTitle>Ideal Body Fat Range</CardTitle>
           </CardHeader>
@@ -890,7 +890,7 @@ const TDEE = () => {
         </Card>
 
         {/* Ideal BMI Range */}
-        <Card className="md:col-span-1 border-primary/20 transition-all duration-300 hover:shadow-primary hover:-translate-y-1">
+        <Card className="md:col-span-1 border-outline-variant transition-all duration-300 hover:shadow-card hover:-translate-y-1">
           <CardHeader>
             <CardTitle>Ideal Body Mass Index (BMI) Range</CardTitle>
             <p className="text-xs text-muted-foreground font-normal mt-1">
@@ -927,7 +927,7 @@ const TDEE = () => {
 
         {/* Weight Suggestion */}
         {calculatedValues.currentBMI && calculatedValues.idealWeightMax && formData.weight && (
-          <Card className="md:col-span-1 border-primary/20 transition-all duration-300 hover:shadow-primary hover:-translate-y-1">
+          <Card className="md:col-span-1 border-outline-variant transition-all duration-300 hover:shadow-card hover:-translate-y-1">
             <CardHeader>
               <CardTitle>Suggested Weight Goal</CardTitle>
             </CardHeader>
@@ -962,7 +962,7 @@ const TDEE = () => {
 
       {/* Overview Dialog (shows on page load) */}
       <AlertDialog open={showOverviewDialog} onOpenChange={setShowOverviewDialog}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Your TDEE Overview</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70 space-y-3">
@@ -989,7 +989,7 @@ const TDEE = () => {
 
       {/* TDEE Change Warning Dialog */}
       <AlertDialog open={showTdeeChangeWarning} onOpenChange={setShowTdeeChangeWarning}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Warning!</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70">
@@ -1039,7 +1039,7 @@ const TDEE = () => {
 
       {/* Underweight Classification Dialog */}
       <AlertDialog open={showUnderweightDialog} onOpenChange={setShowUnderweightDialog}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive">Underweight Classification</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70">

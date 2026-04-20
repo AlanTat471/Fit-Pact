@@ -23,7 +23,7 @@ const Index = () => {
         <div className="flex justify-center lg:justify-start">
           <img 
             src="/Fit.jpg" 
-            alt="Weight Loss Buddy - Your fitness journey starts here" 
+            alt="Numi - Your fitness journey starts here" 
             className="w-full max-w-md object-contain rounded-lg shadow-md"
             width={448}
             height={336}

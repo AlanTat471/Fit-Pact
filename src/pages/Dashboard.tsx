@@ -25,7 +25,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { upsertProfile } from "@/lib/supabaseProfile";
 import { getUserPref, setUserPref } from "@/lib/supabaseUserPrefs";
 import * as XLSX from "xlsx";
-import { buildTdeeSnapshotFromMetrics } from "@/lib/tdeeSnapshot";
+import { buildTdeeSnapshotFromMetrics, calculateIdealWeightCenterKg } from "@/lib/tdeeSnapshot";
 import {
   formatLocalIsoDate,
   addDaysIso,
@@ -524,7 +524,7 @@ const Dashboard = () => {
   // Load acclimation calories: prefer tdee from Supabase, fallback to localStorage
   useEffect(() => {
     const cal = tdee?.starting_calorie_intake || localStorage.getItem('startingCalorieIntake');
-    if (cal) setAcclimationCalories(parseFloat(cal));
+    if (cal) setAcclimationCalories(parseInt(cal, 10));
   }, [tdee?.starting_calorie_intake]);
 
   // Load all data: prefer journey from Supabase (context), fallback to localStorage
@@ -1252,7 +1252,7 @@ const Dashboard = () => {
     });
     setRecommendedSteps(ACCLIMATION_BASE_STEPS);
     const sci = localStorage.getItem("startingCalorieIntake");
-    setAcclimationCalories(sci ? parseFloat(sci) : 0);
+    setAcclimationCalories(sci ? parseInt(sci, 10) : 0);
     setRecommendedCalories(0);
     setCurrentStreak(0);
     setLongestStreak(0);
@@ -1639,10 +1639,13 @@ const Dashboard = () => {
   };
 
   const getWeightToLose = () => {
-    const bmi = calculateBMI();
-    const heightInMeters = dailyData.height / 100;
-    const healthyMaxWeight = 25 * (heightInMeters * heightInMeters);
-    return Math.max(0, weeklyAverages.weight - healthyMaxWeight);
+    const heightCm = profile ? (parseFloat(profile.height) || 175) : (tdeeValues?.height ? parseFloat(tdeeValues.height) : 175);
+    const gender = profile?.gender || userGender;
+    const robinsonCenter = calculateIdealWeightCenterKg(heightCm, gender);
+    const idealWeightMin = robinsonCenter * 0.92;
+    const idealWeightMax = robinsonCenter * 1.08;
+    const midpoint = (idealWeightMin + idealWeightMax) / 2;
+    return Math.max(0, weeklyAverages.weight - midpoint);
   };
 
   // Check if week overview has complete data (7 days)
@@ -1950,7 +1953,7 @@ const Dashboard = () => {
     
     // Summary sheet
     const summaryData = [
-      ['Weight Loss Buddy - Progress Report'],
+      ['Numi - Progress Report'],
       [''],
       ['Starting Weight (Acclimation Avg)', `${acclimationAvg.toFixed(2)} kg`],
       ['Current Weight', completedWeeks.length > 0 ? `${completedWeeks[completedWeeks.length - 1].averages.weight.toFixed(2)} kg` : 'N/A'],
@@ -2016,7 +2019,7 @@ const Dashboard = () => {
     }
     const wb = XLSX.utils.book_new();
     const summary = [
-      ["Weight Loss Buddy — Maintenance Phase Report"],
+      ["Numi — Maintenance Phase Report"],
       [""],
       ["Baseline weight (end of Week 12) kg", maintenancePhase.baselineWeightKg > 0 ? maintenancePhase.baselineWeightKg.toFixed(2) : ""],
       ["Maintenance calories", maintenancePhase.maintenanceCalories > 0 ? String(maintenancePhase.maintenanceCalories) : ""],
@@ -2068,7 +2071,7 @@ const Dashboard = () => {
       const idx = archivedPhases.findIndex((x) => x.id === bundle.id);
       const pn = bundle.phaseNumber ?? (idx >= 0 ? idx + 1 : 1);
       const summary = [
-        ["Weight Loss Buddy — Acclimation Phase (Archived)"],
+        ["Numi — Acclimation Phase (Archived)"],
         [""],
         ["Phase", `Phase ${pn}`],
         ["Archived at", new Date(bundle.archivedAt).toLocaleString()],
@@ -2111,7 +2114,7 @@ const Dashboard = () => {
     const idx = archivedPhases.findIndex((x) => x.id === bundle.id);
     const pn = bundle.phaseNumber ?? (idx >= 0 ? idx + 1 : 1);
     const summaryData = [
-      ["Weight Loss Buddy — Weight Loss Phase (Archived)"],
+      ["Numi — Weight Loss Phase (Archived)"],
       [""],
       ["Phase", `Phase ${pn}`],
       ["Archived at", new Date(bundle.archivedAt).toLocaleString()],
@@ -2149,7 +2152,7 @@ const Dashboard = () => {
     const pn = bundle.phaseNumber ?? (idx >= 0 ? idx + 1 : 1);
     const wb = XLSX.utils.book_new();
     const summary = [
-      ["Weight Loss Buddy — Maintenance Phase (Archived)"],
+      ["Numi — Maintenance Phase (Archived)"],
       [""],
       ["Phase", `Phase ${pn}`],
       ["Archived at", new Date(bundle.archivedAt).toLocaleString()],
@@ -2179,7 +2182,7 @@ const Dashboard = () => {
         </div>
 
         {/* Weight Loss Phase - Main Container */}
-        <Card className="bg-background border-primary/20 shadow-primary">
+        <Card className="bg-background border-outline-variant shadow-primary">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl md:text-2xl font-bold text-foreground flex items-center gap-2">
@@ -2233,7 +2236,7 @@ const Dashboard = () => {
                     <TooltipTrigger asChild>
                       <MaterialIcon name="help_outline" size="sm" className="text-muted-foreground cursor-help" />
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-xs bg-background text-foreground border-border">
+                    <TooltipContent className="max-w-xs bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
                       <p className="text-sm">
                         Last day of your 12-week Weight Loss Phase. Weight Loss Week 1 begins 28 days after your journey start (after Acclimation); this date is 12 weeks from that Week 1 start.
                       </p>
@@ -2256,7 +2259,7 @@ const Dashboard = () => {
                       <TooltipTrigger asChild>
                         <MaterialIcon name="help_outline" size="xs" className="text-muted-foreground cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-xs bg-background text-foreground border-border">
+                      <TooltipContent className="max-w-xs bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
                         <p className="text-sm">This is the weight you entered, however, may differ to your 'actual' starting weight once you complete your 'Acclimation Phase'. Acclimation Phase is to help set the baseline for your weight loss journey.</p>
                       </TooltipContent>
                     </Tooltip>
@@ -2290,7 +2293,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-background border-teal-500/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
+            <Card className="bg-background border-outline-variant transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-foreground">Estimated Body %</CardTitle>
                 <MaterialIcon name="trending_up" size="sm" className="text-teal-500" />
@@ -2303,7 +2306,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-background border-green-500/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
+            <Card className="bg-background border-outline-variant transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-foreground">Classification</CardTitle>
                 <MaterialIcon name="emoji_events" size="sm" className="text-green-500" />
@@ -2316,7 +2319,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-background border-indigo-500/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
+            <Card className="bg-background border-outline-variant transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-foreground flex items-center gap-1">
                   Starting Weight
@@ -2324,7 +2327,7 @@ const Dashboard = () => {
                     <TooltipTrigger asChild>
                       <MaterialIcon name="help_outline" size="xs" className="text-muted-foreground cursor-help" />
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-xs bg-background text-foreground border-border">
+                    <TooltipContent className="max-w-xs bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
                       <p className="text-sm">This is the weight you entered, however, may differ to your 'actual' starting weight once you complete your 'Acclimation Phase'. Acclimation Phase is to help set the baseline for your weight loss journey.</p>
                     </TooltipContent>
                   </Tooltip>
@@ -2347,23 +2350,23 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-background border-red-500/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
+            <Card className="bg-background border-outline-variant transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-foreground">Weight to lose (Kg)</CardTitle>
                 <MaterialIcon name="gps_fixed" size="sm" className="text-red-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-500">
-                  {tdeeValues?.weightToLose ? `${tdeeValues.weightToLose} kg` : `${getWeightToLose().toFixed(1)} kg`}
+                  {weeklyAverages.weight > 0 ? `${getWeightToLose().toFixed(1)} kg` : (tdeeValues?.weightToLose ? `${parseFloat(tdeeValues.weightToLose).toFixed(1)} kg` : '—')}
                 </div>
-                <p className="text-xs text-muted-foreground">To healthy range (max)</p>
+                <p className="text-xs text-muted-foreground">To healthy weight midpoint</p>
               </CardContent>
             </Card>
           </div>
         </div>
 
         {/* Acclimation Phase Section */}
-        <Card className="bg-background border-yellow-500/20 transition-all duration-300 hover:shadow-primary">
+        <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-foreground">
@@ -2373,7 +2376,7 @@ const Dashboard = () => {
                   <TooltipTrigger asChild>
                     <MaterialIcon name="help_outline" size="sm" className="text-muted-foreground cursor-help" />
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs bg-background text-foreground border-border">
+                  <TooltipContent className="max-w-xs bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
                     <p className="text-sm">The next 4 weeks will be your Acclimation Phase to set a baseline for your weight loss journey!</p>
                   </TooltipContent>
                 </Tooltip>
@@ -2545,7 +2548,7 @@ const Dashboard = () => {
 
         {/* Week Overview - Hidden until acclimation is complete */}
         {isAcclimationComplete() && (
-        <Card className="bg-background border-yellow-500/20 transition-all duration-300 hover:shadow-primary">
+        <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-foreground">
@@ -2580,7 +2583,7 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Card className="bg-background border-primary/20 cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
+                  <Card className="bg-background border-outline-variant cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium text-foreground flex items-center gap-1">
                         Streak
@@ -2604,7 +2607,7 @@ const Dashboard = () => {
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Card className="bg-background border-blue-500/20 cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
+                  <Card className="bg-background border-outline-variant cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium text-foreground flex items-center gap-1">
                         Previous Week Average
@@ -2629,7 +2632,7 @@ const Dashboard = () => {
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Card className="bg-background border-pink-500/20 cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
+                  <Card className="bg-background border-outline-variant cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium text-foreground flex items-center gap-1">
                         Weight loss to date
@@ -3068,7 +3071,7 @@ const Dashboard = () => {
 
         {/* Maintenance Phase Section - only visible when journey is complete and user chose maintenance */}
         {maintenancePhase.active && (
-          <Card className="bg-background border-green-500/20 transition-all duration-300 hover:shadow-primary">
+          <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <CardTitle className="flex items-center gap-2 text-foreground">
@@ -3115,7 +3118,7 @@ const Dashboard = () => {
                       <TooltipTrigger asChild>
                         <MaterialIcon name="help_outline" size="sm" className="text-muted-foreground cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-xs bg-background text-foreground border-border">
+                      <TooltipContent className="max-w-xs bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
                         <p className="text-sm">
                           Defaults to the day after the last day of Week 12 (the day after you complete the weight loss phase). You can change it here; the end date updates to stay 4 weeks long.
                         </p>
@@ -3149,7 +3152,7 @@ const Dashboard = () => {
                       <TooltipTrigger asChild>
                         <MaterialIcon name="help_outline" size="sm" className="text-muted-foreground cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-xs bg-background text-foreground border-border">
+                      <TooltipContent className="max-w-xs bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
                         <p className="text-sm">Last day of your 4-week maintenance window (start date + 27 days).</p>
                       </TooltipContent>
                     </Tooltip>
@@ -3173,7 +3176,7 @@ const Dashboard = () => {
                       <TooltipTrigger asChild>
                         <MaterialIcon name="help_outline" size="sm" className="text-muted-foreground cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-xs bg-background text-foreground border-border">
+                      <TooltipContent className="max-w-xs bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
                         <p className="text-sm">This is your weight from the end of your 12-week weight loss phase. This is the weight you will be maintaining during this phase.</p>
                       </TooltipContent>
                     </Tooltip>
@@ -3208,7 +3211,7 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-background border-teal-500/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
+                <Card className="bg-background border-outline-variant transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-foreground">New Estimated BF %</CardTitle>
                     <MaterialIcon name="trending_up" size="sm" className="text-teal-500" />
@@ -3221,7 +3224,7 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-background border-green-500/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
+                <Card className="bg-background border-outline-variant transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-foreground">Updated Classification</CardTitle>
                     <MaterialIcon name="emoji_events" size="sm" className="text-green-500" />
@@ -3234,7 +3237,7 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-background border-indigo-500/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
+                <Card className="bg-background border-outline-variant transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-foreground">Maintenance baseline weight</CardTitle>
                     <MaterialIcon name="monitor_weight" size="sm" className="text-indigo-500" />
@@ -3865,7 +3868,7 @@ const Dashboard = () => {
 
         {/* Single Digit Weight Dialog */}
         <AlertDialog open={showSingleDigitWeightDialog} onOpenChange={setShowSingleDigitWeightDialog}>
-          <AlertDialogContent className="bg-background text-foreground border-border">
+          <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2 text-foreground">
                 <MaterialIcon name="warning" size="sm" className="text-red-500" />
@@ -3885,7 +3888,7 @@ const Dashboard = () => {
 
         {/* Missing Weight Data Dialog */}
         <AlertDialog open={showMissingWeightDialog} onOpenChange={setShowMissingWeightDialog}>
-          <AlertDialogContent className="bg-background text-foreground border-border">
+          <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2 text-foreground">
                 <MaterialIcon name="warning" size="sm" className="text-yellow-500" />
@@ -3905,7 +3908,7 @@ const Dashboard = () => {
 
         {/* Weight Anomaly Dialog */}
         <AlertDialog open={showWeightAnomalyDialog} onOpenChange={setShowWeightAnomalyDialog}>
-          <AlertDialogContent className="bg-background text-foreground border-border">
+          <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2 text-foreground">
                 <MaterialIcon name="warning" size="sm" className="text-yellow-500" />
@@ -3937,7 +3940,7 @@ const Dashboard = () => {
         </AlertDialog>
 
         <AlertDialog open={showIncompleteWeekDialog} onOpenChange={setShowIncompleteWeekDialog}>
-          <AlertDialogContent className="bg-background text-foreground border-border">
+          <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2 text-foreground">
                 <MaterialIcon name="warning" size="sm" className="text-yellow-500" />
@@ -3961,7 +3964,7 @@ const Dashboard = () => {
 
         {/* Welcome Dialog */}
         <AlertDialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>
-          <AlertDialogContent className="bg-background text-foreground border-border">
+          <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-foreground">Welcome {userName}!</AlertDialogTitle>
               <AlertDialogDescription className="text-foreground/70">
@@ -3993,7 +3996,7 @@ const Dashboard = () => {
 
         {/* Acclimation Phase Dialog */}
         <AlertDialog open={showAcclimationDialog} onOpenChange={setShowAcclimationDialog}>
-          <AlertDialogContent className="bg-background text-foreground border-border">
+          <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-primary">Acclimation Phase</AlertDialogTitle>
               <AlertDialogDescription className="text-foreground/70 space-y-3">
@@ -4020,7 +4023,7 @@ const Dashboard = () => {
 
         {/* Acclimation Complete Dialog */}
         <AlertDialog open={showAcclimationCompleteDialog} onOpenChange={setShowAcclimationCompleteDialog}>
-          <AlertDialogContent className="bg-background text-foreground border-border">
+          <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-primary flex items-center gap-2">
                 <MaterialIcon name="emoji_events" size="md" />
@@ -4039,7 +4042,7 @@ const Dashboard = () => {
 
         {/* Edit Week Dialog */}
         <AlertDialog open={!!editingWeek} onOpenChange={(open) => !open && setEditingWeek(null)}>
-          <AlertDialogContent className="bg-background text-foreground border-border max-w-4xl">
+          <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl max-w-4xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-foreground">
                 Edit Week {editingWeek?.weekNumber}
@@ -4228,7 +4231,7 @@ const Dashboard = () => {
 
         {/* Acclimation Phase Edit Dialog */}
         <AlertDialog open={!!editingAcclimationWeek} onOpenChange={(open) => !open && setEditingAcclimationWeek(null)}>
-          <AlertDialogContent className="bg-background text-foreground border-border max-w-4xl">
+          <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl max-w-4xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-foreground">
                 Edit Acclimation Phase - Week {editingAcclimationWeek?.weekNumber}
@@ -4302,7 +4305,7 @@ const Dashboard = () => {
 
       {/* Maintenance Phase Edit Dialog */}
       <AlertDialog open={!!editingMaintenanceWeek} onOpenChange={(open) => !open && setEditingMaintenanceWeek(null)}>
-        <AlertDialogContent className="bg-background text-foreground border-border max-w-4xl">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl max-w-4xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">
               Edit Maintenance Phase - Week {editingMaintenanceWeek?.weekNumber}
@@ -4374,7 +4377,7 @@ const Dashboard = () => {
       </AlertDialog>
 
       <AlertDialog open={showReadyToStartDialog} onOpenChange={setShowReadyToStartDialog}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Ready to Start?</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70 space-y-4">
@@ -4445,7 +4448,7 @@ const Dashboard = () => {
 
       {/* Low Calorie Headroom Safety Warning */}
       <AlertDialog open={showLowCalorieHeadroomDialog} onOpenChange={setShowLowCalorieHeadroomDialog}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-foreground">
               <MaterialIcon name="warning" size="sm" className="text-yellow-500" />
@@ -4466,7 +4469,7 @@ const Dashboard = () => {
 
       {/* Minimum Calorie Safety Dialog */}
       <AlertDialog open={showMinCalorieDialog} onOpenChange={setShowMinCalorieDialog}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-foreground">
               <MaterialIcon name="warning" size="sm" className="text-red-500" />
@@ -4489,7 +4492,7 @@ const Dashboard = () => {
       {showStepsCaloriesChangePopup && stepsCaloriesChangeInfo && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-md"
+            className="absolute inset-0 bg-on-surface/30 backdrop-blur-md"
             aria-hidden
             onClick={() => {
               if (stepsCaloriesChangeInfo?.hitMinFloor) setTimeout(() => setShowMinCalorieDialog(true), 200);
@@ -4562,7 +4565,7 @@ const Dashboard = () => {
 
       {/* Week 12 Summary Dialog (downloadable) */}
       <AlertDialog open={showWeek12SummaryDialog} onOpenChange={setShowWeek12SummaryDialog}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-foreground">
               <MaterialIcon name="emoji_events" size="sm" className="text-primary" />
@@ -4612,7 +4615,7 @@ const Dashboard = () => {
 
       {/* Still Looking to Lose Weight? Dialog */}
       <AlertDialog open={showStillLoseWeightDialog} onOpenChange={setShowStillLoseWeightDialog}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Are you still looking to lose weight?</AlertDialogTitle>
           </AlertDialogHeader>
@@ -4642,7 +4645,7 @@ const Dashboard = () => {
 
       {/* Maintenance Phase Suggestion Dialog */}
       <AlertDialog open={showMaintenanceSuggestionDialog} onOpenChange={setShowMaintenanceSuggestionDialog}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Maintenance Phase</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70 space-y-3" asChild>
@@ -4698,7 +4701,7 @@ const Dashboard = () => {
 
       {/* Thank You Dialog */}
       <AlertDialog open={showThankYouDialog} onOpenChange={setShowThankYouDialog}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Thank You! 💚</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70 space-y-3" asChild>
@@ -4725,7 +4728,7 @@ const Dashboard = () => {
 
       {/* Final Redirect Dialog */}
       <AlertDialog open={showFinalRedirectDialog} onOpenChange={setShowFinalRedirectDialog}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Start Again?</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70 space-y-3" asChild>
@@ -4751,7 +4754,7 @@ const Dashboard = () => {
 
       {/* Maintenance Phase Complete Dialog */}
       <AlertDialog open={showMaintenanceCompleteDialog} onOpenChange={setShowMaintenanceCompleteDialog}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-foreground">
               <MaterialIcon name="emoji_events" size="sm" className="text-primary" />
@@ -4788,7 +4791,7 @@ const Dashboard = () => {
 
       {/* Journey Complete - Block Data Entry Dialog */}
       <AlertDialog open={showJourneyCompleteBlockDialog} onOpenChange={setShowJourneyCompleteBlockDialog}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-foreground">
               <MaterialIcon name="warning" size="sm" className="text-yellow-500" />
@@ -4811,7 +4814,7 @@ const Dashboard = () => {
       </AlertDialog>
 
       <AlertDialog open={calorieReminder !== null} onOpenChange={(open) => !open && setCalorieReminder(null)}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Calorie intake reminder</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/80" asChild>
@@ -4839,7 +4842,7 @@ const Dashboard = () => {
 
       {showWelcomeBackDialog && (
         <div
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-on-surface/50 p-4"
           onClick={() => setShowWelcomeBackDialog(false)}
           role="presentation"
         >
@@ -4861,7 +4864,7 @@ const Dashboard = () => {
       )}
       {/* Clear All Dashboard Data — Step 1 */}
       <AlertDialog open={showClearAllStep1} onOpenChange={setShowClearAllStep1}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive">Warning</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70">
@@ -4885,7 +4888,7 @@ const Dashboard = () => {
 
       {/* Clear All Dashboard Data — Step 2 (final confirmation) */}
       <AlertDialog open={showClearAllStep2} onOpenChange={setShowClearAllStep2}>
-        <AlertDialogContent className="bg-background text-foreground border-border">
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive">Final Confirmation</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70">

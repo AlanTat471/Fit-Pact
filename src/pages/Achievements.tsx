@@ -138,12 +138,12 @@ const Achievements = () => {
       {/* Header with progress */}
       <header className="space-y-6">
         <div className="flex justify-between items-end">
-          <h3 className="text-xs font-bold tracking-widest text-zinc-500 uppercase flex items-center gap-2">
+          <h3 className="text-xs font-bold tracking-widest text-on-surface-variant uppercase flex items-center gap-2">
             My Achievements
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <MaterialIcon name="help_outline" size="xs" className="text-zinc-500 cursor-help" />
+                  <MaterialIcon name="help_outline" size="xs" className="text-on-surface-variant cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="max-w-xs">Achievements unlock as you complete acclimation and weekly tracking milestones.</p>
@@ -156,13 +156,13 @@ const Achievements = () => {
             <span className="text-xl font-black text-primary ml-1 italic">/ {totalCount}</span>
           </div>
         </div>
-        <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+        <div className="h-2 bg-surface-container-high rounded-full overflow-hidden">
           <div
             className="h-full bg-primary shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all duration-500"
             style={{ width: `${totalCount > 0 ? (accomplishedCount / totalCount) * 100 : 0}%` }}
           />
         </div>
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-on-surface-variant">
           Track your milestones and celebrate your progress.
           {accomplishedCount > 0 && (
             <> You have unlocked <span className="text-primary font-bold">{accomplishedCount}</span> achievement{accomplishedCount !== 1 ? 's' : ''}.</>
@@ -173,24 +173,24 @@ const Achievements = () => {
       {/* Recently Unlocked */}
       {achievements.filter((a) => a.accomplished).length > 0 && (
         <section className="space-y-4">
-          <h3 className="text-xs font-bold tracking-widest text-zinc-500 uppercase flex items-center">
+          <h3 className="text-xs font-bold tracking-widest text-on-surface-variant uppercase flex items-center">
             <MaterialIcon name="local_fire_department" size="sm" className="text-accent mr-2" /> Recently Unlocked
           </h3>
-          <div className="bg-[#131313] p-6 rounded-sm border border-zinc-800 space-y-4 transition-all duration-300 hover:shadow-primary">
+          <div className="bg-surface-container-low p-6 rounded-sm border border-outline-variant space-y-4 transition-all duration-300 hover:shadow-card">
             {achievements
               .filter((a) => a.accomplished)
               .slice(0, 3)
               .map((achievement) => (
                 <div
                   key={achievement.id}
-                  className="flex items-center gap-4 p-3 rounded-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-zinc-800/50"
+                  className="flex items-center gap-4 p-3 rounded-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-surface-container-high/50"
                 >
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${achievement.bgColor}`}>
                     <MaterialIcon name={achievement.icon} size="lg" className={achievement.color} />
                   </div>
                   <div>
                     <h4 className="text-sm font-bold uppercase tracking-widest">{achievement.title}</h4>
-                    <p className="text-[10px] text-zinc-500 uppercase mt-0.5">{achievement.description}</p>
+                    <p className="text-[10px] text-on-surface-variant uppercase mt-0.5">{achievement.description}</p>
                   </div>
                 </div>
               ))}
@@ -205,22 +205,22 @@ const Achievements = () => {
           {achievements.map((achievement) => (
             <div
               key={achievement.id}
-              className={`bg-[#131313] p-6 rounded-sm border border-zinc-800 text-center space-y-4 flex flex-col items-center transition-all duration-300 hover:-translate-y-1 hover:shadow-primary ${
+              className={`bg-surface-container-low p-6 rounded-sm border border-outline-variant text-center space-y-4 flex flex-col items-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${
                 !achievement.accomplished ? "opacity-40" : ""
               }`}
             >
               <div className={`w-16 h-16 rounded-lg flex items-center justify-center ${
-                achievement.accomplished ? "bg-zinc-800" : "border-2 border-dashed border-zinc-700"
+                achievement.accomplished ? "bg-surface-container-high" : "border-2 border-dashed border-outline"
               }`}>
                 <MaterialIcon
                   name={achievement.accomplished ? achievement.icon : "lock"}
                   size="lg"
-                  className={achievement.accomplished ? achievement.color : "text-zinc-600"}
+                  className={achievement.accomplished ? achievement.color : "text-outline"}
                 />
               </div>
               <div>
                 <h5 className="text-xs font-bold uppercase tracking-widest">{achievement.title}</h5>
-                <p className="text-[9px] text-zinc-500 mt-1 uppercase">{achievement.description}</p>
+                <p className="text-[9px] text-on-surface-variant mt-1 uppercase">{achievement.description}</p>
               </div>
             </div>
           ))}
@@ -229,9 +229,9 @@ const Achievements = () => {
 
       {/* Empty state */}
       {accomplishedCount === 0 && (
-        <div className="bg-[#131313] p-8 rounded-sm border border-zinc-800 text-center">
-          <MaterialIcon name="emoji_events" size="lg" className="text-zinc-600 mx-auto mb-3" />
-          <p className="text-sm text-zinc-500">Complete weeks and track steps & weight to unlock achievements.</p>
+        <div className="bg-surface-container-low p-8 rounded-sm border border-outline-variant text-center">
+          <MaterialIcon name="emoji_events" size="lg" className="text-outline mx-auto mb-3" />
+          <p className="text-sm text-on-surface-variant">Complete weeks and track steps & weight to unlock achievements.</p>
         </div>
       )}
     </div>
