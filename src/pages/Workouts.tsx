@@ -254,7 +254,7 @@ const TDEE = () => {
     }
   };
 
-  // Calculate estimated body fat percentage using Navy method
+  // Calculate estimated body fat percentage using Deurenberg formula
   const calculateEstimatedBodyFat = (weight: number, height: number, age: number, gender: string) => {
     const bmi = calculateBMI(weight, height);
     // Using Deurenberg formula
@@ -281,7 +281,7 @@ const TDEE = () => {
     const ageNum = parseFloat(age);
     const bmr = calculateBMR(weightNum, heightNum, ageNum, gender);
     const actMult: Record<string, number> = { sedentary: 1.2, "lightly-active": 1.375, "moderately-active": 1.55, "very-active": 1.725, "super-active": 1.9 };
-    const computedTdee = bmr * (actMult[activityLevel] || 1.2);
+    const computedTdee = bmr * (actMult[activityLevel] || 1.55);
     const savedNum = parseInt(saved, 10);
     if (!isNaN(savedNum) && Math.abs(savedNum - computedTdee) > 1) {
       manualStartingCalRef.current = String(savedNum);
@@ -306,7 +306,7 @@ const TDEE = () => {
         "super-active": 1.9,
       };
 
-      const multiplier = activityMultipliers[activityLevel as keyof typeof activityMultipliers] || 1.2;
+      const multiplier = activityMultipliers[activityLevel as keyof typeof activityMultipliers] || 1.55;
       const tdee = bmr * multiplier;
       const startingCalories = manualStartingCalRef.current
         ? parseInt(manualStartingCalRef.current, 10)
@@ -665,11 +665,11 @@ const TDEE = () => {
                   <SelectValue placeholder="Select your activity level" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="sedentary">Sedentary - Less than 3,000 steps/day (Desk job, minimal movement)</SelectItem>
-                  <SelectItem value="lightly-active">Lightly Active - 3,000-7,000 steps/day (Retail worker, teacher)</SelectItem>
-                  <SelectItem value="moderately-active">Moderately Active - 7,500-9,000 steps/day (Warehouse worker, nurse)</SelectItem>
-                  <SelectItem value="very-active">Very Active - 10,000-12,000 steps/day (Construction worker, personal trainer)</SelectItem>
-                  <SelectItem value="super-active">Super Active - 12,500+ steps/day (Professional athlete, courier)</SelectItem>
+                  <SelectItem value="sedentary">Sedentary (x1.2) - Less than 3,000 steps/day (Desk job, minimal movement)</SelectItem>
+                  <SelectItem value="lightly-active">Lightly Active (x1.375) - 3,000-7,000 steps/day (Retail worker, teacher)</SelectItem>
+                  <SelectItem value="moderately-active">Moderately Active (x1.55) - 7,500-9,000 steps/day (Warehouse worker, nurse)</SelectItem>
+                  <SelectItem value="very-active">Very Active (x1.725) - 10,000-12,000 steps/day (Construction worker, personal trainer)</SelectItem>
+                  <SelectItem value="super-active">Super Active (x1.9) - 12,500+ steps/day (Professional athlete, courier)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

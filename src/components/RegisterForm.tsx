@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { upsertProfile, getProfile, profileToUserProfile } from "@/lib/supabaseProfile";
 import { checkEmailExists, checkMobileExists } from "@/lib/supabaseCheck";
+import { calculateIdealWeightCenterKg } from "@/lib/tdeeSnapshot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -116,19 +117,17 @@ const RegisterForm = () => {
       }
     }
     
-    // Check if weight is below the mid-point of healthy range based on height
+    // Check if weight is below the mid-point of healthy range based on height (Robinson formula)
     const weight = parseFloat(formData.currentWeight);
     const height = parseFloat(formData.height);
     const heightInCm = formData.unitSystem === "metric" ? height : height * 2.54;
     const weightInKg = formData.unitSystem === "metric" ? weight : weight * 0.453592;
     
-    // Calculate healthy weight range using BMI 18.5-24.9
-    const heightInM = heightInCm / 100;
-    const minHealthyWeight = 18.5 * Math.pow(heightInM, 2);
-    const maxHealthyWeight = 24.9 * Math.pow(heightInM, 2);
-    
-    // Calculate the mid-point of the healthy range
-    const healthyMidPoint = (minHealthyWeight + maxHealthyWeight) / 2;
+    // Robinson (1983) ideal body weight ±8% range — consistent with TDEE Calculator
+    const robinsonCenter = calculateIdealWeightCenterKg(heightInCm, formData.gender);
+    const idealWeightMin = robinsonCenter * 0.92;
+    const idealWeightMax = robinsonCenter * 1.08;
+    const healthyMidPoint = (idealWeightMin + idealWeightMax) / 2;
     
     // User weight cannot be below the mid-point of healthy range
     if (weightInKg < healthyMidPoint) {
@@ -250,20 +249,21 @@ const RegisterForm = () => {
       }
     }
     
-    // Validate weight against healthy mid-range
-    if (field === "currentWeight" || field === "height" || field === "unitSystem") {
+    // Validate weight against healthy mid-range (Robinson formula — consistent with TDEE Calculator)
+    if (field === "currentWeight" || field === "height" || field === "unitSystem" || field === "gender") {
       const weight = parseFloat(field === "currentWeight" ? value as string : formData.currentWeight);
       const height = parseFloat(field === "height" ? value as string : formData.height);
       const unitSystem = field === "unitSystem" ? value as string : formData.unitSystem;
+      const gender = field === "gender" ? value as string : formData.gender;
       
-      if (weight && height) {
+      if (weight && height && gender) {
         const heightInCm = unitSystem === "metric" ? height : height * 2.54;
         const weightInKg = unitSystem === "metric" ? weight : weight * 0.453592;
         
-        const heightInM = heightInCm / 100;
-        const minHealthyWeight = 18.5 * Math.pow(heightInM, 2);
-        const maxHealthyWeight = 24.9 * Math.pow(heightInM, 2);
-        const healthyMidPoint = (minHealthyWeight + maxHealthyWeight) / 2;
+        const robinsonCenter = calculateIdealWeightCenterKg(heightInCm, gender);
+        const idealWeightMin = robinsonCenter * 0.92;
+        const idealWeightMax = robinsonCenter * 1.08;
+        const healthyMidPoint = (idealWeightMin + idealWeightMax) / 2;
         
         if (weightInKg < healthyMidPoint) {
           setErrors(prev => ({ ...prev, weight: "Your weight is too low." }));
@@ -469,11 +469,11 @@ const RegisterForm = () => {
                   <SelectValue placeholder="Select your activity level" />
                 </SelectTrigger>
                 <SelectContent className="bg-background text-foreground border-border">
-                  <SelectItem value="sedentary">Sedentary - Less than 3,000 steps/day (Desk job, minimal movement)</SelectItem>
-                  <SelectItem value="lightly-active">Lightly Active - 3,000-7,000 steps/day (Retail worker, teacher)</SelectItem>
-                  <SelectItem value="moderately-active">Moderately Active - 7,500-9,000 steps/day (Warehouse worker, nurse)</SelectItem>
-                  <SelectItem value="very-active">Very Active - 10,000-12,000 steps/day (Construction worker, personal trainer)</SelectItem>
-                  <SelectItem value="super-active">Super Active - 12,500+ steps/day (Professional athlete, courier)</SelectItem>
+                  <SelectItem value="sedentary">Sedentary (x1.2) - Less than 3,000 steps/day (Desk job, minimal movement)</SelectItem>
+                  <SelectItem value="lightly-active">Lightly Active (x1.375) - 3,000-7,000 steps/day (Retail worker, teacher)</SelectItem>
+                  <SelectItem value="moderately-active">Moderately Active (x1.55) - 7,500-9,000 steps/day (Warehouse worker, nurse)</SelectItem>
+                  <SelectItem value="very-active">Very Active (x1.725) - 10,000-12,000 steps/day (Construction worker, personal trainer)</SelectItem>
+                  <SelectItem value="super-active">Super Active (x1.9) - 12,500+ steps/day (Professional athlete, courier)</SelectItem>
                 </SelectContent>
               </Select>
               {isFieldError('activityLevel') && <p className="text-xs text-destructive">Required</p>}

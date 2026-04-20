@@ -93,7 +93,7 @@ const Achievements = () => {
     const thirtyDayChallenge = completedWeeks.length >= 4;
     const littleAchiever = totalDaysWithSteps >= 10;
     const weightWatcher = totalDaysWithWeight >= 14;
-    const consistencyKing = completedWeeks.length >= 15;
+    const consistencyKing = completedWeeks.length >= 12;
 
     const accomplished = [
       hasOneCompletedWeek,
@@ -114,7 +114,7 @@ const Achievements = () => {
       { id: 5, title: "30-Day Challenge", description: "Complete 30 consecutive days", icon: "event" },
       { id: 6, title: "Little Achiever", description: "Completed 10 goals", icon: "emoji_events" },
       { id: 7, title: "Weight Watcher", description: "Track your weight for 14 days straight", icon: "monitor_weight" },
-      { id: 8, title: "Consistency King", description: "100 days of tracking", icon: "event" },
+      { id: 8, title: "Consistency King", description: "Complete all 12 weeks of weight loss", icon: "event" },
     ];
 
     return {
