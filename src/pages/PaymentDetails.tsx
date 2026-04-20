@@ -149,21 +149,21 @@ const PaymentDetails = () => {
   const statusLabel = (plan: PlanType) =>
     activePlan === plan ? 'your active subscription' : 'inactive subscription';
 
-  const PaidPlanCard = ({ plan, name, price, period, description }: {
+  const PaidPlanCard = ({ plan, name, price, description }: {
     plan: PlanType;
     name: string;
     price: string;
     period: string;
     description: string;
   }) => (
-    <Card className={`relative border flex flex-col min-h-[500px] rounded-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === plan ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
-      <CardHeader className="pb-3 min-h-[140px]">
+    <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === plan ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
+      <CardHeader className="pb-3 min-h-[160px]">
         <CardTitle className="text-xl">{name}</CardTitle>
-        <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">({statusLabel(plan)})</span>
-        <p className="text-[13px] leading-5 text-on-surface-variant mt-1.5 max-w-[30ch]">{description}</p>
+        <span className="text-[10px] tracking-wide text-on-surface-variant">({statusLabel(plan)})</span>
+        <p className="text-[13px] leading-5 text-on-surface-variant mt-1.5 min-h-[100px]">{description}</p>
       </CardHeader>
-      <CardContent className="space-y-3 flex-1 flex flex-col pb-24">
-        <div className="flex items-start gap-1.5">
+      <CardContent className="flex-1 flex flex-col pb-24">
+        <div className="flex items-start gap-1.5 min-h-[72px]">
           <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
           <div>
             <p className="font-medium text-sm">Paid subscription</p>
@@ -173,7 +173,7 @@ const PaymentDetails = () => {
           </div>
         </div>
 
-        <div className="flex items-start gap-1.5">
+        <div className="flex items-start gap-1.5 min-h-[72px]">
           <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
           <div>
             <p className="font-medium text-sm">Payment Method</p>
@@ -182,7 +182,7 @@ const PaymentDetails = () => {
           </div>
         </div>
 
-        <div className="flex items-start gap-1.5">
+        <div className="flex items-start gap-1.5 min-h-[72px]">
           <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
           <div>
             <p className="font-medium text-sm">Cancel Anytime</p>
@@ -192,23 +192,25 @@ const PaymentDetails = () => {
           </div>
         </div>
 
-        <div className="absolute left-6 right-6 bottom-6 h-10">
+        <div className="absolute left-6 right-6 bottom-6">
           {activePlan === plan ? (
             <Button
               onClick={() => setShowUpdatePayment(true)}
-              variant="outline"
-              className="w-full text-[11px] h-10 px-3 py-2 leading-none text-center whitespace-nowrap"
+              variant="default"
+              className="w-full h-auto py-2.5 px-3 flex flex-col gap-0.5 leading-tight"
             >
-              Active - Update Payment Method
+              <span className="text-xs font-bold">Active</span>
+              <span className="text-[10px] opacity-90">Update Payment Method</span>
             </Button>
           ) : (
             <Button
               onClick={() => handleSelectPlan(plan)}
-              variant="fitness"
-              className="w-full text-[11px] h-10 px-3 py-2 leading-none text-center whitespace-nowrap"
+              variant="default"
+              className="w-full h-auto py-2.5 px-3 flex flex-col gap-0.5 leading-tight"
               disabled={billingLoading}
             >
-              Subscribe - {price}/billed {plan === "fortnightly" ? "fortnightly" : "weekly"}
+              <span className="text-xs font-bold">Subscribe</span>
+              <span className="text-[10px] opacity-90">{price} / billed {plan === "fortnightly" ? "fortnightly" : "weekly"}</span>
             </Button>
           )}
         </div>
@@ -222,50 +224,50 @@ const PaymentDetails = () => {
         <h1 className="text-3xl font-black mb-1 tracking-tight flex items-center gap-2 text-on-surface">
           Subscription & Billing
         </h1>
-        <p className="text-[11px] uppercase tracking-widest text-on-surface-variant">Securely managed via Stripe</p>
+        <p className="text-[12px] tracking-wide text-on-surface-variant">Securely managed via Stripe</p>
       </div>
 
       {/* Plans Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto items-stretch">
         {/* Free Plan */}
-        <Card className={`relative border flex flex-col min-h-[500px] rounded-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === 'free' ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
-          <CardHeader className="pb-3 min-h-[140px]">
+        <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === 'free' ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
+          <CardHeader className="pb-3 min-h-[160px]">
             <CardTitle className="text-xl">Free Plan</CardTitle>
-            <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">({statusLabel('free')})</span>
-            <p className="text-[13px] leading-5 text-on-surface-variant mt-1.5 max-w-[30ch]">
+            <span className="text-[10px] tracking-wide text-on-surface-variant">({statusLabel('free')})</span>
+            <p className="text-[13px] leading-5 text-on-surface-variant mt-1.5 min-h-[100px]">
               There is nothing wrong with trying before buying! Get 14 days limited access to get a feel of the app before you subscribe!
             </p>
           </CardHeader>
-          <CardContent className="space-y-3 flex-1 flex flex-col pb-24">
-            <div className="flex items-start gap-1.5">
+          <CardContent className="flex-1 flex flex-col pb-24">
+            <div className="flex items-start gap-1.5 min-h-[72px]">
               <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium text-sm">Free trial for 14 days</p>
                 <p className="text-xs leading-snug text-muted-foreground">Limited access to pro features</p>
               </div>
             </div>
-            <div className="flex items-start gap-1.5">
+            <div className="flex items-start gap-1.5 min-h-[72px]">
               <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium text-sm">No credit card required</p>
                 <p className="text-xs leading-snug text-muted-foreground">Try before you commit</p>
               </div>
             </div>
-            <div className="flex items-start gap-1.5">
+            <div className="flex items-start gap-1.5 min-h-[72px]">
               <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium text-sm">Trial Period</p>
                 <p className="text-xs leading-snug text-muted-foreground">Free Trial will end after 14 days automatically</p>
               </div>
             </div>
-            <div className="absolute left-6 right-6 bottom-6 h-10">
+            <div className="absolute left-6 right-6 bottom-6">
               {activePlan !== 'free' ? (
-                <Button onClick={() => handleSelectPlan('free')} variant="outline" className="w-full text-[11px] h-10 px-3 py-2 leading-none text-center whitespace-nowrap" disabled={billingLoading}>
-                  Switch to Free Plan
+                <Button onClick={() => handleSelectPlan('free')} variant="default" className="w-full h-auto py-2.5 px-3 flex flex-col gap-0.5 leading-tight" disabled={billingLoading}>
+                  <span className="text-xs font-bold">Switch to Free Plan</span>
                 </Button>
               ) : (
-                <Button variant="fitness" className="w-full text-[11px] h-10 px-3 py-2 leading-none text-center whitespace-nowrap" disabled>
-                  Active
+                <Button variant="default" className="w-full h-auto py-2.5 px-3 flex flex-col gap-0.5 leading-tight" disabled>
+                  <span className="text-xs font-bold">Active</span>
                 </Button>
               )}
             </div>
@@ -291,13 +293,13 @@ const PaymentDetails = () => {
 
       {/* Billing History */}
       <div className="max-w-4xl mx-auto">
-        <Card className="border-primary/20 shadow-primary">
+        <Card className="border-outline-variant shadow-card bg-surface-container-low">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Billing History</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex justify-center">
-              <Button variant="outline" className="text-sm" onClick={() => navigate('/settings?tab=payments')}>
+              <Button variant="default" className="text-sm" onClick={() => navigate('/settings?tab=payments')}>
                 View Full Billing History
               </Button>
             </div>

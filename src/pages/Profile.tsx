@@ -96,6 +96,37 @@ const Profile = () => {
   const [editingDay, setEditingDay] = useState<string | null>(null);
   const [newGoalText, setNewGoalText] = useState("");
   const [newGoalTarget, setNewGoalTarget] = useState("");
+  const [showUnsavedPrompt, setShowUnsavedPrompt] = useState(false);
+
+  const hasUnsavedNewGoal = () => newGoalText.trim().length > 0 || newGoalTarget.trim().length > 0;
+
+  const closeDayDialog = () => {
+    setEditingDay(null);
+    setNewGoalText("");
+    setNewGoalTarget("");
+    setShowUnsavedPrompt(false);
+  };
+
+  const handleDayDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      if (hasUnsavedNewGoal()) {
+        setShowUnsavedPrompt(true);
+        return;
+      }
+      closeDayDialog();
+    }
+  };
+
+  const handleConfirmSaveUnsaved = () => {
+    if (editingDay && newGoalText.trim()) {
+      handleAddDayGoal(editingDay);
+    }
+    closeDayDialog();
+  };
+
+  const handleDiscardUnsaved = () => {
+    closeDayDialog();
+  };
   
   // Keep old goals for backwards compatibility - from Supabase first
   const [goals, setGoals] = useState<Goal[]>(() => {
@@ -581,7 +612,7 @@ const Profile = () => {
               : userName.firstName || userName.lastName || 'User'}
           </h2>
           <div className="mt-1 flex items-center justify-center gap-2">
-            <p className="text-on-surface-variant text-xs italic uppercase tracking-widest">
+            <p className="text-on-surface-variant text-sm">
               {profileDescription || "Tell us about yourself..."}
             </p>
             <TooltipProvider>
@@ -610,12 +641,12 @@ const Profile = () => {
 
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-surface-container-low p-4 rounded-sm border-l-2 border-primary text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card">
+        <div className="bg-surface-container-low p-4 rounded-xl border-2 border-primary/60 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
           <span className="block text-2xl font-black text-primary">{getCompletedAchievements().length}</span>
           <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">Badges</span>
         </div>
-        <div className="bg-surface-container-low p-4 rounded-sm border-l-2 border-accent text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card">
-          <span className="block text-2xl font-black text-accent">
+        <div className="bg-surface-container-low p-4 rounded-xl border-2 border-primary/60 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+          <span className="block text-2xl font-black text-primary">
             {weightUnit === "lbs"
               ? (() => {
                   const kg = getWeightPhaseDeltaKg();
@@ -629,8 +660,8 @@ const Profile = () => {
           </span>
           <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">Weight change</span>
         </div>
-        <div className="bg-surface-container-low p-4 rounded-sm border-l-2 border-green-400 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card">
-          <span className="block text-2xl font-black text-green-400">{badgeData.currentStreak}</span>
+        <div className="bg-surface-container-low p-4 rounded-xl border-2 border-primary/60 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+          <span className="block text-2xl font-black text-primary">{badgeData.currentStreak}</span>
           <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">Streak</span>
         </div>
       </div>
@@ -663,9 +694,9 @@ const Profile = () => {
       {/* My Why Card */}
       <section className="space-y-4">
         <h3 className="text-xs font-bold tracking-widest text-on-surface-variant uppercase">My Why</h3>
-        <div className="bg-surface-container-low p-8 rounded-sm border-l-4 border-primary relative transition-all duration-300 hover:shadow-card hover:-translate-y-1">
-          <p className="text-xl font-medium leading-relaxed italic text-on-surface relative z-10">
-            "{myWhy}"
+        <div className="bg-surface-container-low p-8 rounded-xl border-2 border-primary/60 relative transition-all duration-300 hover:shadow-card hover:-translate-y-1 hover:border-primary">
+          <p className="text-xl font-medium leading-relaxed text-on-surface relative z-10">
+            {myWhy}
           </p>
           <button
             className="mt-4 flex items-center text-primary text-xs font-bold uppercase tracking-widest"
@@ -689,22 +720,23 @@ const Profile = () => {
         </div>
         <div className="space-y-2">
           {daysOfWeek.map((day) => (
-            <div key={day} className="bg-surface-container-low border border-outline-variant rounded-sm overflow-hidden transition-all duration-300 hover:shadow-card">
+            <div key={day} className="rounded-xl overflow-hidden border-2 border-primary/60 transition-all duration-300 hover:shadow-card hover:border-primary bg-surface-container-low">
               <div
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-surface-container-high transition-colors"
+                className="flex items-center justify-between p-4 cursor-pointer bg-primary text-primary-foreground transition-colors"
                 onClick={() => setEditingDay(day)}
               >
                 <h4 className="font-bold text-sm">{day}</h4>
-                <span className="text-xs text-on-surface-variant">{(dayGoals[day] || []).length} goals</span>
+                <span className="text-xs opacity-90">{(dayGoals[day] || []).length} goals</span>
               </div>
               {(dayGoals[day] || []).length > 0 && (
-                <div className="px-4 pb-3 space-y-1">
+                <div className="px-4 py-3 space-y-2">
                   {(dayGoals[day] || []).map((goal) => (
-                    <div key={goal.id} className={`flex items-center justify-between p-2 rounded-sm ${goal.completed ? 'border border-primary/30' : 'border border-outline-variant'}`}>
-                      <div className="flex items-center space-x-3">
+                    <div key={goal.id} className={`flex items-center justify-between gap-3 p-2.5 rounded-lg border-2 ${goal.completed ? 'border-primary/50 bg-primary/5' : 'border-outline-variant bg-background'}`}>
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
                         <div
-                          className={`w-5 h-5 rounded-sm flex items-center justify-center cursor-pointer ${goal.completed ? 'bg-primary' : 'border-2 border-outline-variant'}`}
-                          onClick={() => {
+                          className={`w-5 h-5 rounded-sm flex items-center justify-center cursor-pointer shrink-0 ${goal.completed ? 'bg-primary' : 'border-2 border-primary/60'}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
                             const updatedDayGoals = {
                               ...dayGoals,
                               [day]: (dayGoals[day] || []).map((g) => {
@@ -726,17 +758,29 @@ const Profile = () => {
                             saveProfileToSupabase({ my_day_goals: updatedDayGoals });
                           }}
                         >
-                          {goal.completed && <MaterialIcon name="check" size="xs" className="text-[#0A0A0A]" />}
+                          {goal.completed && <MaterialIcon name="check" size="xs" className="text-primary-foreground" />}
                         </div>
-                        <span className={`text-sm font-medium ${goal.completed ? 'line-through text-on-surface-variant' : ''}`}>
+                        <span className={`text-sm font-medium truncate ${goal.completed ? 'line-through text-on-surface-variant' : ''}`}>
                           {formatNumbersInText(goal.text)}
                         </span>
                       </div>
-                      {goal.target !== undefined && (
-                        <span className="text-xs text-on-surface-variant">
-                          {formatNumberWithCommas((goal.current || 0).toString())}/{formatNumberWithCommas(goal.target.toString())}
-                        </span>
-                      )}
+                      {goal.target !== undefined ? (
+                        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            value={formatNumberWithCommas((goal.current || 0).toString())}
+                            onChange={(e) => {
+                              const rawValue = parseFormattedNumber(e.target.value);
+                              const numValue = parseInt(rawValue) || 0;
+                              handleUpdateDayGoalProgress(day, goal.id, Math.min(999999999, numValue));
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-7 w-20 px-2 text-xs text-right"
+                          />
+                          <span className="text-xs text-on-surface-variant whitespace-nowrap">/ {formatNumberWithCommas(goal.target.toString())}</span>
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -748,15 +792,15 @@ const Profile = () => {
 
       {/* Navigation Buttons */}
       <div className="flex flex-wrap gap-4 justify-center pt-4">
-        <Button variant="outline" onClick={() => navigate('/dashboard')} className="gap-2">
+        <Button variant="default" onClick={() => navigate('/dashboard')} className="gap-2">
           <MaterialIcon name="trending_up" size="sm" />
           Go to my Dashboard
         </Button>
-        <Button variant="outline" onClick={() => navigate('/community-help')} className="gap-2">
+        <Button variant="default" onClick={() => navigate('/community-help')} className="gap-2">
           <MaterialIcon name="gps_fixed" size="sm" />
           Go to my Community
         </Button>
-        <Button variant="outline" onClick={() => navigate('/achievements')} className="gap-2">
+        <Button variant="default" onClick={() => navigate('/achievements')} className="gap-2">
           <MaterialIcon name="emoji_events" size="sm" />
           Go to my Achievements
         </Button>
@@ -852,7 +896,7 @@ const Profile = () => {
       </AlertDialog>
 
       {/* Edit Day Goals Popup */}
-      <AlertDialog open={!!editingDay} onOpenChange={(open) => !open && setEditingDay(null)}>
+      <AlertDialog open={!!editingDay} onOpenChange={handleDayDialogOpenChange}>
         <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Goals for {editingDay}</AlertDialogTitle>
@@ -860,6 +904,18 @@ const Profile = () => {
               Add, edit, update or remove your goals for this day.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {showUnsavedPrompt && (
+            <div className="rounded-xl border-2 border-primary bg-primary/10 p-4 space-y-3">
+              <p className="text-sm font-medium text-foreground">
+                You have an unsaved goal. Do you want to save changes?
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" size="sm" onClick={handleDiscardUnsaved}>No, discard</Button>
+                <Button variant="default" size="sm" onClick={handleConfirmSaveUnsaved}>Yes, save</Button>
+              </div>
+            </div>
+          )}
           <div className="py-4 space-y-4 max-h-[400px] overflow-y-auto">
             {editingDay && (dayGoals[editingDay] || []).map((goal) => (
               <div key={goal.id} className="p-3 border rounded-lg space-y-2">
@@ -937,7 +993,7 @@ const Profile = () => {
             </div>
           </div>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setEditingDay(null)}>Save</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmSaveUnsaved}>Save</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -414,7 +414,7 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
                     <MaterialIcon name="language" size="sm" className="mr-2" />
                     Download My Data
                   </Button>
-                  <Button variant="outline" className="w-full justify-start text-destructive">
+                  <Button variant="outline" className="w-full justify-start border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground">
                     <MaterialIcon name="delete" size="sm" className="mr-2" />
                     Delete Account
                   </Button>

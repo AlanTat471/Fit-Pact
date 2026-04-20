@@ -70,7 +70,7 @@ const CommunityHelp = () => {
           </CardHeader>
           <CardContent>
             <Button
-              variant="outline"
+              variant="default"
               className="w-full"
               onClick={() => {
                 setSupportForm({ name: "", subject: "", description: "", email: "" });
