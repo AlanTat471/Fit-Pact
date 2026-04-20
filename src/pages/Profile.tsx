@@ -19,6 +19,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { BackButton } from "@/components/BackButton";
 import { useNavigate } from "react-router-dom";
@@ -97,6 +105,21 @@ const Profile = () => {
   const [newGoalText, setNewGoalText] = useState("");
   const [newGoalTarget, setNewGoalTarget] = useState("");
   const [showUnsavedPrompt, setShowUnsavedPrompt] = useState(false);
+  const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem('profileExpandedDays');
+    if (saved) {
+      try { return JSON.parse(saved); } catch { /* ignore */ }
+    }
+    return { Monday: true, Tuesday: true, Wednesday: true, Thursday: true, Friday: true, Saturday: true, Sunday: true };
+  });
+
+  const toggleDayExpanded = (day: string) => {
+    setExpandedDays((prev) => {
+      const next = { ...prev, [day]: !prev[day] };
+      localStorage.setItem('profileExpandedDays', JSON.stringify(next));
+      return next;
+    });
+  };
 
   const hasUnsavedNewGoal = () => newGoalText.trim().length > 0 || newGoalTarget.trim().length > 0;
 
@@ -719,74 +742,107 @@ const Profile = () => {
           </button>
         </div>
         <div className="space-y-2">
-          {daysOfWeek.map((day) => (
-            <div key={day} className="rounded-xl overflow-hidden border-2 border-primary/60 transition-all duration-300 hover:shadow-card hover:border-primary bg-surface-container-low">
-              <div
-                className="flex items-center justify-between p-4 cursor-pointer bg-primary text-primary-foreground transition-colors"
-                onClick={() => setEditingDay(day)}
-              >
-                <h4 className="font-bold text-sm">{day}</h4>
-                <span className="text-xs opacity-90">{(dayGoals[day] || []).length} goals</span>
-              </div>
-              {(dayGoals[day] || []).length > 0 && (
-                <div className="px-4 py-3 space-y-2">
-                  {(dayGoals[day] || []).map((goal) => (
-                    <div key={goal.id} className={`flex items-center justify-between gap-3 p-2.5 rounded-lg border-2 ${goal.completed ? 'border-primary/50 bg-primary/5' : 'border-outline-variant bg-background'}`}>
-                      <div className="flex items-center space-x-3 flex-1 min-w-0">
-                        <div
-                          className={`w-5 h-5 rounded-sm flex items-center justify-center cursor-pointer shrink-0 ${goal.completed ? 'bg-primary' : 'border-2 border-primary/60'}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const updatedDayGoals = {
-                              ...dayGoals,
-                              [day]: (dayGoals[day] || []).map((g) => {
-                                if (g.id !== goal.id) return g;
-                                const nextCompleted = !g.completed;
-                                let nextCurrent = g.current ?? 0;
-                                if (nextCompleted && g.target != null) {
-                                  nextCurrent = g.target;
-                                }
-                                return {
-                                  ...g,
-                                  completed: nextCompleted,
-                                  current: nextCurrent,
-                                };
-                              }),
-                            };
-                            setDayGoals(updatedDayGoals);
-                            localStorage.setItem('myDayGoals', JSON.stringify(updatedDayGoals));
-                            saveProfileToSupabase({ my_day_goals: updatedDayGoals });
-                          }}
-                        >
-                          {goal.completed && <MaterialIcon name="check" size="xs" className="text-primary-foreground" />}
-                        </div>
-                        <span className={`text-sm font-medium truncate ${goal.completed ? 'line-through text-on-surface-variant' : ''}`}>
-                          {formatNumbersInText(goal.text)}
-                        </span>
-                      </div>
-                      {goal.target !== undefined ? (
-                        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            value={formatNumberWithCommas((goal.current || 0).toString())}
-                            onChange={(e) => {
-                              const rawValue = parseFormattedNumber(e.target.value);
-                              const numValue = parseInt(rawValue) || 0;
-                              handleUpdateDayGoalProgress(day, goal.id, Math.min(999999999, numValue));
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="h-7 w-20 px-2 text-xs text-right"
-                          />
-                          <span className="text-xs text-on-surface-variant whitespace-nowrap">/ {formatNumberWithCommas(goal.target.toString())}</span>
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
+          {daysOfWeek.map((day) => {
+            const isExpanded = expandedDays[day] !== false;
+            const goalsForDay = dayGoals[day] || [];
+            return (
+              <div key={day} className="rounded-xl overflow-hidden border-2 border-primary/60 transition-all duration-300 hover:shadow-card hover:border-primary bg-surface-container-low">
+                <div className="flex items-center justify-between p-4 bg-surface-container-low transition-colors">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <button
+                      type="button"
+                      aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${day}`}
+                      onClick={(e) => { e.stopPropagation(); toggleDayExpanded(day); }}
+                      className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      <MaterialIcon name={isExpanded ? 'menu_open' : 'menu'} size="sm" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingDay(day)}
+                      className="text-left cursor-pointer hover:underline"
+                    >
+                      <h4 className="font-bold text-sm text-on-surface">{day}</h4>
+                    </button>
+                  </div>
+                  <span className="text-xs text-on-surface-variant shrink-0">{goalsForDay.length} goals</span>
                 </div>
-              )}
-            </div>
-          ))}
+                {isExpanded && goalsForDay.length > 0 && (
+                  <div className="px-4 pb-4 pt-1 space-y-2">
+                    {goalsForDay.map((goal) => {
+                      const current = goal.current || 0;
+                      const target = goal.target;
+                      const hasTarget = target !== undefined;
+                      const percentage = hasTarget && target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+                      const remaining = hasTarget ? (target - current) : 0;
+                      let motivation = '';
+                      if (hasTarget && current > 0) {
+                        if (goal.completed || percentage >= 100) motivation = 'Goal reached!';
+                        else if (remaining <= 10) motivation = `${remaining.toLocaleString()} more to go!`;
+                        else motivation = `Keep going, you're ${percentage}% complete!`;
+                      }
+                      return (
+                        <div key={goal.id} className={`rounded-lg border-2 p-2.5 ${goal.completed ? 'border-primary/50 bg-primary/5' : 'border-outline-variant bg-background'}`}>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center space-x-3 flex-1 min-w-0">
+                              <div
+                                className={`w-5 h-5 rounded-sm flex items-center justify-center cursor-pointer shrink-0 ${goal.completed ? 'bg-primary' : 'border-2 border-primary/60'}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const updatedDayGoals = {
+                                    ...dayGoals,
+                                    [day]: goalsForDay.map((g) => {
+                                      if (g.id !== goal.id) return g;
+                                      const nextCompleted = !g.completed;
+                                      let nextCurrent = g.current ?? 0;
+                                      if (nextCompleted && g.target != null) {
+                                        nextCurrent = g.target;
+                                      }
+                                      return { ...g, completed: nextCompleted, current: nextCurrent };
+                                    }),
+                                  };
+                                  setDayGoals(updatedDayGoals);
+                                  localStorage.setItem('myDayGoals', JSON.stringify(updatedDayGoals));
+                                  saveProfileToSupabase({ my_day_goals: updatedDayGoals });
+                                }}
+                              >
+                                {goal.completed && <MaterialIcon name="check" size="xs" className="text-primary-foreground" />}
+                              </div>
+                              <span className={`text-sm font-medium truncate ${goal.completed ? 'line-through text-on-surface-variant' : ''}`}>
+                                {formatNumbersInText(goal.text)}
+                              </span>
+                            </div>
+                            {hasTarget ? (
+                              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <Input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={formatNumberWithCommas(current.toString())}
+                                  onChange={(e) => {
+                                    const rawValue = parseFormattedNumber(e.target.value);
+                                    const numValue = parseInt(rawValue) || 0;
+                                    handleUpdateDayGoalProgress(day, goal.id, Math.min(999999999, numValue));
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="h-7 w-20 px-2 text-xs text-right"
+                                />
+                                <span className="text-xs text-on-surface-variant whitespace-nowrap">/ {formatNumberWithCommas(target.toString())}</span>
+                              </div>
+                            ) : null}
+                          </div>
+                          {motivation && (
+                            <p className={`mt-1.5 ml-8 text-[11px] ${goal.completed || percentage >= 100 ? 'text-green-600' : 'text-primary'}`}>
+                              {motivation}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -895,15 +951,15 @@ const Profile = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Edit Day Goals Popup */}
-      <AlertDialog open={!!editingDay} onOpenChange={handleDayDialogOpenChange}>
-        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl max-w-lg">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Goals for {editingDay}</AlertDialogTitle>
-            <AlertDialogDescription className="text-foreground/70">
+      {/* Edit Day Goals Popup (Dialog closes on outside click) */}
+      <Dialog open={!!editingDay} onOpenChange={handleDayDialogOpenChange}>
+        <DialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Goals for {editingDay}</DialogTitle>
+            <DialogDescription className="text-foreground/70">
               Add, edit, update or remove your goals for this day.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+            </DialogDescription>
+          </DialogHeader>
 
           {showUnsavedPrompt && (
             <div className="rounded-xl border-2 border-primary bg-primary/10 p-4 space-y-3">
@@ -917,53 +973,59 @@ const Profile = () => {
             </div>
           )}
           <div className="py-4 space-y-4 max-h-[400px] overflow-y-auto">
-            {editingDay && (dayGoals[editingDay] || []).map((goal) => (
-              <div key={goal.id} className="p-3 border rounded-lg space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className={goal.completed ? 'line-through text-muted-foreground' : ''}>{formatNumbersInText(goal.text)}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive"
-                    onClick={() => editingDay && handleDeleteDayGoal(editingDay, goal.id)}
-                  >
-                    <MaterialIcon name="delete" size="sm" />
-                  </Button>
-                </div>
-                {goal.target !== undefined && (
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground whitespace-nowrap">Update:</Label>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={formatNumberWithCommas((goal.current || 0).toString())}
-                      onChange={(e) => {
-                        if (!editingDay) return;
-                        const rawValue = parseFormattedNumber(e.target.value);
-                        const numValue = parseInt(rawValue) || 0;
-                        handleUpdateDayGoalProgress(editingDay, goal.id, Math.min(999999999, numValue));
-                      }}
-                      className="h-8 w-28"
-                    />
-                    <span className="text-xs text-muted-foreground">/ {formatNumberWithCommas(goal.target.toString())}</span>
-                    {goal.completed && <span className="text-xs text-green-500">Goal reached!</span>}
-                    {!goal.completed && goal.target && goal.current !== undefined && goal.current > 0 && (
-                      <span className="text-xs text-primary">
-                        {(() => {
-                          const percentage = Math.min(100, Math.round((goal.current / goal.target) * 100));
-                          const remaining = goal.target - goal.current;
-                          if (percentage >= 100) return 'Goal reached!';
-                          if (remaining <= 10) return `${remaining.toLocaleString()} more to go!`;
-                          return `Keep going, you're ${percentage}% complete!`;
-                        })()}
-                      </span>
-                    )}
+            {editingDay && (dayGoals[editingDay] || []).map((goal) => {
+              const current = goal.current || 0;
+              const target = goal.target;
+              const hasTarget = target !== undefined;
+              const percentage = hasTarget && target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+              const remaining = hasTarget ? (target - current) : 0;
+              let motivation = '';
+              if (hasTarget && current > 0) {
+                if (goal.completed || percentage >= 100) motivation = 'Goal reached!';
+                else if (remaining <= 10) motivation = `${remaining.toLocaleString()} more to go!`;
+                else motivation = `Keep going, you're ${percentage}% complete!`;
+              }
+              return (
+                <div key={goal.id} className="p-3 border-2 border-outline-variant rounded-lg space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-sm font-medium ${goal.completed ? 'line-through text-muted-foreground' : ''}`}>{formatNumbersInText(goal.text)}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={() => editingDay && handleDeleteDayGoal(editingDay, goal.id)}
+                    >
+                      <MaterialIcon name="delete" size="sm" />
+                    </Button>
                   </div>
-                )}
-              </div>
-            ))}
+                  {hasTarget && (
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Update:</Label>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={formatNumberWithCommas(current.toString())}
+                        onChange={(e) => {
+                          if (!editingDay) return;
+                          const rawValue = parseFormattedNumber(e.target.value);
+                          const numValue = parseInt(rawValue) || 0;
+                          handleUpdateDayGoalProgress(editingDay, goal.id, Math.min(999999999, numValue));
+                        }}
+                        className="h-8 w-24 shrink-0"
+                      />
+                      <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">/ {formatNumberWithCommas(target.toString())}</span>
+                      {motivation && (
+                        <span className={`text-xs ${goal.completed || percentage >= 100 ? 'text-green-600' : 'text-primary'} ml-auto`}>
+                          {motivation}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
-            <div className="space-y-3 pt-4 border-t">
+            <div className="space-y-3 pt-4 border-t border-outline-variant">
               <h4 className="font-medium">Add New Goal</h4>
               <div className="space-y-2">
                 <Label>Goal</Label>
@@ -992,11 +1054,11 @@ const Profile = () => {
               </Button>
             </div>
           </div>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleConfirmSaveUnsaved}>Save</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <DialogFooter>
+            <Button variant="default" onClick={handleConfirmSaveUnsaved}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

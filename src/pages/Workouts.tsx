@@ -1016,8 +1016,10 @@ const TDEE = () => {
           <MaterialIcon name="refresh" size="sm" />
           Clear Fields
         </Button>
-        <button 
-          className={`flex items-center justify-center gap-2 transition-colors text-lg font-medium ${hasInvalidCalcs || isUnderweight ? 'text-muted-foreground cursor-not-allowed opacity-50' : 'text-foreground hover:text-primary'}`}
+        <Button
+          variant="outline"
+          size="lg"
+          className="gap-2"
           disabled={hasInvalidCalcs || isUnderweight}
           onClick={() => {
             if (isUnderweight) {
@@ -1034,7 +1036,7 @@ const TDEE = () => {
         >
           Go to your Dashboard
           <MaterialIcon name="arrow_forward" size="sm" />
-        </button>
+        </Button>
       </div>
 
       {/* Underweight Classification Dialog */}

@@ -2206,11 +2206,9 @@ const Dashboard = () => {
             {/* Weight Loss Start Date and End Date */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
               <div className="flex flex-col gap-2">
-                <div className="min-h-[44px] flex items-end">
-                  <Label htmlFor="startDate" className="text-sm font-medium">
-                    Journey start (Acclimation Day 1):
-                  </Label>
-                </div>
+                <Label htmlFor="startDate" className="text-xs font-medium whitespace-nowrap">
+                  Journey start (Acclimation Day 1):
+                </Label>
                 <Input
                   id="startDate"
                   type="date"
@@ -2228,15 +2226,15 @@ const Dashboard = () => {
                   className={`w-full h-9 ${weightLossStartDate && completedWeeks.length > 0 && completedWeeks.length < 12 ? 'bg-muted' : ''}`}
                 />
               </div>
-              
+
               <div className="flex flex-col gap-2">
-                <div className="min-h-[44px] flex items-end gap-2">
-                  <Label htmlFor="endDate" className="text-sm font-medium">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="endDate" className="text-xs font-medium whitespace-nowrap">
                     Weight loss end date:
                   </Label>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <MaterialIcon name="help_outline" size="sm" className="text-muted-foreground cursor-help" />
+                      <MaterialIcon name="help_outline" size="xs" className="text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
                       <p className="text-sm">
@@ -2253,21 +2251,19 @@ const Dashboard = () => {
                   className="w-full h-9 bg-muted"
                 />
               </div>
-              
+
               <div className="flex flex-col gap-2">
-                <div className="min-h-[44px] flex items-end gap-1">
-                  <Label htmlFor="startingWeight" className="text-sm font-medium flex items-center gap-1">
-                    Starting Weight (kg):
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <MaterialIcon name="help_outline" size="xs" className="text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
-                        <p className="text-sm">This is the weight you entered, however, may differ to your 'actual' starting weight once you complete your 'Acclimation Phase'. Acclimation Phase is to help set the baseline for your weight loss journey.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </Label>
-                </div>
+                <Label htmlFor="startingWeight" className="text-xs font-medium flex items-center gap-1 whitespace-nowrap">
+                  Starting Weight (kg):
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <MaterialIcon name="help_outline" size="xs" className="text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
+                      <p className="text-sm">This is the weight you entered, however, may differ to your 'actual' starting weight once you complete your 'Acclimation Phase'. Acclimation Phase is to help set the baseline for your weight loss journey.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </Label>
                 <Input
                   id="startingWeight"
                   type="text"
@@ -2283,49 +2279,49 @@ const Dashboard = () => {
         {/* Current Stats Section */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Stats</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                <CardTitle className="text-xs font-medium text-on-surface min-w-0 truncate">Estimated BMI</CardTitle>
-                <MaterialIcon name="monitor_weight" size="sm" className="text-primary shrink-0" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
+                <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Estimated BMI</CardTitle>
+                <MaterialIcon name="monitor_weight" size="xs" className="text-primary shrink-0" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-primary truncate">
+              <CardContent className="p-3 pt-0">
+                <div className="text-xl font-bold text-primary leading-none">
                   {tdeeValues?.currentBMI || calculateBMI().toFixed(1)}
                 </div>
-                <p className="text-xs text-on-surface-variant truncate">Body Mass Index</p>
+                <p className="text-[10px] text-on-surface-variant leading-tight mt-1">Body Mass Index</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                <CardTitle className="text-xs font-medium text-on-surface min-w-0 truncate">Estimated Body %</CardTitle>
-                <MaterialIcon name="trending_up" size="sm" className="text-primary shrink-0" />
+            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
+                <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Estimated Body %</CardTitle>
+                <MaterialIcon name="trending_up" size="xs" className="text-primary shrink-0" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-primary truncate">
+              <CardContent className="p-3 pt-0">
+                <div className="text-xl font-bold text-primary leading-none">
                   {tdeeValues?.bodyFatPercentage ? `${tdeeValues.bodyFatPercentage}%` : `${calculateBodyFat().toFixed(1)}%`}
                 </div>
-                <p className="text-xs text-on-surface-variant truncate">Body fat percentage</p>
+                <p className="text-[10px] text-on-surface-variant leading-tight mt-1">Body fat percentage</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                <CardTitle className="text-xs font-medium text-on-surface min-w-0 truncate">Classification</CardTitle>
-                <MaterialIcon name="emoji_events" size="sm" className="text-primary shrink-0" />
+            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
+                <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Classification</CardTitle>
+                <MaterialIcon name="emoji_events" size="xs" className="text-primary shrink-0" />
               </CardHeader>
-              <CardContent>
-                <div className="text-base font-bold text-primary truncate">
+              <CardContent className="p-3 pt-0">
+                <div className="text-sm font-bold text-primary leading-tight">
                   {tdeeValues?.classification || getClassification()}
                 </div>
-                <p className="text-xs text-on-surface-variant truncate">Health category</p>
+                <p className="text-[10px] text-on-surface-variant leading-tight mt-1">Health category</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                <CardTitle className="text-xs font-medium text-on-surface min-w-0 flex items-center gap-1 truncate">
+            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
+                <CardTitle className="text-[11px] font-medium text-on-surface leading-tight flex items-center gap-1">
                   Starting Weight
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -2336,10 +2332,10 @@ const Dashboard = () => {
                     </TooltipContent>
                   </Tooltip>
                 </CardTitle>
-                <MaterialIcon name="monitor_weight" size="sm" className="text-primary shrink-0" />
+                <MaterialIcon name="monitor_weight" size="xs" className="text-primary shrink-0" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-primary truncate">
+              <CardContent className="p-3 pt-0">
+                <div className="text-xl font-bold text-primary leading-none">
                   {(() => {
                     if (isAcclimationComplete()) {
                       const avg = getTotalAcclimationAverage();
@@ -2348,22 +2344,22 @@ const Dashboard = () => {
                     return tdeeValues?.currentWeight ? `${tdeeValues.currentWeight} kg` : `${weeklyAverages.weight.toFixed(2)} kg`;
                   })()}
                 </div>
-                <p className="text-xs text-on-surface-variant truncate">
+                <p className="text-[10px] text-on-surface-variant leading-tight mt-1">
                   {isAcclimationComplete() ? 'From 4-week acclimation average' : 'From TDEE Calculator'}
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                <CardTitle className="text-xs font-medium text-on-surface min-w-0 truncate">Weight to lose (Kg)</CardTitle>
-                <MaterialIcon name="gps_fixed" size="sm" className="text-primary shrink-0" />
+            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
+                <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Weight to lose (Kg)</CardTitle>
+                <MaterialIcon name="gps_fixed" size="xs" className="text-primary shrink-0" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-primary truncate">
+              <CardContent className="p-3 pt-0">
+                <div className="text-xl font-bold text-primary leading-none">
                   {weeklyAverages.weight > 0 ? `${getWeightToLose().toFixed(1)} kg` : (tdeeValues?.weightToLose ? `${parseFloat(tdeeValues.weightToLose).toFixed(1)} kg` : '—')}
                 </div>
-                <p className="text-xs text-on-surface-variant truncate">To healthy weight midpoint</p>
+                <p className="text-[10px] text-on-surface-variant leading-tight mt-1">To healthy weight midpoint</p>
               </CardContent>
             </Card>
           </div>
@@ -2584,22 +2580,22 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent className={weightLossCollapsed ? 'hidden' : ''}>
             {/* Progress Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Card className="bg-background border-outline-variant cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium text-foreground flex items-center gap-1">
+                  <Card className="bg-surface-container-low border-2 border-primary/60 cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
+                      <CardTitle className="text-[11px] font-medium text-on-surface leading-tight flex items-center gap-1">
                         Streak
                         <MaterialIcon name="help_outline" size="xs" className="text-muted-foreground" />
                       </CardTitle>
-                      <MaterialIcon name="bolt" size="sm" className="text-primary" />
+                      <MaterialIcon name="bolt" size="xs" className="text-primary shrink-0" />
                     </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-primary">{currentStreak} days</div>
-                      <p className="text-xs text-muted-foreground">Keep it up!</p>
+                    <CardContent className="p-3 pt-0">
+                      <div className="text-xl font-bold text-primary leading-none">{currentStreak} days</div>
+                      <p className="text-[10px] text-on-surface-variant leading-tight mt-1">Keep it up!</p>
                       {longestStreak > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">Longest streak was {longestStreak} days</p>
+                        <p className="text-[10px] text-on-surface-variant leading-tight mt-0.5">Longest streak was {longestStreak} days</p>
                       )}
                     </CardContent>
                   </Card>
@@ -2611,19 +2607,19 @@ const Dashboard = () => {
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Card className="bg-background border-outline-variant cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium text-foreground flex items-center gap-1">
+                  <Card className="bg-surface-container-low border-2 border-primary/60 cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
+                      <CardTitle className="text-[11px] font-medium text-on-surface leading-tight flex items-center gap-1">
                         Previous Week Average
                         <MaterialIcon name="help_outline" size="xs" className="text-muted-foreground" />
                       </CardTitle>
-                      <MaterialIcon name="monitor_weight" size="sm" className="text-blue-500" />
+                      <MaterialIcon name="monitor_weight" size="xs" className="text-primary shrink-0" />
                     </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-blue-500">
+                    <CardContent className="p-3 pt-0">
+                      <div className="text-xl font-bold text-primary leading-none">
                         {previousWeekComparison.average > 0 ? `${previousWeekComparison.average.toFixed(2)} kg` : 'No data'}
                       </div>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-[10px] text-on-surface-variant leading-tight mt-1">
                         {completedWeeks.length > 0 ? `Week ${completedWeeks.length} average` : 'Acclimation Phase average'}
                       </p>
                     </CardContent>
@@ -2636,28 +2632,25 @@ const Dashboard = () => {
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Card className="bg-background border-outline-variant cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-primary">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium text-foreground flex items-center gap-1">
+                  <Card className="bg-surface-container-low border-2 border-primary/60 cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
+                      <CardTitle className="text-[11px] font-medium text-on-surface leading-tight flex items-center gap-1">
                         Weight loss to date
                         <MaterialIcon name="help_outline" size="xs" className="text-muted-foreground" />
                       </CardTitle>
-                      <MaterialIcon name="trending_up" size="sm" className="text-pink-500" />
+                      <MaterialIcon name="trending_up" size="xs" className="text-primary shrink-0" />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-3 pt-0">
                       {(() => {
                         const d = getWeightPhaseDeltaKg();
                         const eps = 1e-6;
-                        let colorClass = "text-orange-500";
-                        if (d < -eps) colorClass = "text-green-500";
-                        if (d > eps) colorClass = "text-red-500";
                         let text = "0.00 kg";
                         if (d < -eps) text = `${d.toFixed(2)} kg`;
                         else if (d > eps) text = `+${d.toFixed(2)} kg`;
                         return (
                           <>
-                            <div className={`text-2xl font-bold ${colorClass}`}>{text}</div>
-                            <p className="text-xs text-muted-foreground">Since start date</p>
+                            <div className="text-xl font-bold text-primary leading-none">{text}</div>
+                            <p className="text-[10px] text-on-surface-variant leading-tight mt-1">Since start date</p>
                           </>
                         );
                       })()}
@@ -3201,56 +3194,56 @@ const Dashboard = () => {
 
               {/* Maintenance Stats */}
               <h2 className="text-xl font-semibold mb-4">Stats</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                    <CardTitle className="text-xs font-medium text-on-surface min-w-0 truncate">New Estimated BMI</CardTitle>
-                    <MaterialIcon name="monitor_weight" size="sm" className="text-primary shrink-0" />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
+                    <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">New Estimated BMI</CardTitle>
+                    <MaterialIcon name="monitor_weight" size="xs" className="text-primary shrink-0" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-primary truncate">
+                  <CardContent className="p-3 pt-0">
+                    <div className="text-xl font-bold text-primary leading-none">
                       {calculateMaintenanceStats(maintenanceDisplayWeightKg()).bmi}
                     </div>
-                    <p className="text-xs text-on-surface-variant truncate">Recalculated</p>
+                    <p className="text-[10px] text-on-surface-variant leading-tight mt-1">Recalculated</p>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                    <CardTitle className="text-xs font-medium text-on-surface min-w-0 truncate">New Estimated BF %</CardTitle>
-                    <MaterialIcon name="trending_up" size="sm" className="text-primary shrink-0" />
+                <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
+                    <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">New Estimated BF %</CardTitle>
+                    <MaterialIcon name="trending_up" size="xs" className="text-primary shrink-0" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-primary truncate">
+                  <CardContent className="p-3 pt-0">
+                    <div className="text-xl font-bold text-primary leading-none">
                       {calculateMaintenanceStats(maintenanceDisplayWeightKg()).bodyFat}%
                     </div>
-                    <p className="text-xs text-on-surface-variant truncate">Recalculated</p>
+                    <p className="text-[10px] text-on-surface-variant leading-tight mt-1">Recalculated</p>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                    <CardTitle className="text-xs font-medium text-on-surface min-w-0 truncate">Updated Classification</CardTitle>
-                    <MaterialIcon name="emoji_events" size="sm" className="text-primary shrink-0" />
+                <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
+                    <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Updated Classification</CardTitle>
+                    <MaterialIcon name="emoji_events" size="xs" className="text-primary shrink-0" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-base font-bold text-primary truncate">
+                  <CardContent className="p-3 pt-0">
+                    <div className="text-sm font-bold text-primary leading-tight">
                       {calculateMaintenanceStats(maintenanceDisplayWeightKg()).classification}
                     </div>
-                    <p className="text-xs text-on-surface-variant truncate">Health category</p>
+                    <p className="text-[10px] text-on-surface-variant leading-tight mt-1">Health category</p>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                    <CardTitle className="text-xs font-medium text-on-surface min-w-0 truncate">Maintenance baseline weight</CardTitle>
-                    <MaterialIcon name="monitor_weight" size="sm" className="text-primary shrink-0" />
+                <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
+                    <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Maintenance baseline</CardTitle>
+                    <MaterialIcon name="monitor_weight" size="xs" className="text-primary shrink-0" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-primary truncate">
+                  <CardContent className="p-3 pt-0">
+                    <div className="text-xl font-bold text-primary leading-none">
                       {maintenanceDisplayWeightKg().toFixed(2)} kg
                     </div>
-                    <p className="text-xs text-on-surface-variant truncate">From end of Week 12 (fixed for this phase)</p>
+                    <p className="text-[10px] text-on-surface-variant leading-tight mt-1">From end of Week 12 (fixed)</p>
                   </CardContent>
                 </Card>
               </div>
