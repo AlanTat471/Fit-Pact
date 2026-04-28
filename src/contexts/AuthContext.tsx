@@ -191,7 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       isSigningOutRef.current = false;
     }
-    // Clear user-specific journey/dashboard DATA only — not profile mirrors or archived phases (fitpactArchivedPhases).
+    // Clear user-specific journey/dashboard DATA only — not profile mirrors or archived phases (numiArchivedPhases).
     // Profile fields live in Supabase; clearing them here made Profile look empty on
     // next login until fetch completed. userProfile is overwritten on next fetchProfile.
     const keys = [

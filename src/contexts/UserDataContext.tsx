@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
 import {
   getActiveJourney,
@@ -85,7 +85,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
     setCustomMacros(m);
   };
 
-  const saveJourney = async (payload: Partial<JourneyRow>) => {
+  const saveJourney = useCallback(async (payload: Partial<JourneyRow>) => {
     if (!user || !journey) return;
     const { data: updated, error } = await upsertJourney(journey.id, payload);
     if (updated) {
@@ -99,9 +99,9 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
         variant: "destructive",
       });
     }
-  };
+  }, [user, journey?.id]);
 
-  const saveTdee = async (payload: Partial<TdeeRow>) => {
+  const saveTdee = useCallback(async (payload: Partial<TdeeRow>) => {
     if (!user) return;
     const updated = await upsertTdee(user.id, payload);
     if (updated) {
@@ -110,9 +110,9 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
     } else {
       toast({ title: "Save failed", description: "Could not save TDEE values. Please try again.", variant: "destructive" });
     }
-  };
+  }, [user?.id]);
 
-  const saveMacros = async (macros: Record<string, number>) => {
+  const saveMacros = useCallback(async (macros: Record<string, number>) => {
     if (!user) return;
     const ok = await upsertCustomMacros(user.id, macros);
     if (ok) {
@@ -121,7 +121,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
     } else {
       toast({ title: "Save failed", description: "Could not save macro settings. Please try again.", variant: "destructive" });
     }
-  };
+  }, [user?.id]);
 
   function syncJourneyToLocalStorage(j: JourneyRow) {
     try {
@@ -161,7 +161,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("dashboardJourneyComplete", String(j.journey_complete ?? false));
       if (j.maintenance_phase) localStorage.setItem("dashboardMaintenancePhase", JSON.stringify(j.maintenance_phase));
       if (Array.isArray(j.archived_phases)) {
-        localStorage.setItem("fitpactArchivedPhases", JSON.stringify(j.archived_phases));
+        localStorage.setItem("numiArchivedPhases", JSON.stringify(j.archived_phases));
       }
     } catch {}
   }
@@ -205,7 +205,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
       const startWeight = localStorage.getItem("dashboardStartingWeight");
       const journeyComplete = localStorage.getItem("dashboardJourneyComplete");
       const maint = localStorage.getItem("dashboardMaintenancePhase");
-      const archivedRaw = localStorage.getItem("fitpactArchivedPhases");
+      const archivedRaw = localStorage.getItem("numiArchivedPhases");
 
       if (weekly || prev || completed || acclim) {
         const j = journey || (await createJourney(user.id));

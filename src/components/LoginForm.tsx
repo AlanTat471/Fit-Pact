@@ -22,6 +22,7 @@ import {
   isDeviceTrusted,
   addTrustedDevice,
 } from "@/lib/supabaseTrustedDevices";
+import { MaterialIcon } from "@/components/ui/material-icon";
 
 type SignInMode = "password" | "otp";
 
@@ -29,6 +30,7 @@ const LoginForm = () => {
   const [signInMode, setSignInMode] = useState<SignInMode>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [showForgotPasswordDialog, setShowForgotPasswordDialog] = useState(false);
@@ -325,15 +327,29 @@ const LoginForm = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-12"
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 pr-12"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
+                  >
+                    <MaterialIcon
+                      name={showPassword ? "visibility_off" : "visibility"}
+                      size="sm"
+                    />
+                  </button>
+                </div>
               </div>
               <div className="flex flex-col items-center gap-3">
                 <button

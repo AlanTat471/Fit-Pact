@@ -53,7 +53,7 @@ interface Goal {
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile } = useAuth();
   
   // User name state - from Supabase profile
   const [userName, setUserName] = useState<{ firstName: string; lastName: string }>({ firstName: '', lastName: '' });
@@ -190,6 +190,32 @@ const Profile = () => {
     });
   }, [user?.id]);
   
+  // ─── Input override fix ─────────────────────────────────────────────
+  // Background: each keystroke used to fire upsertProfile() AND refreshProfile().
+  // refreshProfile triggered an AuthContext re-fetch which fired the [profile]
+  // useEffect below, overwriting local state (description / my-why / goals /
+  // day-goals) with whatever the server returned mid-flight — wiping the user's
+  // in-progress typing. This is the "input clears / reverts to old value" bug.
+  //
+  // Fix:
+  //   1. Don't call refreshProfile() after each save — local state already
+  //      matches what we just wrote to the server.
+  //   2. Track in a ref when the user has locally edited a profile field so
+  //      the [profile] useEffect won't overwrite it during the in-flight
+  //      AuthContext refresh that happens on session resume / token refresh.
+  //   3. Hydrate from the server profile only ONCE per user (first time we see
+  //      a non-null profile for this user.id). Subsequent profile updates
+  //      from elsewhere don't clobber what the user is currently editing.
+  // ─────────────────────────────────────────────────────────────────────
+  const localEditFlagsRef = useRef({
+    description: false,
+    myWhy: false,
+    goals: false,
+    dayGoals: false,
+    photo: false,
+  });
+  const profileHydratedForUserRef = useRef<string | null>(null);
+
   const saveProfileToSupabase = useCallback(async (updates: { profile_description?: string; my_why?: string; my_goals?: Goal[]; my_day_goals?: DayGoals; profile_photo?: string }) => {
     if (!user?.id) return;
     await upsertProfile(user.id, {
@@ -199,30 +225,68 @@ const Profile = () => {
       my_day_goals: updates.my_day_goals,
       profile_photo: updates.profile_photo,
     });
-    refreshProfile();
-  }, [user?.id, refreshProfile]);
+    // Note: intentionally NOT calling refreshProfile() here. Local state is the
+    // source of truth for what the user just typed; refetching mid-typing was
+    // the race that caused inputs to revert.
+  }, [user?.id]);
 
-  // Load user name and profile data from Supabase profile
+  // Hydrate from Supabase profile ONCE per logged-in user, then never overwrite
+  // local state from profile changes (which fire on token-refresh / session
+  // resume). New devices / fresh logins still get correct data because user.id
+  // changes when a different user signs in.
   useEffect(() => {
-    if (profile) {
+    if (!user?.id) {
+      profileHydratedForUserRef.current = null;
+      return;
+    }
+    if (!profile) return;
+    if (profileHydratedForUserRef.current === user.id) {
+      // Already hydrated for this user — only refresh fields the user hasn't
+      // touched locally (so changes made on another device still come through).
+      if (!localEditFlagsRef.current.description && profile.profile_description != null) {
+        setProfileDescription(profile.profile_description || "");
+      }
+      if (!localEditFlagsRef.current.myWhy && profile.my_why) {
+        setMyWhy(profile.my_why);
+      }
+      if (!localEditFlagsRef.current.goals && Array.isArray(profile.my_goals)) {
+        setGoals(profile.my_goals as Goal[]);
+      }
+      if (!localEditFlagsRef.current.dayGoals && profile.my_day_goals && typeof profile.my_day_goals === 'object') {
+        setDayGoals(profile.my_day_goals as DayGoals);
+      }
+      if (!localEditFlagsRef.current.photo && profile.profile_photo) {
+        setProfilePhoto(profile.profile_photo);
+      }
+      // Always refresh name (read-only on this page)
       setUserName({
         firstName: profile.first_name || '',
         lastName: profile.last_name || ''
       });
-      setProfileDescription(profile.profile_description || "");
-      setMyWhy(profile.my_why || "I want to be healthier and have more energy for my family. I want to feel confident in my clothes and improve my overall well-being.");
-      if (Array.isArray(profile.my_goals)) setGoals(profile.my_goals as Goal[]);
-      if (profile.my_day_goals && typeof profile.my_day_goals === 'object') setDayGoals(profile.my_day_goals as DayGoals);
-      if (profile.profile_photo) setProfilePhoto(profile.profile_photo);
-    } else {
-      const stored = localStorage.getItem('userProfile');
-      if (stored) {
-        try {
-          const p = JSON.parse(stored);
-          setUserName({ firstName: p.firstName || '', lastName: p.lastName || '' });
-        } catch {}
-      }
+      return;
     }
+    // First-time hydration for this user
+    profileHydratedForUserRef.current = user.id;
+    setUserName({
+      firstName: profile.first_name || '',
+      lastName: profile.last_name || ''
+    });
+    setProfileDescription(profile.profile_description || "");
+    setMyWhy(profile.my_why || "I want to be healthier and have more energy for my family. I want to feel confident in my clothes and improve my overall well-being.");
+    if (Array.isArray(profile.my_goals)) setGoals(profile.my_goals as Goal[]);
+    if (profile.my_day_goals && typeof profile.my_day_goals === 'object') setDayGoals(profile.my_day_goals as DayGoals);
+    if (profile.profile_photo) setProfilePhoto(profile.profile_photo);
+  }, [user?.id, profile]);
+
+  // Fallback hydration when there is no Supabase profile (offline-first / pre-migrate)
+  useEffect(() => {
+    if (profile) return;
+    const stored = localStorage.getItem('userProfile');
+    if (!stored) return;
+    try {
+      const p = JSON.parse(stored);
+      setUserName({ firstName: p.firstName || '', lastName: p.lastName || '' });
+    } catch {}
   }, [profile]);
   
   // Get weight unit from user profile (prefer AuthContext profile, then localStorage)
@@ -324,6 +388,7 @@ const Profile = () => {
   
   const handleSaveDescription = () => {
     if (tempDescription.length <= 1000) {
+      localEditFlagsRef.current.description = true;
       setProfileDescription(tempDescription);
       localStorage.setItem('profileDescription', tempDescription);
       saveProfileToSupabase({ profile_description: tempDescription });
@@ -333,6 +398,7 @@ const Profile = () => {
   
   const handleSaveMyWhy = () => {
     if (tempMyWhy.length <= 1000) {
+      localEditFlagsRef.current.myWhy = true;
       setMyWhy(tempMyWhy);
       localStorage.setItem('myWhy', tempMyWhy);
       saveProfileToSupabase({ my_why: tempMyWhy });
@@ -356,6 +422,7 @@ const Profile = () => {
       ...dayGoals,
       [day]: [...(dayGoals[day] || []), newGoal]
     };
+    localEditFlagsRef.current.dayGoals = true;
     setDayGoals(updatedDayGoals);
     localStorage.setItem('myDayGoals', JSON.stringify(updatedDayGoals));
     saveProfileToSupabase({ my_day_goals: updatedDayGoals });
@@ -379,6 +446,7 @@ const Profile = () => {
         return goal;
       })
     };
+    localEditFlagsRef.current.dayGoals = true;
     setDayGoals(updatedDayGoals);
     localStorage.setItem('myDayGoals', JSON.stringify(updatedDayGoals));
     saveProfileToSupabase({ my_day_goals: updatedDayGoals });
@@ -389,6 +457,7 @@ const Profile = () => {
       ...dayGoals,
       [day]: (dayGoals[day] || []).filter(goal => goal.id !== goalId)
     };
+    localEditFlagsRef.current.dayGoals = true;
     setDayGoals(updatedDayGoals);
     localStorage.setItem('myDayGoals', JSON.stringify(updatedDayGoals));
     saveProfileToSupabase({ my_day_goals: updatedDayGoals });
@@ -406,6 +475,7 @@ const Profile = () => {
     };
     
     const updatedGoals = [...goals, newGoal];
+    localEditFlagsRef.current.goals = true;
     setGoals(updatedGoals);
     localStorage.setItem('myGoals', JSON.stringify(updatedGoals));
     saveProfileToSupabase({ my_goals: updatedGoals });
@@ -425,6 +495,7 @@ const Profile = () => {
       }
       return goal;
     });
+    localEditFlagsRef.current.goals = true;
     setGoals(updatedGoals);
     localStorage.setItem('myGoals', JSON.stringify(updatedGoals));
     saveProfileToSupabase({ my_goals: updatedGoals });
@@ -434,6 +505,7 @@ const Profile = () => {
     const updatedGoals = goals.map(goal => 
       goal.id === goalId ? { ...goal, completed: !goal.completed } : goal
     );
+    localEditFlagsRef.current.goals = true;
     setGoals(updatedGoals);
     localStorage.setItem('myGoals', JSON.stringify(updatedGoals));
     saveProfileToSupabase({ my_goals: updatedGoals });
@@ -441,6 +513,7 @@ const Profile = () => {
   
   const handleDeleteGoal = (goalId: string) => {
     const updatedGoals = goals.filter(goal => goal.id !== goalId);
+    localEditFlagsRef.current.goals = true;
     setGoals(updatedGoals);
     localStorage.setItem('myGoals', JSON.stringify(updatedGoals));
     saveProfileToSupabase({ my_goals: updatedGoals });
@@ -552,6 +625,7 @@ const Profile = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64String = reader.result as string;
+        localEditFlagsRef.current.photo = true;
         setProfilePhoto(base64String);
         localStorage.setItem('profilePhoto', base64String);
         saveProfileToSupabase({ profile_photo: base64String });
@@ -801,6 +875,7 @@ const Profile = () => {
                                       return { ...g, completed: nextCompleted, current: nextCurrent };
                                     }),
                                   };
+                                  localEditFlagsRef.current.dayGoals = true;
                                   setDayGoals(updatedDayGoals);
                                   localStorage.setItem('myDayGoals', JSON.stringify(updatedDayGoals));
                                   saveProfileToSupabase({ my_day_goals: updatedDayGoals });

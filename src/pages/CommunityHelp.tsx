@@ -85,12 +85,10 @@ const CommunityHelp = () => {
 
         <Card className="opacity-60 transition-all duration-300 hover:shadow-card hover:-translate-y-1">
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <MaterialIcon name="chat" className="mb-2 text-muted-foreground" size="lg" />
-            </div>
-            <div className="flex items-center gap-2">
-              <CardTitle>FAQ</CardTitle>
-              <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+            <MaterialIcon name="chat" className="mb-2 text-muted-foreground" size="lg" />
+            <div className="flex items-center gap-2 flex-nowrap">
+              <CardTitle className="truncate">FAQ</CardTitle>
+              <Badge variant="secondary" className="text-[10px] whitespace-nowrap shrink-0">Coming soon</Badge>
             </div>
             <CardDescription>
               Find answers to frequently asked questions
@@ -106,9 +104,9 @@ const CommunityHelp = () => {
         <Card className="opacity-60 transition-all duration-300 hover:shadow-card hover:-translate-y-1">
           <CardHeader>
             <MaterialIcon name="menu_book" className="mb-2 text-muted-foreground" size="lg" />
-            <div className="flex items-center gap-2">
-              <CardTitle>Articles</CardTitle>
-              <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+            <div className="flex items-center gap-2 flex-nowrap">
+              <CardTitle className="truncate">Articles</CardTitle>
+              <Badge variant="secondary" className="text-[10px] whitespace-nowrap shrink-0">Coming soon</Badge>
             </div>
             <CardDescription>
               Read tips, guides, and expert advice on fitness
@@ -124,9 +122,9 @@ const CommunityHelp = () => {
         <Card className="opacity-60 transition-all duration-300 hover:shadow-card hover:-translate-y-1">
           <CardHeader>
             <MaterialIcon name="group" className="mb-2 text-muted-foreground" size="lg" />
-            <div className="flex items-center gap-2">
-              <CardTitle>Your Community</CardTitle>
-              <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+            <div className="flex items-center gap-2 flex-nowrap">
+              <CardTitle className="truncate">Your Community</CardTitle>
+              <Badge variant="secondary" className="text-[10px] whitespace-nowrap shrink-0">Coming soon</Badge>
             </div>
             <CardDescription>
               Connect with others on their fitness journey

@@ -157,36 +157,36 @@ const PaymentDetails = () => {
     description: string;
   }) => (
     <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === plan ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
-      <CardHeader className="pb-3 min-h-[160px]">
-        <CardTitle className="text-xl">{name}</CardTitle>
-        <span className="text-[10px] tracking-wide text-on-surface-variant">({statusLabel(plan)})</span>
-        <p className="text-[13px] leading-5 text-on-surface-variant mt-1.5 min-h-[100px]">{description}</p>
+      <CardHeader className="pb-3 min-h-[150px]">
+        <CardTitle className="text-lg">{name}</CardTitle>
+        <span className="text-[9px] tracking-wide text-on-surface-variant">({statusLabel(plan)})</span>
+        <p className="text-[11px] leading-[1.35] text-on-surface-variant mt-1.5 min-h-[90px]">{description}</p>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col pb-24">
-        <div className="flex items-start gap-1.5 min-h-[72px]">
+        <div className="flex items-start gap-1.5 min-h-[68px]">
           <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
           <div>
-            <p className="font-medium text-sm">Paid subscription</p>
-            <p className="text-xs leading-snug text-muted-foreground">
+            <p className="font-medium text-[12px]">Paid subscription</p>
+            <p className="text-[10px] leading-snug text-muted-foreground">
               Access to '12 Week' Plan, downloadable reports, unlock 'Achievements' and more.
             </p>
           </div>
         </div>
 
-        <div className="flex items-start gap-1.5 min-h-[72px]">
+        <div className="flex items-start gap-1.5 min-h-[68px]">
           <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
           <div>
-            <p className="font-medium text-sm">Payment Method</p>
+            <p className="font-medium text-[12px]">Payment Method</p>
             <PaymentIcons />
-            <p className="text-xs leading-snug text-muted-foreground">Paid via xxxx 123x</p>
+            <p className="text-[10px] leading-snug text-muted-foreground">Paid via xxxx 123x</p>
           </div>
         </div>
 
-        <div className="flex items-start gap-1.5 min-h-[72px]">
+        <div className="flex items-start gap-1.5 min-h-[68px]">
           <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
           <div>
-            <p className="font-medium text-sm">Cancel Anytime</p>
-            <p className="text-xs leading-snug text-muted-foreground">
+            <p className="font-medium text-[12px]">Cancel Anytime</p>
+            <p className="text-[10px] leading-snug text-muted-foreground">
               No lock in contract. Cancel anytime. No pro-rata refunds after payment.
             </p>
           </div>
@@ -197,7 +197,7 @@ const PaymentDetails = () => {
             <Button
               onClick={() => setShowUpdatePayment(true)}
               variant="default"
-              className="w-full h-auto py-2.5 px-3 flex flex-col gap-0.5 leading-tight"
+              className="w-full h-[52px] px-3 flex flex-col items-center justify-center gap-0.5 leading-tight"
             >
               <span className="text-xs font-bold">Active</span>
               <span className="text-[10px] opacity-90">Update Payment Method</span>
@@ -206,7 +206,7 @@ const PaymentDetails = () => {
             <Button
               onClick={() => handleSelectPlan(plan)}
               variant="default"
-              className="w-full h-auto py-2.5 px-3 flex flex-col gap-0.5 leading-tight"
+              className="w-full h-[52px] px-3 flex flex-col items-center justify-center gap-0.5 leading-tight"
               disabled={billingLoading}
             >
               <span className="text-xs font-bold">Subscribe</span>
@@ -231,42 +231,42 @@ const PaymentDetails = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto items-stretch">
         {/* Free Plan */}
         <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === 'free' ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
-          <CardHeader className="pb-3 min-h-[160px]">
-            <CardTitle className="text-xl">Free Plan</CardTitle>
-            <span className="text-[10px] tracking-wide text-on-surface-variant">({statusLabel('free')})</span>
-            <p className="text-[13px] leading-5 text-on-surface-variant mt-1.5 min-h-[100px]">
+          <CardHeader className="pb-3 min-h-[150px]">
+            <CardTitle className="text-lg">Free Plan</CardTitle>
+            <span className="text-[9px] tracking-wide text-on-surface-variant">({statusLabel('free')})</span>
+            <p className="text-[11px] leading-[1.35] text-on-surface-variant mt-1.5 min-h-[90px]">
               There is nothing wrong with trying before buying! Get 14 days limited access to get a feel of the app before you subscribe!
             </p>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col pb-24">
-            <div className="flex items-start gap-1.5 min-h-[72px]">
+            <div className="flex items-start gap-1.5 min-h-[68px]">
               <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
               <div>
-                <p className="font-medium text-sm">Free trial for 14 days</p>
-                <p className="text-xs leading-snug text-muted-foreground">Limited access to pro features</p>
+                <p className="font-medium text-[12px]">Free trial for 14 days</p>
+                <p className="text-[10px] leading-snug text-muted-foreground">Limited access to pro features</p>
               </div>
             </div>
-            <div className="flex items-start gap-1.5 min-h-[72px]">
+            <div className="flex items-start gap-1.5 min-h-[68px]">
               <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
               <div>
-                <p className="font-medium text-sm">No credit card required</p>
-                <p className="text-xs leading-snug text-muted-foreground">Try before you commit</p>
+                <p className="font-medium text-[12px]">No credit card required</p>
+                <p className="text-[10px] leading-snug text-muted-foreground">Try before you commit</p>
               </div>
             </div>
-            <div className="flex items-start gap-1.5 min-h-[72px]">
+            <div className="flex items-start gap-1.5 min-h-[68px]">
               <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
               <div>
-                <p className="font-medium text-sm">Trial Period</p>
-                <p className="text-xs leading-snug text-muted-foreground">Free Trial will end after 14 days automatically</p>
+                <p className="font-medium text-[12px]">Trial Period</p>
+                <p className="text-[10px] leading-snug text-muted-foreground">Free Trial will end after 14 days automatically</p>
               </div>
             </div>
             <div className="absolute left-6 right-6 bottom-6">
               {activePlan !== 'free' ? (
-                <Button onClick={() => handleSelectPlan('free')} variant="default" className="w-full h-auto py-2.5 px-3 flex flex-col gap-0.5 leading-tight" disabled={billingLoading}>
+                <Button onClick={() => handleSelectPlan('free')} variant="default" className="w-full h-[52px] px-3 flex flex-col items-center justify-center gap-0.5 leading-tight" disabled={billingLoading}>
                   <span className="text-xs font-bold">Switch to Free Plan</span>
                 </Button>
               ) : (
-                <Button variant="default" className="w-full h-auto py-2.5 px-3 flex flex-col gap-0.5 leading-tight" disabled>
+                <Button variant="default" className="w-full h-[52px] px-3 flex items-center justify-center leading-tight" disabled>
                   <span className="text-xs font-bold">Active</span>
                 </Button>
               )}

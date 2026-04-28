@@ -1,4 +1,4 @@
-# FitPact Launch Guide: Live URL -> Android -> iOS + Stitch Workflow
+# Numi Launch Guide: Live URL -> Android -> iOS + Stitch Workflow
 
 This guide covers:
 - Getting your app off `localhost` and onto a public URL.

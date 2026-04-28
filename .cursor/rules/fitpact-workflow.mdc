@@ -1,0 +1,31 @@
+---
+description: Numi project workflow rules — always explain, validate, and check flows
+alwaysApply: true
+---
+
+# Numi Workflow Rules
+
+## Communication
+
+- **Explain everything in detail.** For every update, fix, or change: explain what was done, why it was done, and what to do next (step by step — where to go, what to click, what commands to run, and in which tool: Cursor, Command Prompt, Vercel, Supabase, Stripe, etc.).
+- **Ask clarifying questions** before implementing if any requirement is ambiguous.
+- **Never assume the user knows technical jargon.** Explain terms plainly when first used.
+
+## Validation
+
+- After every code change, **verify the flow end-to-end**: trace how data moves between pages, check that inputs on one page correctly appear on downstream pages.
+- **Check all logics and calculations** after changes — especially calorie flows (TDEE → Acclimation → WL Recommended → Macros), date calculations, and weight metrics.
+- **Run linter checks** on every edited file before finishing.
+- **Verify variable declaration order** — ensure every variable is declared before any code that references it.
+
+## Quality
+
+- **Do not repeat past mistakes.** Before making a change, check that the same issue hasn't already been fixed or that the fix doesn't reintroduce an earlier bug.
+- **Do not skip steps.** Complete every part of a task before moving on.
+- **Test the "clear all data" and "fresh start" flow** whenever journey or TDEE data logic is modified.
+- When editing multiple files, verify cross-file dependencies (e.g., if Dashboard reads a value that TDEE writes, confirm both sides match).
+
+## Deployment
+
+- Update `git-push-update.bat` with all changed files before telling the user to deploy.
+- Provide a clear testing checklist after each deploy describing exactly what to verify on the live site.

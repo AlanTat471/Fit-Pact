@@ -462,7 +462,7 @@ const Dashboard = () => {
 
   const [archivedPhases, setArchivedPhases] = useState<ArchivedPhaseBundle[]>(() => {
     try {
-      const raw = localStorage.getItem("fitpactArchivedPhases");
+      const raw = localStorage.getItem("numiArchivedPhases");
       if (raw) return JSON.parse(raw) as ArchivedPhaseBundle[];
     } catch {}
     return [];
@@ -755,7 +755,7 @@ const Dashboard = () => {
       const hasSeenReady = seenReadyPref === "true" || localStorage.getItem('readyToStartShown') === 'true';
 
       if (!hasSeenWelcome) {
-        sessionStorage.setItem("fitpactSeenWelcomeThisSession", "1");
+        sessionStorage.setItem("numiSeenWelcomeThisSession", "1");
         setShowWelcomeDialog(true);
         localStorage.setItem('dashboardWelcomeShown', 'true');
         localStorage.setItem('dashboardTdeeOverviewShown', 'true');
@@ -792,12 +792,12 @@ const Dashboard = () => {
   // Returning users: one motivational dialog per browser session
   useEffect(() => {
     if (!user?.id) return;
-    if (sessionStorage.getItem("fitpactWelcomeBackShown") === "1") return;
-    if (sessionStorage.getItem("fitpactSeenWelcomeThisSession") === "1") return;
+    if (sessionStorage.getItem("numiWelcomeBackShown") === "1") return;
+    if (sessionStorage.getItem("numiSeenWelcomeThisSession") === "1") return;
     if (localStorage.getItem("dashboardWelcomeShown") !== "true") return;
     const tm = window.setTimeout(() => {
       setShowWelcomeBackDialog(true);
-      sessionStorage.setItem("fitpactWelcomeBackShown", "1");
+      sessionStorage.setItem("numiWelcomeBackShown", "1");
     }, 700);
     return () => clearTimeout(tm);
   }, [user?.id]);
@@ -805,7 +805,7 @@ const Dashboard = () => {
   // If journey is complete and maintenance was not chosen yet, show the maintenance prompt after reload (skip when Week 12 summary just fired this session).
   useEffect(() => {
     if (!journeyComplete || maintenancePhase.active) return;
-    if (localStorage.getItem("fitpactPendingMaintenanceAfterWeek12") !== "1") return;
+    if (localStorage.getItem("numiPendingMaintenanceAfterWeek12") !== "1") return;
     if (week12SummaryScheduledRef.current) return;
     const t = window.setTimeout(() => setShowMaintenanceSuggestionDialog(true), 1200);
     return () => window.clearTimeout(t);
@@ -921,7 +921,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     try {
-      localStorage.setItem("fitpactArchivedPhases", JSON.stringify(archivedPhases));
+      localStorage.setItem("numiArchivedPhases", JSON.stringify(archivedPhases));
     } catch {}
   }, [archivedPhases]);
 
@@ -1308,7 +1308,7 @@ const Dashboard = () => {
       'dashboardJourneyComplete', 'dashboardMaintenancePhase', 'dashboardAcclimationShown', 'dashboardLowCalorieHeadroomWarned',
       'dashboardTdeeOverviewShown', 'readyToStartShown', 'showReadyToStartPopup',
       'tdeeCalculatedValues', 'startingCalorieIntake', 'suggestedWeightGoal',
-      'fitpactPendingMaintenanceAfterWeek12', 'fitpactArchivedPhases',
+      'numiPendingMaintenanceAfterWeek12', 'numiArchivedPhases',
       'tdeeChangeWarningAcknowledged',
     ];
     keysToRemove.forEach(key => localStorage.removeItem(key));
@@ -1417,7 +1417,7 @@ const Dashboard = () => {
     // One reminder per weight-loss week index + day column (not calendar date — avoids blocking other weeks/days)
     const wlWeek = completedWeeks.length;
     if (cal > targetCalories) {
-      const k = `fitpactCalHigh-wl${wlWeek}-${day}`;
+      const k = `numiCalHigh-wl${wlWeek}-${day}`;
       if (!localStorage.getItem(k)) {
         localStorage.setItem(k, "1");
         setCalorieReminder("high");
@@ -1425,7 +1425,7 @@ const Dashboard = () => {
       return;
     }
     if (cal < targetCalories * 0.85) {
-      const k = `fitpactCalLow-wl${wlWeek}-${day}`;
+      const k = `numiCalLow-wl${wlWeek}-${day}`;
       if (!localStorage.getItem(k)) {
         localStorage.setItem(k, "1");
         setCalorieReminder("low");
@@ -1881,7 +1881,7 @@ const Dashboard = () => {
       });
       setJourneyComplete(true);
       localStorage.setItem('dashboardJourneyComplete', 'true');
-      localStorage.setItem('fitpactPendingMaintenanceAfterWeek12', '1');
+      localStorage.setItem('numiPendingMaintenanceAfterWeek12', '1');
       // Auto-collapse Acclimation and Weight Loss sections
       setAcclimationCollapsed(true);
       setWeightLossCollapsed(true);
@@ -4599,7 +4599,7 @@ const Dashboard = () => {
             <AlertDialogAction
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
-                localStorage.removeItem("fitpactPendingMaintenanceAfterWeek12");
+                localStorage.removeItem("numiPendingMaintenanceAfterWeek12");
                 setShowWeek12SummaryDialog(false);
                 setTimeout(() => setShowMaintenanceSuggestionDialog(true), 300);
               }}
@@ -4629,7 +4629,7 @@ const Dashboard = () => {
             <AlertDialogAction
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
-                localStorage.removeItem("fitpactPendingMaintenanceAfterWeek12");
+                localStorage.removeItem("numiPendingMaintenanceAfterWeek12");
                 setShowStillLoseWeightDialog(false);
                 setTimeout(() => setShowMaintenanceSuggestionDialog(true), 300);
               }}
@@ -4665,7 +4665,7 @@ const Dashboard = () => {
             <AlertDialogAction
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
-                localStorage.removeItem("fitpactPendingMaintenanceAfterWeek12");
+                localStorage.removeItem("numiPendingMaintenanceAfterWeek12");
                 // Collapse completed weeks and activate maintenance phase
                 const detailsElements = document.querySelectorAll('.completed-week-details');
                 detailsElements.forEach((el) => {

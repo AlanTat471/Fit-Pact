@@ -27,7 +27,7 @@ import { upsertProfile } from "@/lib/supabaseProfile";
 const TDEE = () => {
   const navigate = useNavigate();
   const { saveTdee, loading: userDataLoading, journey, tdee } = useUserData();
-  const { user, profile, refreshProfile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
 
   // Safety timeout: if loading exceeds 5s, force-show the form to avoid infinite spinner
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
@@ -88,17 +88,34 @@ const TDEE = () => {
     };
   });
   
+  // ─── Input override fix (TDEE form) ────────────────────────────────
+  // Background: AuthContext fires onAuthStateChange on every token refresh /
+  // session resume, which calls setUser (new ref) + fetchProfile + setProfile.
+  // The previous code re-hydrated formData from `profile` whenever profile
+  // changed, wiping mid-typing input. Adding to that, applyFieldChange()
+  // called refreshProfile() which forced ANOTHER fetchProfile and another
+  // overwrite — i.e. the page literally fought the user's keystrokes.
+  //
+  // Fix: per-field "user has edited this locally" flags. Once a field has
+  // been edited locally, the profile→formData sync NEVER overwrites it
+  // again for the rest of the session. Cross-device updates still come
+  // through for fields the user hasn't touched.
+  // ───────────────────────────────────────────────────────────────────
   const profileHydratedForUserRef = useRef<string | null>(null);
+  const localFieldEditsRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (!user?.id) profileHydratedForUserRef.current = null;
+    if (!user?.id) {
+      profileHydratedForUserRef.current = null;
+      localFieldEditsRef.current = {};
+    }
   }, [user?.id]);
 
-  // Hydrate TDEE form from Supabase profile once per login — avoids flicker from refreshProfile/saveTdee loops
+  // Hydrate TDEE form from Supabase profile.
+  // First mount per user: full hydrate.
+  // Subsequent profile changes: only refresh fields the user hasn't touched.
   useEffect(() => {
     if (!user?.id || !profile) return;
-    if (profileHydratedForUserRef.current === user.id) return;
-    profileHydratedForUserRef.current = user.id;
     const next = {
       gender: profile.gender || "",
       height: profile.height || "",
@@ -106,48 +123,74 @@ const TDEE = () => {
       age: String(profile.age ?? ""),
       activityLevel: profile.activity_level || "",
     };
-    setFormData(next);
-    setOriginalValues({ ...next });
+    if (profileHydratedForUserRef.current !== user.id) {
+      profileHydratedForUserRef.current = user.id;
+      setFormData(next);
+      setOriginalValues({ ...next });
+      return;
+    }
+    setFormData((prev) => {
+      const merged = { ...prev };
+      let changed = false;
+      (Object.keys(next) as Array<keyof typeof next>).forEach((k) => {
+        if (localFieldEditsRef.current[k]) return; // user has edited locally — don't clobber
+        if (merged[k] !== next[k]) {
+          merged[k] = next[k];
+          changed = true;
+        }
+      });
+      return changed ? merged : prev;
+    });
+    // Keep originalValues aligned with cross-device updates so the
+    // "TDEE change" warning doesn't fire incorrectly for values the user
+    // hasn't actually changed locally.
+    setOriginalValues((prev) => {
+      if (!prev) return { ...next };
+      const merged = { ...prev };
+      let changed = false;
+      (Object.keys(next) as Array<keyof typeof next>).forEach((k) => {
+        if (localFieldEditsRef.current[k]) return;
+        if (merged[k] !== next[k]) {
+          merged[k] = next[k];
+          changed = true;
+        }
+      });
+      return changed ? merged : prev;
+    });
   }, [user?.id, profile]);
 
-  // When profile weight updates from elsewhere (e.g. Maintenance Phase week 4 sync), keep TDEE form in sync
-  // Skip sync briefly after the user edits weight locally to avoid the old DB value overwriting their input
-  const localWeightEditRef = useRef(false);
-  const localWeightEditTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const profileWeight = profile?.current_weight;
-  useEffect(() => {
-    if (localWeightEditRef.current) return;
-    if (profileWeight == null || profileWeight === "") return;
-    setFormData((prev) => {
-      if (prev.weight === profileWeight) return prev;
-      return { ...prev, weight: profileWeight };
-    });
-  }, [profileWeight]);
-
-  // Listen for changes to userProfile in localStorage
+  // Cross-tab storage sync (only honoured for fields the user hasn't edited)
   useEffect(() => {
     const handleStorageChange = () => {
-      if (localWeightEditRef.current) return;
       const profile = localStorage.getItem('userProfile');
-      if (profile) {
-        try {
-          const profileData = JSON.parse(profile);
-          setFormData({
-            gender: profileData.gender || "",
-            height: profileData.height || "",
-            weight: profileData.currentWeight || "",
-            age: profileData.age || "",
-            activityLevel: profileData.activityLevel || ""
+      if (!profile) return;
+      try {
+        const profileData = JSON.parse(profile);
+        const incoming = {
+          gender: profileData.gender || "",
+          height: profileData.height || "",
+          weight: profileData.currentWeight || "",
+          age: profileData.age || "",
+          activityLevel: profileData.activityLevel || ""
+        } as const;
+        setFormData((prev) => {
+          const merged = { ...prev } as typeof prev;
+          let changed = false;
+          (Object.keys(incoming) as Array<keyof typeof incoming>).forEach((k) => {
+            if (localFieldEditsRef.current[k]) return;
+            if (merged[k] !== incoming[k]) {
+              merged[k] = incoming[k];
+              changed = true;
+            }
           });
-        } catch (e) {
-          console.error('Error parsing user profile:', e);
-        }
+          return changed ? merged : prev;
+        });
+      } catch (e) {
+        console.error('Error parsing user profile:', e);
       }
     };
 
-    // Listen for storage events (from other tabs/windows)
     window.addEventListener('storage', handleStorageChange);
-    
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
@@ -396,16 +439,16 @@ const TDEE = () => {
   
   // Apply the field change without warning
   const applyFieldChange = (field: string, value: string) => {
+    // Mark this field as locally edited so the profile→formData sync
+    // (which fires on token refresh / session resume) doesn't clobber it.
+    localFieldEditsRef.current[field] = true;
+
     const newFormData = { ...formData, [field]: value };
     setFormData(newFormData);
 
-    if (field === "weight") {
-      localWeightEditRef.current = true;
-      if (localWeightEditTimerRef.current) clearTimeout(localWeightEditTimerRef.current);
-      localWeightEditTimerRef.current = setTimeout(() => { localWeightEditRef.current = false; }, 2000);
-    }
-    
-    // Update profile in Supabase (source of truth)
+    // Update profile in Supabase (source of truth) — fire-and-forget.
+    // We deliberately do NOT call refreshProfile() here: that re-fetches the
+    // profile mid-typing and used to wipe the user's input.
     const fieldMap: Record<string, string> = {
       'weight': 'current_weight',
       'gender': 'gender',
@@ -418,7 +461,6 @@ const TDEE = () => {
       const payload: Record<string, string | number> = {};
       payload[profileField] = field === 'age' ? parseInt(value, 10) : value;
       upsertProfile(user.id, payload as Parameters<typeof upsertProfile>[1]);
-      if (field !== "weight") refreshProfile();
     }
     // Also update localStorage for legacy compatibility
     const stored = localStorage.getItem('userProfile');
@@ -494,6 +536,9 @@ const TDEE = () => {
 
   const handleClearFields = () => {
     manualStartingCalRef.current = null;
+    // Reset edit flags so subsequent profile hydration can repopulate fields
+    localFieldEditsRef.current = {};
+    profileHydratedForUserRef.current = null;
     const emptyFormData = {
       gender: "",
       height: "",
@@ -860,6 +905,9 @@ const TDEE = () => {
         <Card className="md:col-span-1 border-outline-variant transition-all duration-300 hover:shadow-card hover:-translate-y-1">
           <CardHeader>
             <CardTitle>Ideal Body Fat Range</CardTitle>
+            <p className="text-xs text-muted-foreground font-normal mt-1">
+              A healthy body-fat % band for your age and sex — staying inside this range supports hormonal health and long-term fitness.
+            </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -929,11 +977,14 @@ const TDEE = () => {
         {calculatedValues.currentBMI && calculatedValues.idealWeightMax && formData.weight && (
           <Card className="md:col-span-1 border-outline-variant transition-all duration-300 hover:shadow-card hover:-translate-y-1">
             <CardHeader>
-              <CardTitle>Suggested Weight Goal</CardTitle>
+              <CardTitle>Suggested Weight Loss Goal</CardTitle>
+              <p className="text-xs text-muted-foreground font-normal mt-1">
+                The weight you need to lose to reach the mid-range of your healthy weight range.
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <TooltipField tooltip="Based on your current weight and the mid-range of the healthy BMI (21.7), this is the suggested weight to aim for to reach optimal health.">
+                <TooltipField tooltip="Based on your current weight and the mid-range of your healthy weight band, this is the suggested amount to aim to lose to reach optimal health.">
                   <Label>Weight to Lose (kg)</Label>
                 </TooltipField>
                 <Input
@@ -952,9 +1003,6 @@ const TDEE = () => {
                   className="bg-muted"
                 />
               </div>
-              <p className="text-sm text-muted-foreground">
-                This value represents the weight you need to lose to reach the mid-range of your healthy weight range.
-              </p>
             </CardContent>
           </Card>
         )}
