@@ -57,6 +57,14 @@ const PaymentDetails = () => {
   const [cardName, setCardName] = useState("");
   const [billingLoading, setBillingLoading] = useState(false);
 
+  // Payment-method-on-file display state. Stored locally so the UI can show
+  // the masked last-4 + edit pen once the user has entered card details, and
+  // simply show "Add payment method" until they have. We only persist the last
+  // 4 digits and the cardholder name — never the full PAN/CVC.
+  const [savedCardLast4, setSavedCardLast4] = useState<string>(() => localStorage.getItem('numiSavedCardLast4') || "");
+  const [savedCardName, setSavedCardName] = useState<string>(() => localStorage.getItem('numiSavedCardName') || "");
+  const hasSavedCard = savedCardLast4.length === 4;
+
   const handleSelectPlan = async (plan: PlanType) => {
     if (plan === "free") {
       setActivePlan("free");
@@ -139,11 +147,31 @@ const PaymentDetails = () => {
   };
 
   const handleSavePayment = () => {
+    // Persist only the last 4 digits + cardholder name. Full card data is never
+    // stored in our app or in Supabase — Stripe holds the real PAN. This is just
+    // a friendly UI hint so the user can see which card they last entered.
+    const digitsOnly = cardNumber.replace(/[^0-9]/g, '');
+    if (digitsOnly.length >= 4) {
+      const last4 = digitsOnly.slice(-4);
+      setSavedCardLast4(last4);
+      localStorage.setItem('numiSavedCardLast4', last4);
+    }
+    if (cardName.trim()) {
+      setSavedCardName(cardName.trim());
+      localStorage.setItem('numiSavedCardName', cardName.trim());
+    }
     setShowUpdatePayment(false);
     setCardNumber("");
     setCardExpiry("");
     setCardCvc("");
     setCardName("");
+  };
+
+  const handleRemoveCard = () => {
+    setSavedCardLast4("");
+    setSavedCardName("");
+    localStorage.removeItem('numiSavedCardLast4');
+    localStorage.removeItem('numiSavedCardName');
   };
 
   const statusLabel = (plan: PlanType) =>
@@ -175,10 +203,35 @@ const PaymentDetails = () => {
 
         <div className="flex items-start gap-1.5 min-h-[68px]">
           <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="font-medium text-[12px]">Payment Method</p>
             <PaymentIcons />
-            <p className="text-[10px] leading-snug text-muted-foreground">Paid via xxxx 123x</p>
+            {hasSavedCard ? (
+              // Card on file: show masked details + small edit pen so the user
+              // can update without seeing fake placeholder data.
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="text-[10px] leading-snug text-muted-foreground truncate">
+                  Default · •••• {savedCardLast4}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Edit payment method"
+                  onClick={() => setShowUpdatePayment(true)}
+                  className="shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full hover:bg-primary/10 text-primary"
+                >
+                  <MaterialIcon name="edit" size="xs" />
+                </button>
+              </div>
+            ) : (
+              // No card on file yet: show only an add-payment-method link.
+              <button
+                type="button"
+                onClick={() => setShowUpdatePayment(true)}
+                className="text-[10px] leading-snug text-primary underline underline-offset-2 hover:text-primary/80"
+              >
+                Add payment method
+              </button>
+            )}
           </div>
         </div>
 
@@ -343,7 +396,20 @@ const PaymentDetails = () => {
               </div>
             </div>
           </div>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            {hasSavedCard && (
+              <Button
+                type="button"
+                variant="outline"
+                className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
+                onClick={() => {
+                  handleRemoveCard();
+                  setShowUpdatePayment(false);
+                }}
+              >
+                Remove card
+              </Button>
+            )}
             <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleSavePayment}>Save Card Details</AlertDialogAction>
           </AlertDialogFooter>

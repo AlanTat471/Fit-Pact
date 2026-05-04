@@ -2216,7 +2216,7 @@ const Dashboard = () => {
         {/* Weight Loss Phase - Main Container */}
         <Card className="bg-background border-outline-variant shadow-primary">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <CardTitle className="text-xl md:text-2xl font-bold text-foreground flex items-center gap-2">
                 <MaterialIcon name="gps_fixed" size="md" className="text-primary" />
                 Weight Loss Phase
@@ -2225,7 +2225,7 @@ const Dashboard = () => {
                 onClick={() => setWeightLossMainCollapsed(prev => !prev)}
                 variant="outline"
                 size="sm"
-                className="text-xs"
+                className="text-xs w-full sm:w-auto"
               >
                 {weightLossMainCollapsed ? 'Expand All' : 'Collapse All'}
               </Button>
@@ -2312,46 +2312,46 @@ const Dashboard = () => {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Stats</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                 <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Estimated BMI</CardTitle>
                 <MaterialIcon name="monitor_weight" size="xs" className="text-primary shrink-0" />
               </CardHeader>
               <CardContent className="p-3 pt-0">
-                <div className="text-xl font-bold text-primary leading-none">
+                <div className="text-xl font-bold text-primary leading-none auto-fit-text">
                   {tdeeValues?.currentBMI || calculateBMI().toFixed(1)}
                 </div>
                 <p className="text-[10px] text-on-surface-variant leading-tight mt-1">Body Mass Index</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                 <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Estimated Body %</CardTitle>
                 <MaterialIcon name="trending_up" size="xs" className="text-primary shrink-0" />
               </CardHeader>
               <CardContent className="p-3 pt-0">
-                <div className="text-xl font-bold text-primary leading-none">
+                <div className="text-xl font-bold text-primary leading-none auto-fit-text">
                   {tdeeValues?.bodyFatPercentage ? `${tdeeValues.bodyFatPercentage}%` : `${calculateBodyFat().toFixed(1)}%`}
                 </div>
                 <p className="text-[10px] text-on-surface-variant leading-tight mt-1">Body fat percentage</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                 <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Classification</CardTitle>
                 <MaterialIcon name="emoji_events" size="xs" className="text-primary shrink-0" />
               </CardHeader>
               <CardContent className="p-3 pt-0">
-                <div className="text-sm font-bold text-primary leading-tight">
+                <div className="text-sm font-bold text-primary leading-tight auto-fit-text">
                   {tdeeValues?.classification || getClassification()}
                 </div>
                 <p className="text-[10px] text-on-surface-variant leading-tight mt-1">Health category</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                 <CardTitle className="text-[11px] font-medium text-on-surface leading-tight flex items-center gap-1">
                   Starting Weight
@@ -2367,13 +2367,13 @@ const Dashboard = () => {
                 <MaterialIcon name="monitor_weight" size="xs" className="text-primary shrink-0" />
               </CardHeader>
               <CardContent className="p-3 pt-0">
-                <div className="text-xl font-bold text-primary leading-none">
+                <div className="text-xl font-bold text-primary leading-none auto-fit-text">
                   {(() => {
                     if (isAcclimationComplete()) {
                       const avg = getTotalAcclimationAverage();
                       if (avg > 0) return `${avg.toFixed(2)} kg`;
                     }
-                    return tdeeValues?.currentWeight ? `${tdeeValues.currentWeight} kg` : `${weeklyAverages.weight.toFixed(2)} kg`;
+                    return tdeeValues?.currentWeight ? `${parseFloat(String(tdeeValues.currentWeight)).toFixed(2)} kg` : `${weeklyAverages.weight.toFixed(2)} kg`;
                   })()}
                 </div>
                 <p className="text-[10px] text-on-surface-variant leading-tight mt-1">
@@ -2382,14 +2382,14 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                 <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Weight to lose (Kg)</CardTitle>
                 <MaterialIcon name="gps_fixed" size="xs" className="text-primary shrink-0" />
               </CardHeader>
               <CardContent className="p-3 pt-0">
-                <div className="text-xl font-bold text-primary leading-none">
-                  {weeklyAverages.weight > 0 ? `${getWeightToLose().toFixed(1)} kg` : (tdeeValues?.weightToLose ? `${parseFloat(tdeeValues.weightToLose).toFixed(1)} kg` : '—')}
+                <div className="text-xl font-bold text-primary leading-none auto-fit-text">
+                  {weeklyAverages.weight > 0 ? `${getWeightToLose().toFixed(2)} kg` : (tdeeValues?.weightToLose ? `${parseFloat(tdeeValues.weightToLose).toFixed(2)} kg` : '—')}
                 </div>
                 <p className="text-[10px] text-on-surface-variant leading-tight mt-1">To healthy weight midpoint</p>
               </CardContent>
@@ -2400,7 +2400,9 @@ const Dashboard = () => {
         {/* Acclimation Phase Section */}
         <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            {/* Responsive: title on its own line on mobile, action buttons underneath.
+                Tablet+ (sm:) keeps them inline on the same row. */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <CardTitle className="flex items-center gap-2 text-foreground">
                 <MaterialIcon name="event" size="sm" className="text-yellow-500" />
                 Acclimation Phase
@@ -2413,7 +2415,7 @@ const Dashboard = () => {
                   </TooltipContent>
                 </Tooltip>
               </CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   onClick={() => {
                     if (confirm('Are you sure you want to clear all acclimation data?')) {
@@ -2431,7 +2433,7 @@ const Dashboard = () => {
                   }}
                   variant="outline"
                   size="sm"
-                  className="text-xs"
+                  className="text-xs flex-1 sm:flex-none"
                 >
                   Clear All Data
                 </Button>
@@ -2439,7 +2441,7 @@ const Dashboard = () => {
                   onClick={() => setAcclimationCollapsed(prev => !prev)}
                   variant="outline"
                   size="sm"
-                  className="text-xs"
+                  className="text-xs flex-1 sm:flex-none"
                 >
                   {acclimationCollapsed ? 'Expand Section' : 'Collapse Section'}
                 </Button>
@@ -2582,18 +2584,20 @@ const Dashboard = () => {
         {isAcclimationComplete() && (
         <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            {/* Responsive: title on its own line on mobile, action buttons underneath.
+                Tablet+ (sm:) keeps them inline on the same row. */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <CardTitle className="flex items-center gap-2 text-foreground">
                 <MaterialIcon name="event" size="sm" className="text-primary" />
                 Weight Loss Phase
               </CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {completedWeeks.length > 0 && (
                   <Button
                     onClick={handleDownloadReport}
                     variant="outline"
                     size="sm"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 text-xs flex-1 sm:flex-none"
                   >
                     <MaterialIcon name="download" size="sm" />
                     Download Report
@@ -2603,7 +2607,7 @@ const Dashboard = () => {
                   onClick={() => setWeightLossCollapsed(prev => !prev)}
                   variant="outline"
                   size="sm"
-                  className="text-xs"
+                  className="text-xs flex-1 sm:flex-none"
                 >
                   {weightLossCollapsed ? 'Expand Section' : 'Collapse Section'}
                 </Button>
@@ -2937,14 +2941,15 @@ const Dashboard = () => {
                   
                   return (
                     <details key={week.weekNumber} className="group completed-week-details">
-                      <summary className="cursor-pointer p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors list-none flex justify-between items-center">
-                        <span className="font-medium text-sm">
-                          Week {week.weekNumber} - {Number.isInteger(week.averages.weight) ? week.averages.weight.toLocaleString() : week.averages.weight.toFixed(2)} kg
+                      <summary className="cursor-pointer p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors list-none flex justify-between items-center gap-2">
+                        {/* Use auto-fit-text so longer weeks (e.g. "Loss of -1.23 kg") shrink to stay on one line */}
+                        <span className="font-medium text-xs sm:text-sm flex-1 min-w-0 auto-fit-text">
+                          Week {week.weekNumber} - {week.averages.weight.toFixed(2)} kg
                           <span className={`ml-2 ${weekWeightChange > 0 ? 'text-green-500' : weekWeightChange < 0 ? 'text-red-500' : 'text-orange-500'}`}>
-                            ({weekWeightChange > 0 ? 'Loss of ' : weekWeightChange < 0 ? 'Gain of ' : ''}{weekWeightChange > 0 ? '-' : '+'}{Number.isInteger(Math.abs(weekWeightChange)) ? Math.abs(weekWeightChange).toLocaleString() : Math.abs(weekWeightChange).toFixed(2)} kg)
+                            ({weekWeightChange > 0 ? 'Loss of ' : weekWeightChange < 0 ? 'Gain of ' : ''}{weekWeightChange > 0 ? '-' : '+'}{Math.abs(weekWeightChange).toFixed(2)} kg)
                           </span>
                         </span>
-                        <span className="text-xs text-muted-foreground group-open:rotate-180 transition-transform">▼</span>
+                        <span className="text-xs text-muted-foreground group-open:rotate-180 transition-transform shrink-0">▼</span>
                       </summary>
                       <div className="mt-2 p-3 rounded-lg bg-muted/30 overflow-x-auto">
                         <div className="min-w-[700px] space-y-2">
@@ -3102,7 +3107,7 @@ const Dashboard = () => {
         {maintenancePhase.active && (
           <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
             <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <CardTitle className="flex items-center gap-2 text-foreground">
                   <MaterialIcon name="event" size="sm" className="text-green-500" />
                   Maintenance Phase
@@ -3113,7 +3118,7 @@ const Dashboard = () => {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="text-xs"
+                      className="text-xs flex-1 sm:flex-none"
                       onClick={handleDownloadMaintenanceReport}
                     >
                       <MaterialIcon name="download" size="sm" className="mr-1" />
@@ -3125,7 +3130,7 @@ const Dashboard = () => {
                     onClick={() => setMaintenanceCollapsed((prev) => !prev)}
                     variant="outline"
                     size="sm"
-                    className="text-xs"
+                    className="text-xs flex-1 sm:flex-none"
                   >
                     {maintenanceCollapsed ? "Expand All" : "Collapse All"}
                   </Button>

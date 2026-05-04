@@ -27,6 +27,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { BackButton } from "@/components/BackButton";
 import { useNavigate } from "react-router-dom";
@@ -47,9 +54,34 @@ interface Goal {
   id: string;
   text: string;
   target?: number;
+  /** Optional unit label paired with `target` (e.g. "km", "Qty", "reps"). When
+   * absent, the goal is treated as a plain numeric target (legacy behaviour). */
+  targetUnit?: string;
   current?: number;
   completed: boolean;
 }
+
+/**
+ * Build the unit options shown in the Add Goal dialog. The list is filtered to
+ * the user's measurement system (metric vs imperial) for distance/weight; the
+ * abstract units (Qty, reps, hours, mins) appear in both.
+ */
+const buildGoalUnitOptions = (system: 'metric' | 'imperial') => {
+  if (system === 'imperial') {
+    return [
+      { group: 'Quantity', items: [{ value: 'Qty', label: 'Qty (count)' }, { value: 'reps', label: 'reps' }] },
+      { group: 'Distance', items: [{ value: 'mi', label: 'mi (miles)' }, { value: 'ft', label: 'ft (feet)' }, { value: 'in', label: 'in (inches)' }] },
+      { group: 'Weight', items: [{ value: 'lbs', label: 'lbs (pounds)' }, { value: 'oz', label: 'oz (ounces)' }] },
+      { group: 'Time', items: [{ value: 'hrs', label: 'hours' }, { value: 'mins', label: 'minutes' }] },
+    ];
+  }
+  return [
+    { group: 'Quantity', items: [{ value: 'Qty', label: 'Qty (count)' }, { value: 'reps', label: 'reps' }] },
+    { group: 'Distance', items: [{ value: 'km', label: 'km (kilometres)' }, { value: 'm', label: 'm (metres)' }, { value: 'cm', label: 'cm (centimetres)' }] },
+    { group: 'Weight', items: [{ value: 'kg', label: 'kg (kilograms)' }, { value: 'g', label: 'g (grams)' }] },
+    { group: 'Time', items: [{ value: 'hrs', label: 'hours' }, { value: 'mins', label: 'minutes' }] },
+  ];
+};
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -104,6 +136,7 @@ const Profile = () => {
   const [editingDay, setEditingDay] = useState<string | null>(null);
   const [newGoalText, setNewGoalText] = useState("");
   const [newGoalTarget, setNewGoalTarget] = useState("");
+  const [newGoalUnit, setNewGoalUnit] = useState<string>("Qty");
   const [showUnsavedPrompt, setShowUnsavedPrompt] = useState(false);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('profileExpandedDays');
@@ -289,21 +322,25 @@ const Profile = () => {
     } catch {}
   }, [profile]);
   
-  // Get weight unit from user profile (prefer AuthContext profile, then localStorage)
-  const getWeightUnit = () => {
-    if (profile?.unit_system === 'imperial') return 'lbs';
+  // Get measurement system from user profile (prefer AuthContext profile, then localStorage).
+  // Drives weight unit display (kg vs lbs) AND the goal target unit dropdown.
+  const getMeasurementSystem = (): 'metric' | 'imperial' => {
+    if (profile?.unit_system === 'imperial') return 'imperial';
+    if (profile?.unit_system === 'metric') return 'metric';
     const userProfile = localStorage.getItem('userProfile');
     if (userProfile) {
       try {
         const parsed = JSON.parse(userProfile);
-        return parsed.unitSystem === 'imperial' ? 'lbs' : 'kg';
+        return parsed.unitSystem === 'imperial' ? 'imperial' : 'metric';
       } catch {
-        return 'kg';
+        return 'metric';
       }
     }
-    return 'kg';
+    return 'metric';
   };
-  const weightUnit = getWeightUnit();
+  const measurementSystem = getMeasurementSystem();
+  const weightUnit = measurementSystem === 'imperial' ? 'lbs' : 'kg';
+  const goalUnitOptions = buildGoalUnitOptions(measurementSystem);
   
   /** Signed kg vs acclimation baseline (same as Dashboard): negative = loss, positive = gain */
   const getWeightPhaseDeltaKg = (): number => {
@@ -328,19 +365,17 @@ const Profile = () => {
     }
   };
 
-  const formatKgFullPrecision = (n: number) => {
-    if (!Number.isFinite(n) || n === 0) return "0";
-    const s = n.toString();
-    if (!s.includes("e") && !s.includes("E")) return s;
-    return n.toFixed(20).replace(/\.?0+$/, "");
+  /** Format a kg value to exactly 2 decimal places. Used for the Weight Change
+   *  stat card so we never display floating-point artefacts like 0.9499999999... */
+  const formatKgTwoDecimals = (n: number) => {
+    if (!Number.isFinite(n) || Math.abs(n) < 1e-9) return "0.00";
+    return Math.abs(n).toFixed(2);
   };
 
   const getWeightChangeDisplay = () => {
     const d = getWeightPhaseDeltaKg();
-    const eps = 1e-12;
-    if (Math.abs(d) < eps) return "0";
-    if (d < 0) return `-${formatKgFullPrecision(Math.abs(d))}`;
-    return `+${formatKgFullPrecision(d)}`;
+    if (Math.abs(d) < 0.005) return "0.00";
+    return `${d < 0 ? '-' : '+'}${formatKgTwoDecimals(d)}`;
   };
   
   // Update weight change on mount and when storage changes - poll for changes
@@ -410,10 +445,12 @@ const Profile = () => {
   const handleAddDayGoal = (day: string) => {
     if (!newGoalText.trim()) return;
     
+    const parsedTarget = newGoalTarget ? parseInt(newGoalTarget.replace(/,/g, '')) : undefined;
     const newGoal: Goal = {
       id: Date.now().toString(),
       text: newGoalText,
-      target: newGoalTarget ? parseInt(newGoalTarget.replace(/,/g, '')) : undefined,
+      target: parsedTarget,
+      targetUnit: parsedTarget != null ? newGoalUnit : undefined,
       current: 0,
       completed: false,
     };
@@ -428,6 +465,7 @@ const Profile = () => {
     saveProfileToSupabase({ my_day_goals: updatedDayGoals });
     setNewGoalText("");
     setNewGoalTarget("");
+    setNewGoalUnit("Qty");
   };
   
   const handleUpdateDayGoalProgress = (day: string, goalId: string, newCurrent: number) => {
@@ -466,10 +504,12 @@ const Profile = () => {
   const handleAddGoal = () => {
     if (!newGoalText.trim()) return;
     
+    const parsedTarget = newGoalTarget ? parseInt(newGoalTarget.replace(/,/g, '')) : undefined;
     const newGoal: Goal = {
       id: Date.now().toString(),
       text: newGoalText,
-      target: newGoalTarget ? parseInt(newGoalTarget.replace(/,/g, '')) : undefined,
+      target: parsedTarget,
+      targetUnit: parsedTarget != null ? newGoalUnit : undefined,
       current: 0,
       completed: false,
     };
@@ -481,6 +521,7 @@ const Profile = () => {
     saveProfileToSupabase({ my_goals: updatedGoals });
     setNewGoalText("");
     setNewGoalTarget("");
+    setNewGoalUnit("Qty");
   };
   
   const handleUpdateGoalProgress = (goalId: string, newCurrent: number) => {
@@ -675,7 +716,7 @@ const Profile = () => {
             <AvatarFallback className="text-2xl rounded-xl">{(userName.firstName?.[0] || '') + (userName.lastName?.[0] || '') || 'U'}</AvatarFallback>
           </Avatar>
           {activePlan !== 'free' && (
-            <span className="absolute bottom-2 right-2 bg-green-400 text-[#0A0A0A] text-[10px] font-black px-2 py-0.5 rounded-sm uppercase">PRO</span>
+            <span className="absolute top-2 right-2 bg-green-400 text-[#0A0A0A] text-[10px] font-black px-2 py-0.5 rounded-sm uppercase">PRO</span>
           )}
           <TooltipProvider>
             <Tooltip>
@@ -683,10 +724,10 @@ const Profile = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute bottom-1 left-1 h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="absolute bottom-1 right-1 h-6 w-6 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <MaterialIcon name="photo_camera" size="sm" />
+                  <MaterialIcon name="photo_camera" size="xs" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -736,29 +777,25 @@ const Profile = () => {
         </div>
       </section>
 
-      {/* Stats Row */}
+      {/* Stats Row — values use auto-fit-text so long numbers shrink to stay on one line */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-surface-container-low p-4 rounded-xl border-2 border-primary/60 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
-          <span className="block text-2xl font-black text-primary">{getCompletedAchievements().length}</span>
+        <div className="bg-surface-container-low p-4 rounded-xl border-2 border-primary/60 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
+          <span className="block text-2xl font-black text-primary auto-fit-text">{getCompletedAchievements().length}</span>
           <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">Badges</span>
         </div>
-        <div className="bg-surface-container-low p-4 rounded-xl border-2 border-primary/60 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
-          <span className="block text-2xl font-black text-primary">
-            {weightUnit === "lbs"
-              ? (() => {
-                  const kg = getWeightPhaseDeltaKg();
-                  const lbs = kg * 2.20462;
-                  const eps = 1e-9;
-                  if (Math.abs(lbs) < eps) return `0 ${weightUnit}`;
-                  if (lbs < 0) return `-${formatKgFullPrecision(Math.abs(lbs))}${weightUnit}`;
-                  return `+${formatKgFullPrecision(lbs)}${weightUnit}`;
-                })()
-              : `${weightLossToDate} ${weightUnit}`}
+        <div className="bg-surface-container-low p-4 rounded-xl border-2 border-primary/60 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
+          <span className="block text-2xl font-black text-primary auto-fit-text">
+            {(() => {
+              const kg = getWeightPhaseDeltaKg();
+              const value = weightUnit === 'lbs' ? kg * 2.20462 : kg;
+              if (Math.abs(value) < 0.005) return `0.00 ${weightUnit}`;
+              return `${value < 0 ? '-' : '+'}${Math.abs(value).toFixed(2)} ${weightUnit}`;
+            })()}
           </span>
           <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">Weight change</span>
         </div>
-        <div className="bg-surface-container-low p-4 rounded-xl border-2 border-primary/60 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
-          <span className="block text-2xl font-black text-primary">{badgeData.currentStreak}</span>
+        <div className="bg-surface-container-low p-4 rounded-xl border-2 border-primary/60 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
+          <span className="block text-2xl font-black text-primary auto-fit-text">{badgeData.currentStreak}</span>
           <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">Streak</span>
         </div>
       </div>
@@ -901,7 +938,7 @@ const Profile = () => {
                                   onClick={(e) => e.stopPropagation()}
                                   className="h-7 w-20 px-2 text-xs text-right"
                                 />
-                                <span className="text-xs text-on-surface-variant whitespace-nowrap">/ {formatNumberWithCommas(target.toString())}</span>
+                                <span className="text-xs text-on-surface-variant whitespace-nowrap">/ {formatNumberWithCommas(target.toString())}{goal.targetUnit ? ` ${goal.targetUnit}` : ''}</span>
                               </div>
                             ) : null}
                           </div>
@@ -1088,7 +1125,7 @@ const Profile = () => {
                         }}
                         className="h-8 w-24 shrink-0"
                       />
-                      <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">/ {formatNumberWithCommas(target.toString())}</span>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">/ {formatNumberWithCommas(target.toString())}{goal.targetUnit ? ` ${goal.targetUnit}` : ''}</span>
                       {motivation && (
                         <span className={`text-xs ${goal.completed || percentage >= 100 ? 'text-green-600' : 'text-primary'} ml-auto`}>
                           {motivation}
@@ -1107,19 +1144,42 @@ const Profile = () => {
                 <Input
                   value={newGoalText}
                   onChange={(e) => setNewGoalText(formatNumbersInText(e.target.value))}
-                  placeholder="e.g., Walk 10,000 steps..."
+                  placeholder="e.g., Read 10 books, Run 10 km..."
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Target</Label>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  value={newGoalTarget}
-                  onChange={(e) => setNewGoalTarget(formatNumberWithCommas(e.target.value))}
-                  placeholder="Enter a number"
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label>Target</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={newGoalTarget}
+                    onChange={(e) => setNewGoalTarget(formatNumberWithCommas(e.target.value))}
+                    placeholder="e.g. 10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Unit</Label>
+                  <Select value={newGoalUnit} onValueChange={setNewGoalUnit}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {goalUnitOptions.map((group) => (
+                        <React.Fragment key={group.group}>
+                          <div className="px-2 py-1 text-[10px] font-bold tracking-widest uppercase text-muted-foreground">{group.group}</div>
+                          {group.items.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+              <p className="text-[11px] text-muted-foreground -mt-1">
+                Pick a unit so progress is shown as e.g. <span className="font-medium">3 / 10 km</span>. Units follow your profile measurement system ({measurementSystem}).
+              </p>
               <Button
                 onClick={() => editingDay && handleAddDayGoal(editingDay)}
                 className="w-full gap-2"

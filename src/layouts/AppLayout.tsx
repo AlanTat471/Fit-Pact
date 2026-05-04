@@ -65,7 +65,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </button>
       </header>
 
-      <main className="flex-1 pt-20 pb-32 px-4 sm:px-6 overflow-x-hidden max-w-2xl mx-auto w-full">
+      <main className="flex-1 pt-20 pb-36 px-4 sm:px-6 overflow-x-hidden max-w-2xl mx-auto w-full" style={{ paddingBottom: "calc(9rem + env(safe-area-inset-bottom, 0))" }}>
         {children}
       </main>
 

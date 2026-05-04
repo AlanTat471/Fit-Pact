@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,10 +15,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { MaterialIcon } from "@/components/ui/material-icon";
+import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 const CommunityHelp = () => {
+  const { user } = useAuth();
   const [showSupportForm, setShowSupportForm] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
   const [supportForm, setSupportForm] = useState({
     name: "",
     subject: "",
@@ -26,8 +31,21 @@ const CommunityHelp = () => {
     email: "",
   });
   const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
+  const confirmationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleSupportSubmit = () => {
+  // Auto-dismiss the success popup after 3 seconds (or earlier if the user
+  // clicks anywhere). Cleared on unmount to avoid leaks.
+  useEffect(() => {
+    if (!showConfirmation) return;
+    confirmationTimerRef.current = setTimeout(() => {
+      setShowConfirmation(false);
+    }, 3000);
+    return () => {
+      if (confirmationTimerRef.current) clearTimeout(confirmationTimerRef.current);
+    };
+  }, [showConfirmation]);
+
+  const handleSupportSubmit = async () => {
     const errors: Record<string, boolean> = {};
     if (!supportForm.name.trim()) errors.name = true;
     if (!supportForm.subject.trim()) errors.subject = true;
@@ -40,13 +58,31 @@ const CommunityHelp = () => {
     }
 
     setFormErrors({});
+    setSubmitLoading(true);
 
-    const mailtoSubject = encodeURIComponent(supportForm.subject);
-    const mailtoBody = encodeURIComponent(
-      `Name: ${supportForm.name}\n\nContact Email: ${supportForm.email}\n\nEnquiry:\n${supportForm.description}`
-    );
-    window.open(`mailto:alan.tat@hotmail.com?subject=${mailtoSubject}&body=${mailtoBody}`, "_blank");
+    // Persist the support enquiry to Supabase. The `support_messages` table
+    // (see SQL migration in the project root) stores submitter contact details
+    // plus the message body. Admins read these from the Supabase dashboard.
+    const { error } = await supabase.from('support_messages').insert({
+      user_id: user?.id ?? null,
+      name: supportForm.name.trim(),
+      email: supportForm.email.trim(),
+      subject: supportForm.subject.trim(),
+      message: supportForm.description.trim(),
+    });
 
+    setSubmitLoading(false);
+
+    if (error) {
+      toast({
+        title: "Could not submit",
+        description: error.message || "Please try again or email alan.tat@hotmail.com directly.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Reset the form first so the success popup overlays a clean slate.
     setSupportForm({ name: "", subject: "", description: "", email: "" });
     setShowSupportForm(false);
     setShowConfirmation(true);
@@ -210,33 +246,60 @@ const CommunityHelp = () => {
             </div>
           </div>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setShowSupportForm(false)}>
+            <Button variant="outline" onClick={() => setShowSupportForm(false)} disabled={submitLoading}>
               Cancel
             </Button>
-            <Button className="gap-2" onClick={handleSupportSubmit}>
-              <MaterialIcon name="send" size="sm" />
-              Submit
+            <Button className="gap-2" onClick={handleSupportSubmit} disabled={submitLoading}>
+              {submitLoading ? (
+                <>
+                  <span className="inline-block h-4 w-4 rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground animate-spin" aria-hidden />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <MaterialIcon name="send" size="sm" />
+                  Submit
+                </>
+              )}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Confirmation Dialog */}
-      <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
-        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Thank You!</AlertDialogTitle>
-            <AlertDialogDescription className="text-foreground/70">
-              Thank you for your feedback/enquiry. Please allow up to 5 business days for a response. Thank you!
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction className="bg-primary text-primary-foreground hover:bg-primary/90">
-              OK
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Soft confirmation popup — auto-dismisses after 3s or on any click.
+          Does NOT use AlertDialog so the user can click anywhere to dismiss. */}
+      {showConfirmation && (
+        <div
+          className="fixed inset-0 z-[120] flex items-start justify-center pt-24 px-4"
+          onClick={() => setShowConfirmation(false)}
+          role="presentation"
+        >
+          <div className="absolute inset-0 bg-on-surface/20 backdrop-blur-sm" aria-hidden />
+          <div
+            role="status"
+            aria-live="polite"
+            className="relative z-10 max-w-sm w-full rounded-2xl border border-primary/30 bg-card shadow-2xl p-5 animate-in fade-in-0 zoom-in-95 slide-in-from-top-4 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              {/* Revolving tick: a rotating ring with a static check inside */}
+              <div className="relative shrink-0 h-10 w-10">
+                <span className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" aria-hidden />
+                <span className="absolute inset-0 flex items-center justify-center text-primary">
+                  <MaterialIcon name="check" size="md" />
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-foreground">Thank you for submitting your query</h3>
+                <p className="mt-1 text-xs leading-snug text-muted-foreground">
+                  We will try our best to get back to you as soon as possible. Your feedback is greatly appreciated. Please allow up to 5 business days for a reply. Thank you!
+                </p>
+              </div>
+            </div>
+            <p className="mt-3 text-[10px] text-muted-foreground/70 text-right">Tap anywhere to dismiss</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
