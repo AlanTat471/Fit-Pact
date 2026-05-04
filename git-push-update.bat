@@ -54,53 +54,20 @@ git add git-push-update.bat
 
 echo.
 echo Committing...
-git commit -m "Internal test feedback round 1: payments, goals, decimals, safe-area, responsive headers, support form
-
-- PaymentDetails: removed the hard-coded fake 'Paid via xxxx 123x' card
-  hint. The card row now shows a single 'Add payment method' link until
-  the user enters details, then switches to 'Default - **** 1234' with a
-  small edit pen icon. Added a 'Remove card' option inside the update
-  dialog. Stored locally as last4 + cardholder name only (never the full
-  PAN/CVC) under numiSavedCardLast4 / numiSavedCardName.
-
-- Profile goals: target field now pairs a numeric value with a unit
-  selector (Quantity / Distance / Weight / Time). The unit list follows
-  the user's profile measurement system (metric -> km/m/cm/kg/g,
-  imperial -> mi/ft/in/lbs/oz). Existing goals without a unit continue
-  to render exactly as before. Goal type extended with optional
-  targetUnit string.
-
-- Decimals everywhere: weight stat cards, weight-change badge, and
-  completed-week summary lines all format to exactly 2 decimal places
-  (e.g. +0.95 kg). Removed the legacy formatKgFullPrecision helper that
-  printed 16 decimal places of float noise.
-
-- Auto-fit text: added .auto-fit-text utility (clamp + container-query
-  font sizing) and applied it to all stat values on Profile and
-  Dashboard plus the completed-week summary so long values shrink to
-  stay on one line instead of wrapping.
-
-- Profile photo upload icon: moved from bottom-left to bottom-right of
-  the avatar and reduced size (h-6 w-6 + xs icon). PRO badge moved to
-  top-right to avoid overlap.
-
-- Android safe-area / edge-to-edge: BottomNav now uses
-  env(safe-area-inset-bottom) padding so the system gesture/3-button
-  navigation no longer overlaps the app's tab bar. Main content padding
-  also respects the inset. viewport-fit=cover was already set on the
-  meta tag.
-
-- Responsive section headers: Acclimation Phase, Weight Loss Phase
-  (inner + outer container), and Maintenance Phase headers now stack
-  the title and action buttons vertically on phones (<640px) and keep
-  them inline on tablets+. Buttons grow to fill the row on phones
-  (flex-1) so they don't look squashed.
-
-- Contact Support: replaced mailto with an insert into the new
-  public.support_messages Supabase table (see
-  supabase-support-messages.sql). Submit shows an inline spinner; on
-  success the dialog closes and a soft confirmation popup with a
-  rotating tick auto-dismisses after 3 seconds (or on any tap)."
+:: Windows CMD does not support multi-line strings inside -m "...". We pass each
+:: paragraph as its own -m flag, which git concatenates with blank lines into a
+:: single multi-paragraph commit message. This is the only CMD-safe way to write
+:: a structured commit body without using a temp file + git commit -F.
+git commit ^
+  -m "Internal test feedback round 1: payments, goals, decimals, safe-area, responsive headers, support form" ^
+  -m "PaymentDetails: removed the hard-coded fake 'Paid via xxxx 123x' card hint. The card row now shows a single 'Add payment method' link until the user enters details, then switches to 'Default - **** 1234' with a small edit pen icon. Added a 'Remove card' option inside the update dialog. Stored locally as last4 plus cardholder name only (never the full PAN or CVC) under numiSavedCardLast4 and numiSavedCardName." ^
+  -m "Profile goals: target field now pairs a numeric value with a unit selector (Quantity, Distance, Weight, Time). The unit list follows the user's profile measurement system (metric: km/m/cm/kg/g, imperial: mi/ft/in/lbs/oz). Existing goals without a unit continue to render as before. Goal type extended with optional targetUnit string." ^
+  -m "Decimals everywhere: weight stat cards, weight-change badge, and completed-week summary lines all format to exactly 2 decimal places (e.g. +0.95 kg). Removed the legacy formatKgFullPrecision helper that printed 16 decimal places of float noise." ^
+  -m "Auto-fit text: added .auto-fit-text utility (clamp plus container-query font sizing) and applied it to all stat values on Profile and Dashboard plus the completed-week summary so long values shrink to stay on one line instead of wrapping." ^
+  -m "Profile photo upload icon: moved from bottom-left to bottom-right of the avatar and reduced size (h-6 w-6 plus xs icon). PRO badge moved to top-right to avoid overlap." ^
+  -m "Android safe-area / edge-to-edge: BottomNav now uses env(safe-area-inset-bottom) padding so the system gesture or 3-button navigation no longer overlaps the app's tab bar. Main content padding also respects the inset." ^
+  -m "Responsive section headers: Acclimation Phase, Weight Loss Phase (inner and outer container), and Maintenance Phase headers now stack the title and action buttons vertically on phones (under 640px) and keep them inline on tablets and larger. Buttons grow to fill the row on phones (flex-1) so they do not look squashed." ^
+  -m "Contact Support: replaced mailto with an insert into the new public.support_messages Supabase table (see supabase-support-messages.sql). Submit shows an inline spinner; on success the dialog closes and a soft confirmation popup with a rotating tick auto-dismisses after 3 seconds (or on any tap)."
 
 echo.
 echo Pushing to origin...
