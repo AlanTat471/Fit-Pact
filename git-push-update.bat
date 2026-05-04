@@ -13,6 +13,10 @@ echo Adding changed files...
 git add src/lib/storageMigration.ts
 git add src/main.tsx
 
+:: Build config: Terser obfuscation
+git add vite.config.ts
+git add package.json
+
 :: Pages: input-override fix + UI polish + new popup + branding
 git add src/pages/Index.tsx
 git add src/components/LoginForm.tsx
