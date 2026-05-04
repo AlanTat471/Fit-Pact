@@ -1,7 +1,7 @@
 @echo off
 echo ========================================
-echo   Numi - Rebrand + Input Override Fix
-echo   + UI polish (login, payments, goals)
+echo   Numi - Dashboard fixes + no-changes
+echo   popup + branding + input override fix
 echo ========================================
 echo.
 
@@ -13,7 +13,7 @@ echo Adding changed files...
 git add src/lib/storageMigration.ts
 git add src/main.tsx
 
-:: Pages: input-override fix + UI polish
+:: Pages: input-override fix + UI polish + new popup + branding
 git add src/pages/Index.tsx
 git add src/components/LoginForm.tsx
 git add src/pages/Profile.tsx
@@ -35,34 +35,37 @@ git add git-push-update.bat
 
 echo.
 echo Committing...
-git commit -m "Numi rebrand + fix input-override race + login/payment/community polish
+git commit -m "Dashboard: fix input flickering, add no-changes popup, fix branding
 
-- Rename fitpact* localStorage and sessionStorage keys to numi* with idempotent
-  one-time migration in src/lib/storageMigration.ts (called from main.tsx
-  before React mounts) so existing users keep their archived phases / weekly
-  reminder dismissals / welcome state intact.
-- Fix the input-override bug on Profile (description, my-why, goals, day-goals,
-  photo) and TDEE (gender/age/height/weight/activity-level): each keystroke
-  used to call refreshProfile() which re-fetched from Supabase mid-typing and
-  wiped the input. Removed the refresh-on-save calls and added per-field
-  'user has edited locally' refs so the profile->state sync that fires on
-  token-refresh / session-resume no longer clobbers in-progress edits.
-- Index page: removed left-side Fit.jpg image, centred LoginForm card.
-- LoginForm: added show/hide-password eye toggle to the password field.
-- Community & Help: 'Coming Soon' badges now stay on the same line as the
-  card title and use 'Coming soon' (lowercase 's') consistently across FAQ,
-  Articles, and Your Community.
-- TDEE page (Workouts): added a short description under 'Ideal Body Fat
-  Range', moved the explanatory paragraph from below the input to under the
-  heading on 'Suggested Weight Goal', and renamed the heading to 'Suggested
-  Weight Loss Goal'.
-- PaymentDetails: equal-height (52px) Active / Subscribe buttons across all
-  three plan cards with the 'Active' label vertically centred; reduced
-  highlighted text and heading sizes inside each plan card while keeping the
-  heading > body hierarchy.
-- Doc / rule rebrand: '.cursor/rules/fitpact-workflow.mdc' content now reads
-  'Numi Workflow Rules' (file path kept to avoid breaking rule discovery);
-  WEB_ANDROID_IOS_LAUNCH_AND_STITCH_WORKFLOW.md retitled to Numi."
+- Fix the input flickering / override bug on the Dashboard: the saveJourney()
+  Supabase round-trip was updating the 'journey' context object which triggered
+  the Dashboard's main load useEffect, calling setWeeklyData / setAcclimationData
+  / setMaintenancePhase etc. and overwriting whatever the user was currently
+  typing. Fixed by adding a journeyHydratedForUserRef guard: once the journey
+  has been hydrated from Supabase for the current user, subsequent load-effect
+  runs (caused by saves) return early and leave in-progress input untouched.
+  The guard resets when user?.id changes so login/logout/account-switch always
+  starts fresh.
+
+- Add 'no changes to Steps or Calories — keep it up!' popup: after completing
+  a weight-loss week, if the algorithm detects the user is losing enough weight
+  and neither steps nor calories need adjusting, a friendly encouragement popup
+  now appears (mirroring the existing steps-increased / calories-reduced popup).
+  The popup is suppressed on Week 12 completion (the Week 12 summary dialog
+  takes over at that point).
+
+- Fix 'Fit Impact' branding in the Thank You dialog — changed to 'Numi'.
+
+Previous session changes (carried forward):
+- Rename fitpact* localStorage / sessionStorage keys to numi* with idempotent
+  one-time migration (storageMigration.ts, called from main.tsx before mount).
+- Fix input-override on Profile and TDEE pages (per-field local-edit refs).
+- Index: remove Fit.jpg, centre LoginForm card.
+- LoginForm: show/hide password eye toggle.
+- Community & Help: same-line 'Coming soon' badges (lowercase s) on all three cards.
+- TDEE (Workouts): description under 'Ideal Body Fat Range'; paragraph moved
+  under heading + renamed to 'Suggested Weight Loss Goal'.
+- PaymentDetails: equal-height buttons; reduced highlighted font sizes."
 
 echo.
 echo Pushing to origin...

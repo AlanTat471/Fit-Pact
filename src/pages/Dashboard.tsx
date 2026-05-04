@@ -205,6 +205,14 @@ const Dashboard = () => {
   const dailyQuote = getDailyQuote();
   /** Set true when Week 12 summary is scheduled this session — blocks duplicate maintenance prompt from reload-recovery effect. */
   const week12SummaryScheduledRef = useRef(false);
+  /**
+   * Guards the journey-data hydration inside the load useEffect.
+   * Stores the user ID for which we have already hydrated from Supabase.
+   * Once set, subsequent effect runs caused by saveJourney() returning an
+   * updated journey row will NOT overwrite the user's in-progress input.
+   * Reset to "" whenever user?.id changes (handled in a dedicated effect below).
+   */
+  const journeyHydratedForUserRef = useRef<string>("");
   // Steps recommendation rules
   const ACCLIMATION_BASE_STEPS = 4000;
   const STEPS_INCREMENT = 1000;
@@ -444,6 +452,9 @@ const Dashboard = () => {
     hitMinFloor?: boolean;
   } | null>(null);
 
+  // No-changes popup – shown when a week is completed and targets stay the same (user is on track)
+  const [showNoChangesPopup, setShowNoChangesPopup] = useState(false);
+
   const [showWelcomeBackDialog, setShowWelcomeBackDialog] = useState(false);
   const [calorieReminder, setCalorieReminder] = useState<"high" | "low" | null>(null);
 
@@ -530,8 +541,16 @@ const Dashboard = () => {
   // Load all data: prefer journey from Supabase (context), fallback to localStorage
   useEffect(() => {
     const loadData = () => {
+      const currentUserId = user?.id ?? "";
+      // Once we've fully hydrated from Supabase for the current user, do NOT
+      // overwrite state again — this prevents saveJourney() round-trips from
+      // clobbering in-progress user input (the flickering / input-override bug).
+      const alreadyHydrated = currentUserId !== "" && journeyHydratedForUserRef.current === currentUserId;
+      if (alreadyHydrated) return;
+
       // Prefer journey from Supabase (source of truth)
       if (journey) {
+        journeyHydratedForUserRef.current = currentUserId;
         if (journey.weekly_data && Object.keys(journey.weekly_data).length > 0) {
           setWeeklyData(journey.weekly_data as typeof weeklyData);
         }
@@ -734,6 +753,12 @@ const Dashboard = () => {
     loadUserProfile();
     
   }, [lastSyncedAt, profile, journey, user?.id]);
+
+  // Reset hydration guard whenever the logged-in user changes (incl. logout) so the new
+  // user's journey data is always loaded fresh from Supabase on their first render.
+  useEffect(() => {
+    journeyHydratedForUserRef.current = "";
+  }, [user?.id]);
 
   // Popup sequence (separate effect, runs exactly once per mount via ref guard)
   const popupCheckedRef = useRef(false);
@@ -1800,6 +1825,13 @@ const Dashboard = () => {
         hitMinFloor: caloriesReduced && hitMinFloor,
       });
       setTimeout(() => setShowStepsCaloriesChangePopup(true), 450);
+    } else {
+      // Week completed with no target changes – user is on track, show an encouraging message.
+      // Don't show on Week 12 completion (the Week 12 summary dialog takes over).
+      const newCompletedCount = completedWeeks.length + 1;
+      if (newCompletedCount < 12) {
+        setTimeout(() => setShowNoChangesPopup(true), 450);
+      }
     }
 
     // Build per-week debug info
@@ -4560,6 +4592,41 @@ const Dashboard = () => {
         </div>
       )}
 
+      {/* No-changes popup – shown when week completes with no steps or calorie adjustments */}
+      {showNoChangesPopup && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-on-surface/30 backdrop-blur-md"
+            aria-hidden
+            onClick={() => setShowNoChangesPopup(false)}
+          />
+          <div
+            className="relative z-10 bg-card border border-border rounded-xl shadow-2xl p-6 max-w-md w-full animate-in fade-in-0 zoom-in-95 duration-200"
+            role="dialog"
+            aria-labelledby="no-changes-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-2xl">🎉</span>
+              <h2 id="no-changes-title" className="text-lg font-semibold text-foreground">
+                No changes to Steps or Calories
+              </h2>
+            </div>
+            <p className="text-sm text-foreground/90 mb-6">
+              Your weight loss is right on track — no adjustments needed this week. Keep it up!
+            </p>
+            <div className="flex justify-end">
+              <Button
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => setShowNoChangesPopup(false)}
+              >
+                Got it
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Week 12 Summary Dialog (downloadable) */}
       <AlertDialog open={showWeek12SummaryDialog} onOpenChange={setShowWeek12SummaryDialog}>
         <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
@@ -4703,7 +4770,7 @@ const Dashboard = () => {
             <AlertDialogTitle className="text-foreground">Thank You! 💚</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70 space-y-3" asChild>
               <div>
-                <p>Thank you for using Fit Impact. We are glad to be with you through your weight loss journey.</p>
+                <p>Thank you for using Numi. We are glad to be with you through your weight loss journey.</p>
                 <p>Please give us feedback as we value your input and always strive to deliver quality to you.</p>
                 <p>Please also recommend us to your family and friends! Stay healthy, stay happy!</p>
               </div>
