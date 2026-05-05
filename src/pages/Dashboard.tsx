@@ -2942,8 +2942,8 @@ const Dashboard = () => {
                   return (
                     <details key={week.weekNumber} className="group completed-week-details">
                       <summary className="cursor-pointer p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors list-none flex justify-between items-center gap-2">
-                        {/* Use auto-fit-text so longer weeks (e.g. "Loss of -1.23 kg") shrink to stay on one line */}
-                        <span className="font-medium text-xs sm:text-sm flex-1 min-w-0 auto-fit-text">
+                        {/* completed-week-summary-line: no ellipsis; scales with row width; thin scroll if ever needed */}
+                        <span className="completed-week-summary-line font-medium flex-1 min-w-0">
                           Week {week.weekNumber} - {week.averages.weight.toFixed(2)} kg
                           <span className={`ml-2 ${weekWeightChange > 0 ? 'text-green-500' : weekWeightChange < 0 ? 'text-red-500' : 'text-orange-500'}`}>
                             ({weekWeightChange > 0 ? 'Loss of ' : weekWeightChange < 0 ? 'Gain of ' : ''}{weekWeightChange > 0 ? '-' : '+'}{Math.abs(weekWeightChange).toFixed(2)} kg)

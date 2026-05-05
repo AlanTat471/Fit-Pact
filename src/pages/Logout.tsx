@@ -30,15 +30,15 @@ const Logout = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button 
-            variant="destructive" 
+          <Button
+            variant="destructive"
             className="w-full"
             onClick={handleLogout}
           >
             Yes, Log Out
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="w-full"
             onClick={handleCancel}
           >

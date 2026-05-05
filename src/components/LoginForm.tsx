@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,12 +23,13 @@ import {
   addTrustedDevice,
 } from "@/lib/supabaseTrustedDevices";
 import { MaterialIcon } from "@/components/ui/material-icon";
+import { clearLegacyBiometricKeys, getLastEmail, setLastEmail } from "@/lib/lastLoginEmail";
 
 type SignInMode = "password" | "otp";
 
 const LoginForm = () => {
   const [signInMode, setSignInMode] = useState<SignInMode>("password");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => getLastEmail());
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [otpCode, setOtpCode] = useState("");
@@ -43,6 +44,10 @@ const LoginForm = () => {
 
   const fingerprint = getDeviceFingerprint();
 
+  useEffect(() => {
+    clearLegacyBiometricKeys();
+  }, []);
+
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setEmailNotRegisteredError("");
@@ -55,7 +60,6 @@ const LoginForm = () => {
         return;
       }
 
-      // Prevent Index.tsx from auto-navigating while we check trusted devices
       sessionStorage.setItem("authFlowPending", "true");
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -74,6 +78,7 @@ const LoginForm = () => {
       }
 
       if (data.session?.user) {
+        setLastEmail(email.trim());
         const trusted = await isDeviceTrusted(data.session.user.id, fingerprint);
         if (trusted) {
           await addTrustedDevice(data.session.user.id, fingerprint);
@@ -81,7 +86,6 @@ const LoginForm = () => {
           window.location.replace(window.location.origin + "/dashboard");
           return;
         }
-        // Not trusted — sign out and show OTP dialog (flag stays set during OTP flow)
         await supabase.auth.signOut();
         setNewDeviceEmail(email.trim());
         setNewDeviceOtpSent(false);
@@ -132,6 +136,7 @@ const LoginForm = () => {
       if (error) throw error;
       if (data?.user && data?.session) {
         await addTrustedDevice(data.user.id, fingerprint);
+        setLastEmail(newDeviceEmail.trim());
         setShowNewDeviceOtp(false);
         setNewDeviceOtpCode("");
         sessionStorage.removeItem("authFlowPending");
@@ -185,6 +190,7 @@ const LoginForm = () => {
       if (error) throw error;
       if (data.user && data.session) {
         await addTrustedDevice(data.user.id, fingerprint);
+        setLastEmail(email.trim());
         sessionStorage.removeItem("authFlowPending");
         window.location.replace(window.location.origin + "/dashboard");
       }
@@ -452,7 +458,7 @@ const LoginForm = () => {
               Don&apos;t have an account?{" "}
               <Link
                 to="/create-your-profile"
-                className="text-foreground hover:text-primary font-medium underline-offset-4 hover:underline"
+                className="text-primary font-semibold underline underline-offset-4 hover:text-primary/80"
               >
                 Create a new profile
               </Link>
