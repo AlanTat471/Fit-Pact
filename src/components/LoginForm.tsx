@@ -22,6 +22,7 @@ import {
   isDeviceTrusted,
   addTrustedDevice,
 } from "@/lib/supabaseTrustedDevices";
+import { markExplicitLoginThisDocument } from "@/lib/authSessionGate";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { clearLegacyBiometricKeys, getLastEmail, setLastEmail } from "@/lib/lastLoginEmail";
 
@@ -81,7 +82,14 @@ const LoginForm = () => {
         setLastEmail(email.trim());
         const trusted = await isDeviceTrusted(data.session.user.id, fingerprint);
         if (trusted) {
-          await addTrustedDevice(data.session.user.id, fingerprint);
+          const { error: trustWriteErr } = await addTrustedDevice(data.session.user.id, fingerprint);
+          if (trustWriteErr) {
+            toast({
+              title: "Signed in",
+              description: "Could not refresh trusted-device on the server. If codes keep appearing, check the trusted_devices table and RLS in Supabase.",
+            });
+          }
+          markExplicitLoginThisDocument();
           sessionStorage.removeItem("authFlowPending");
           window.location.replace(window.location.origin + "/dashboard");
           return;
@@ -135,10 +143,17 @@ const LoginForm = () => {
       });
       if (error) throw error;
       if (data?.user && data?.session) {
-        await addTrustedDevice(data.user.id, fingerprint);
+        const { error: trustWriteErr } = await addTrustedDevice(data.user.id, fingerprint);
+        if (trustWriteErr) {
+          toast({
+            title: "Device verified",
+            description: "Could not save this device on the server (check trusted_devices / RLS). This browser may still work from local memory only.",
+          });
+        }
         setLastEmail(newDeviceEmail.trim());
         setShowNewDeviceOtp(false);
         setNewDeviceOtpCode("");
+        markExplicitLoginThisDocument();
         sessionStorage.removeItem("authFlowPending");
         window.location.replace(window.location.origin + "/dashboard");
       }
@@ -189,8 +204,15 @@ const LoginForm = () => {
       });
       if (error) throw error;
       if (data.user && data.session) {
-        await addTrustedDevice(data.user.id, fingerprint);
+        const { error: trustWriteErr } = await addTrustedDevice(data.user.id, fingerprint);
+        if (trustWriteErr) {
+          toast({
+            title: "Device verified",
+            description: "Could not save this device on the server (check trusted_devices / RLS). This browser may still work from local memory only.",
+          });
+        }
         setLastEmail(email.trim());
+        markExplicitLoginThisDocument();
         sessionStorage.removeItem("authFlowPending");
         window.location.replace(window.location.origin + "/dashboard");
       }
@@ -454,8 +476,8 @@ const LoginForm = () => {
                 Forgot your password?
               </button>
             )}
-            <div className="text-sm text-foreground">
-              Don&apos;t have an account?{" "}
+            <div className="text-sm text-foreground inline-flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+              <span>Don&apos;t have an account?</span>
               <Link
                 to="/create-your-profile"
                 className="text-primary font-semibold underline underline-offset-4 hover:text-primary/80"

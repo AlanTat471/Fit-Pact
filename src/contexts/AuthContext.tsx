@@ -1,8 +1,13 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 
 import { upsertProfile, profileToUserProfile } from "@/lib/supabaseProfile";
+import { MOTIV_QUOTE_SESSION_KEY } from "@/lib/motivationalQuotes";
+import {
+  clearExplicitLoginThisDocument,
+  NUMI_LOGIN_OK_THIS_DOCUMENT_KEY,
+} from "@/lib/authSessionGate";
 
 interface Profile {
   id: string;
@@ -177,11 +182,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user && !profile) fetchProfile(user.id, user.user_metadata as Record<string, unknown>);
   }, [user]);
 
+  /**
+   * JWT is restored from localStorage before React runs. Without this gate, a
+   * returning visit would briefly behave as "logged in" until the user signs
+   * in again. We clear stored credentials unless this document already recorded
+   * an explicit login (password/OTP/device flow or registration) in sessionStorage.
+   * useLayoutEffect runs before child useEffect so /register cannot redirect
+   * to the dashboard on a stale session before we strip it.
+   */
+  const gateSignOutLockRef = useRef(false);
+  useLayoutEffect(() => {
+    if (loading) return;
+    if (!session?.user) {
+      gateSignOutLockRef.current = false;
+      return;
+    }
+    if (typeof sessionStorage === "undefined") return;
+    if (sessionStorage.getItem("authFlowPending") === "true") return;
+    if (sessionStorage.getItem(NUMI_LOGIN_OK_THIS_DOCUMENT_KEY) === "1") return;
+    if (gateSignOutLockRef.current) return;
+    gateSignOutLockRef.current = true;
+    void supabase.auth.signOut({ scope: "local" }).finally(() => {
+      gateSignOutLockRef.current = false;
+    });
+  }, [loading, session]);
+
   const signOut = async () => {
     isSigningOutRef.current = true;
-    // Prevent Index.tsx from auto-navigating during an explicit logout
+    clearExplicitLoginThisDocument();
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem("authFlowPending");
+      sessionStorage.removeItem(MOTIV_QUOTE_SESSION_KEY);
     }
     setUser(null);
     setSession(null);

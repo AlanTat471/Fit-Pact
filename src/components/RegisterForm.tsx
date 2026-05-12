@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { MaterialIcon } from "@/components/ui/material-icon";
+import { markExplicitLoginThisDocument } from "@/lib/authSessionGate";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
@@ -190,6 +191,7 @@ const RegisterForm = () => {
           if (existing) {
             const u = profileToUserProfile(existing);
             if (u) localStorage.setItem("userProfile", JSON.stringify(u));
+            markExplicitLoginThisDocument();
             navigate("/tdee-calculator");
             return;
           }
@@ -202,6 +204,7 @@ const RegisterForm = () => {
           const u = profileToUserProfile(profileData);
           if (u) localStorage.setItem("userProfile", JSON.stringify(u));
         }
+        markExplicitLoginThisDocument();
         navigate("/tdee-calculator");
         return;
       }

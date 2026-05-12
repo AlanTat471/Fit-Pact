@@ -1,6 +1,6 @@
 @echo off
 echo ================================================
-echo   Numi - biometrics removal + Previous Weeks line
+echo   Numi - auth session gate + trusted devices
 echo ================================================
 echo.
 
@@ -8,25 +8,25 @@ cd /d "%~dp0"
 
 echo Adding changed files...
 
-git add src/lib/lastLoginEmail.ts
+git add src/lib/authSessionGate.ts
+git add src/lib/deviceFingerprint.ts
+git add src/lib/supabaseTrustedDevices.ts
+
+git add src/contexts/AuthContext.tsx
+git add src/pages/Index.tsx
 git add src/components/LoginForm.tsx
-git add src/pages/Logout.tsx
-git add package.json
-git add package-lock.json
-git add android/app/build.gradle
+git add src/pages/Register.tsx
+git add src/components/RegisterForm.tsx
+git add src/layouts/AppLayout.tsx
 
-git add src/index.css
-git add src/pages/Dashboard.tsx
-
-git add -u src/lib/
-
-git add resources/README.md 2>nul
 git add git-push-update.bat
+
 echo Committing...
 git commit ^
-  -m "Remove biometric sign-in; keep last-email prefill; full gain/loss on Dashboard" ^
-  -m "Dropped @capgo/capacitor-native-biometric (npm audit) and deleted biometricAuth.ts. Login is password or OTP only again. Email is still saved to localStorage (numiLastEmail) after successful sign-in so the field pre-fills next time. Legacy numiBiometricEnabled key is cleared once when the login screen mounts." ^
-  -m "Dashboard Previous Weeks: new .completed-week-summary-line replaces .auto-fit-text on the summary row so Gain/Loss (+/- kg) is not truncated with ellipsis on narrow phones."
+  -m "Auth: require explicit login per visit; harden trusted devices" ^
+  -m "Clear restored JWT unless numiLoginOkThisDocument is set after password/OTP/device verify or registration (useLayoutEffect gate). Remove Index auto-redirect to dashboard." ^
+  -m "Trusted device: stable install id in fingerprint; per-user local trust cache; treat Supabase read errors with fallback; surface addTrustedDevice errors softly." ^
+  -m "Idle timeout clears explicit-login flag. Register redirect to dashboard only when gate flag set."
 
 echo.
 echo Pushing to origin...
@@ -35,11 +35,6 @@ git push
 echo.
 echo ================================================
 echo   Push complete!
-echo.
-echo   On your PC, refresh dependencies and Android:
-echo     npm install
-echo     npm run build
-echo     npx cap sync android
-echo   Then open Android Studio and build a new AAB.
+echo   Next: npm install, npm run build, deploy Vercel, npx cap sync android, new AAB if needed.
 echo ================================================
 pause

@@ -2,15 +2,22 @@ import React, { useEffect } from "react";
 import RegisterForm from "@/components/RegisterForm";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { NUMI_LOGIN_OK_THIS_DOCUMENT_KEY } from "@/lib/authSessionGate";
 
 const Register = () => {
   const navigate = useNavigate();
   const { session, loading } = useAuth();
 
-  // Redirect already-registered users away from sign-up (sensitive pages are for registered users only)
+  // Send already-signed-in users to the app only if they completed login in this
+  // browser session (sessionStorage). Prevents /register from racing the stale-session gate.
   useEffect(() => {
-    if (!loading && session) {
-      navigate("/dashboard", { replace: true });
+    if (loading || !session) return;
+    try {
+      if (sessionStorage.getItem(NUMI_LOGIN_OK_THIS_DOCUMENT_KEY) === "1") {
+        navigate("/dashboard", { replace: true });
+      }
+    } catch {
+      /* no-op */
     }
   }, [loading, session, navigate]);
   
