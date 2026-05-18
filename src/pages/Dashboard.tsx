@@ -993,25 +993,29 @@ const Dashboard = () => {
   });
 
   const flushJourneySave = useCallback(() => {
-    // Only flush when there is genuinely a pending debounced save. This stops
-    // us from issuing a Supabase write every time a user tabs between fields
-    // without having changed anything — the autosave effect only schedules
-    // saveToSupabaseRef.current when state has actually changed, so its
-    // presence is a reliable "there are unsaved local changes" marker.
-    const hadPendingSave = saveToSupabaseRef.current !== null;
+    // v9 change: always save the latest payload when asked to flush, even if
+    // no debounce timer is pending. Previously we early-returned when no
+    // debounce was scheduled, which broke the "explicit logout right after
+    // an autosave just completed" case AND the unmount-on-navigation case
+    // (the cleanup fires after every render, including renders with no
+    // pending change).
+    //
+    // The new saveJourney is also tracked via trackJourneySave() so the
+    // returned Promise can be awaited by signOut() / idle-timeout / app pause
+    // BEFORE the JWT is revoked. We still don't await here — these flush
+    // call-sites are synchronous contexts (beforeunload, unmount cleanup) —
+    // but the caller can `await waitForInFlightSaves()` immediately after.
     if (saveToSupabaseRef.current) {
       clearTimeout(saveToSupabaseRef.current);
       saveToSupabaseRef.current = null;
     }
-    if (!hadPendingSave) return;
     const payload = latestJourneyPayloadRef.current;
     if (payload && journey) {
-      // Fire-and-forget: the HTTP request leaves with the current JWT, which
-      // remains valid server-side even after we sign out locally a moment
-      // later (Supabase JWTs are stateless until they expire). We deliberately
-      // do NOT await so this stays safe to call from sync contexts like
-      // beforeunload.
-      void saveJourney(payload);
+      // Fire the save. Errors are swallowed here (saveJourney already toasts)
+      // because there's no UI to react in the unmount/logout/idle paths –
+      // signOut() will detect a failed in-flight save via the in-flight set
+      // and preserve localStorage as a backup instead of wiping it.
+      void saveJourney(payload).catch(() => {});
     }
   }, [saveJourney, journey]);
 

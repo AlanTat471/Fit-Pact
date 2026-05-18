@@ -11,6 +11,7 @@ import { legacyWlWeek1StartToJourneyAnchor, resolveJourneyAnchorFromRow } from "
 import { getLatestTdee, upsertTdee, type TdeeRow } from "@/lib/supabaseTdee";
 import { getCustomMacros, upsertCustomMacros } from "@/lib/supabaseMacros";
 import { upsertProfile } from "@/lib/supabaseProfile";
+import { trackJourneySave } from "@/lib/journeySaveFlush";
 import { toast } from "@/hooks/use-toast";
 
 interface UserDataContextType {
@@ -87,7 +88,12 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
 
   const saveJourney = useCallback(async (payload: Partial<JourneyRow>) => {
     if (!user || !journey) return;
-    const { data: updated, error } = await upsertJourney(journey.id, payload);
+    // Track the promise globally so sign-out / idle-timeout / app-pause
+    // handlers can await it before invalidating the JWT or wiping
+    // localStorage. Without this, every logout-while-saving lost the write.
+    const request = upsertJourney(journey.id, payload);
+    trackJourneySave(request);
+    const { data: updated, error } = await request;
     if (updated) {
       setJourney(updated);
       syncJourneyToLocalStorage(updated);
@@ -98,6 +104,9 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
         description: `Could not save your journey data.${detail}`.trim(),
         variant: "destructive",
       });
+      // Re-throw so callers that DO await (e.g. signOut) know the save
+      // failed and can preserve localStorage as a recovery backup.
+      throw new Error(error?.message || "saveJourney failed");
     }
   }, [user, journey?.id]);
 
@@ -182,7 +191,33 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
 
   const migrateFromLocalStorage = async () => {
     if (!user) return;
-    const hasJourney = !!journey?.weekly_data && Object.keys(journey.weekly_data || {}).length > 0;
+    // v9: "has progress in the cloud" means ANY of:
+    //   • the user has completed at least one week,
+    //   • OR any of the four Acclimation week-complete flags is true,
+    //   • OR weekly_data contains actual daily entries (not just the empty
+    //     defaults written by createJourney),
+    //   • OR acclimation_data contains entries.
+    // Previously this only checked weekly_data which meant a freshly created
+    // journey with completed_weeks = [3 weeks] but empty weekly_data was
+    // (incorrectly) treated as "no progress yet" and the migration pushed
+    // empty local data over the top. Looking at all four signals makes the
+    // check robust against any single field being reset between sessions.
+    const hasAnyCompletedWeek = Array.isArray(journey?.completed_weeks) && journey!.completed_weeks.length > 0;
+    const anyAcclimationFlag = !!(
+      journey?.week1_complete ||
+      journey?.week2_complete ||
+      journey?.week3_complete ||
+      journey?.week4_complete
+    );
+    const weeklyHasEntries = !!journey?.weekly_data && Object.values(journey.weekly_data || {}).some((d) => {
+      const day = d as { steps?: number; calories?: number; weight?: number } | undefined;
+      return !!day && ((day.steps ?? 0) > 0 || (day.calories ?? 0) > 0 || (day.weight ?? 0) > 0);
+    });
+    const acclimationHasEntries = !!journey?.acclimation_data && Object.values(journey.acclimation_data || {}).some((wk) => {
+      if (!wk || typeof wk !== "object") return false;
+      return Object.values(wk).some((v) => typeof v === "number" && v > 0);
+    });
+    const hasJourney = hasAnyCompletedWeek || anyAcclimationFlag || weeklyHasEntries || acclimationHasEntries;
     const hasTdee = !!tdee?.values_json && Object.keys(tdee.values_json || {}).length > 0;
 
     if (!hasJourney) {

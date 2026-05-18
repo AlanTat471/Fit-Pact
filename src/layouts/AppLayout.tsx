@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { MOTIV_QUOTE_SESSION_KEY } from "@/lib/motivationalQuotes";
 import { clearExplicitLoginThisDocument } from "@/lib/authSessionGate";
-import { flushPendingJourneySave } from "@/lib/journeySaveFlush";
+import { flushPendingJourneySave, waitForInFlightSaves } from "@/lib/journeySaveFlush";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -69,9 +69,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
         // be signed out — if they completed a week (or edited a field) within
         // the 800ms autosave debounce just before going idle, the save would
         // otherwise be cancelled when Dashboard unmounts after redirect.
-        // flushPendingJourneySave() fires the save synchronously with the
-        // current (still-valid) JWT so the write reaches Supabase.
+        //
+        // flushPendingJourneySave() kicks off any pending debounced save, then
+        // waitForInFlightSaves() blocks until EVERY in-flight Supabase write
+        // has actually landed. Only then do we call supabase.auth.signOut(),
+        // which revokes the JWT server-side. Without the await, on Android
+        // the in-flight write would race the token revocation and lose.
         try { flushPendingJourneySave(); } catch { /* no-op */ }
+        try { await waitForInFlightSaves(); } catch (e) {
+          console.error("[AppLayout idle] save did not finish in time:", e);
+        }
         // Use supabase.auth.signOut() directly (not AuthContext.signOut())
         // to avoid wiping cached journey/dashboard data. The user is just
         // being timed out, not deliberately quitting — their data should be

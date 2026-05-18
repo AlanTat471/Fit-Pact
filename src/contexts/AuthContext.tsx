@@ -8,7 +8,7 @@ import {
   clearExplicitLoginThisDocument,
   NUMI_LOGIN_OK_THIS_DOCUMENT_KEY,
 } from "@/lib/authSessionGate";
-import { flushPendingJourneySave } from "@/lib/journeySaveFlush";
+import { flushPendingJourneySave, waitForInFlightSaves } from "@/lib/journeySaveFlush";
 
 interface Profile {
   id: string;
@@ -215,15 +215,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionStorage.removeItem("authFlowPending");
       sessionStorage.removeItem(MOTIV_QUOTE_SESSION_KEY);
     }
-    // CRITICAL: flush any pending Dashboard saves BEFORE we tear the session
-    // down or wipe localStorage. Without this, a user who completed a Weight
-    // Loss week within the 800ms autosave debounce window and then clicked
-    // Log Out would lose that week on every device — the debounced timer was
-    // cancelled on Dashboard unmount, and the local copy got wiped a few
-    // lines below. flushPendingJourneySave() fires the save synchronously
-    // (request leaves with the current JWT, which Supabase honours
-    // server-side even after we sign out locally).
+    // ── CRITICAL: persist before we tear the session down ────────────────────
+    // History:
+    //   • v7 and earlier: 800ms debounced save was cancelled on Dashboard
+    //     unmount, and we then wiped localStorage. Completed weeks vanished.
+    //   • v8 fix attempt: kicked off a save during unmount but did NOT await
+    //     it. Then this function called supabase.auth.signOut() (which revokes
+    //     the JWT) and wiped localStorage. On Android the save consistently
+    //     lost the race: Supabase rejected the still-in-flight write with 401
+    //     because the token had just been revoked, and the local backup was
+    //     gone too. Logout/login on phone showed blank data every time.
+    //
+    // v9 (this code):
+    //   1. flushPendingJourneySave() kicks off any pending debounced save.
+    //   2. waitForInFlightSaves() blocks until EVERY in-flight Supabase write
+    //      (including the unmount-triggered one started a moment ago by
+    //      Dashboard's cleanup) has actually settled. Only then do we revoke
+    //      the JWT.
+    //   3. If any write failed (network blip, 401, server error), we keep
+    //      localStorage so the next login can re-push it to Supabase via the
+    //      migrateFromLocalStorage path. We'd rather take up a little local
+    //      space than silently lose a user's completed weeks.
+    // ─────────────────────────────────────────────────────────────────────────
     flushPendingJourneySave();
+    let saveSucceeded = true;
+    try {
+      await waitForInFlightSaves();
+    } catch (e) {
+      saveSucceeded = false;
+      console.error("[AuthContext.signOut] in-flight save did not finish, preserving localStorage as backup:", e);
+    }
+
     setUser(null);
     setSession(null);
     setProfile(null);
@@ -232,22 +254,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       isSigningOutRef.current = false;
     }
-    // Clear user-specific journey/dashboard DATA only — not profile mirrors or archived phases (numiArchivedPhases).
-    // Profile fields live in Supabase; clearing them here made Profile look empty on
-    // next login until fetch completed. userProfile is overwritten on next fetchProfile.
-    const keys = [
-      "dashboardWeeklyData", "dashboardPreviousWeekData", "dashboardCompletedWeeks",
-      "dashboardAcclimationData", "dashboardAcclimationSteps", "dashboardRecommendedSteps",
-      "dashboardRecommendedCalories", "dashboardWeightLossStartDate", "dashboardCurrentStreak",
-      "dashboardLongestStreak", "dashboardWeek1Complete", "dashboardWeek2Complete",
-      "dashboardWeek3Complete", "dashboardWeek4Complete",
-      "dashboardAcclimationPhaseStartDate", "dashboardAcclimationPhaseEndDate",
-      "dashboardStartingWeight", "dashboardJourneyComplete", "dashboardMaintenancePhase",
-      "tdeeCalculatedValues", "startingCalorieIntake", "suggestedWeightGoal", "customMacroGrams",
-      "activePlan", "paymentMethods", "billingAddress",
-      "showReadyToStartPopup", "stepDebugInfo",
-    ];
-    keys.forEach((k) => localStorage.removeItem(k));
+
+    // Clear user-specific journey/dashboard DATA only — not profile mirrors or
+    // archived phases (numiArchivedPhases). Profile fields live in Supabase;
+    // clearing them here made Profile look empty on next login until fetch
+    // completed. userProfile is overwritten on next fetchProfile.
+    //
+    // We ONLY do this clear when we are confident the cloud has the latest
+    // copy. If saveSucceeded is false, leaving localStorage in place lets the
+    // migrateFromLocalStorage logic on the next sign-in push it back up.
+    if (saveSucceeded) {
+      const keys = [
+        "dashboardWeeklyData", "dashboardPreviousWeekData", "dashboardCompletedWeeks",
+        "dashboardAcclimationData", "dashboardAcclimationSteps", "dashboardRecommendedSteps",
+        "dashboardRecommendedCalories", "dashboardWeightLossStartDate", "dashboardCurrentStreak",
+        "dashboardLongestStreak", "dashboardWeek1Complete", "dashboardWeek2Complete",
+        "dashboardWeek3Complete", "dashboardWeek4Complete",
+        "dashboardAcclimationPhaseStartDate", "dashboardAcclimationPhaseEndDate",
+        "dashboardStartingWeight", "dashboardJourneyComplete", "dashboardMaintenancePhase",
+        "tdeeCalculatedValues", "startingCalorieIntake", "suggestedWeightGoal", "customMacroGrams",
+        "activePlan", "paymentMethods", "billingAddress",
+        "showReadyToStartPopup", "stepDebugInfo",
+      ];
+      keys.forEach((k) => localStorage.removeItem(k));
+    }
   };
 
   return (
