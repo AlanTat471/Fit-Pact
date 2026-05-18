@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { MOTIV_QUOTE_SESSION_KEY } from "@/lib/motivationalQuotes";
 import { clearExplicitLoginThisDocument } from "@/lib/authSessionGate";
+import { flushPendingJourneySave } from "@/lib/journeySaveFlush";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -63,6 +64,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
         try { sessionStorage.setItem(IDLE_FLAG_KEY, "1"); } catch { /* no-op */ }
         try { sessionStorage.removeItem(MOTIV_QUOTE_SESSION_KEY); } catch { /* no-op */ }
         try { clearExplicitLoginThisDocument(); } catch { /* no-op */ }
+        // CRITICAL: persist any unsaved Dashboard changes BEFORE invalidating
+        // the Supabase session. The user has been idle ≥5 min and is about to
+        // be signed out — if they completed a week (or edited a field) within
+        // the 800ms autosave debounce just before going idle, the save would
+        // otherwise be cancelled when Dashboard unmounts after redirect.
+        // flushPendingJourneySave() fires the save synchronously with the
+        // current (still-valid) JWT so the write reaches Supabase.
+        try { flushPendingJourneySave(); } catch { /* no-op */ }
         // Use supabase.auth.signOut() directly (not AuthContext.signOut())
         // to avoid wiping cached journey/dashboard data. The user is just
         // being timed out, not deliberately quitting — their data should be

@@ -34,6 +34,9 @@ import {
   deriveMaintenanceWindowFromJourneyAnchor,
   resolveJourneyAnchorFromRow,
 } from "@/lib/journeyAnchor";
+import { getMotivationalQuoteForSession } from "@/lib/motivationalQuotes";
+import { registerJourneyFlush } from "@/lib/journeySaveFlush";
+import type { JourneyRow } from "@/lib/supabaseJourney";
 
 /** One completed user cycle (acclimation + 12-week WL + maintenance) for Archived Phases */
 type ArchivedPhaseBundle = {
@@ -167,21 +170,6 @@ function computeArchivedPhaseDisplayMetrics(b: ArchivedPhaseBundle) {
   };
 }
 
-const motivationalQuotes = [
-  { quote: "The only bad workout is the one that didn't happen.", author: "Unknown" },
-  { quote: "Your body can stand almost anything. It's your mind that you have to convince.", author: "Unknown" },
-  { quote: "Success is the sum of small efforts, repeated day in and day out.", author: "Robert Collier" },
-  { quote: "Small steps every day lead to big results.", author: "Unknown" },
-  { quote: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
-  { quote: "The secret of getting ahead is getting started.", author: "Mark Twain" },
-];
-
-const getDailyQuote = () => {
-  const today = new Date();
-  const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-  return motivationalQuotes[dayOfYear % motivationalQuotes.length];
-};
-
 const WEEKDAYS_FULL = [
   "Monday",
   "Tuesday",
@@ -202,7 +190,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { saveJourney, saveTdee, journey, tdee, lastSyncedAt, refreshJourney } = useUserData();
   const { user, profile, refreshProfile } = useAuth();
-  const dailyQuote = getDailyQuote();
+  /** One quote per sign-in session (stored in sessionStorage; cleared on logout). */
+  const loginSessionQuote = getMotivationalQuoteForSession();
   /** Set true when Week 12 summary is scheduled this session — blocks duplicate maintenance prompt from reload-recovery effect. */
   const week12SummaryScheduledRef = useRef(false);
   /**
@@ -950,38 +939,93 @@ const Dashboard = () => {
     } catch {}
   }, [archivedPhases]);
 
-  // Sync dashboard state to Supabase (debounced)
+  // ─────────────────────────────────────────────────────────────────────────
+  // Sync dashboard state to Supabase
+  //
+  // History: this used to be a single `setTimeout(..., 800)` whose cleanup
+  // cancelled the pending save on unmount. Result: completing a Weight Loss
+  // week and then logging out / idle-timing out / navigating to /logout
+  // within ~800ms unmounted Dashboard, cancelled the timer, and AuthContext
+  // then wiped localStorage — so the completed week was lost on every device
+  // on next sign-in.
+  //
+  // Fix: keep the debounce (so per-keystroke saves don't hammer Supabase),
+  // but
+  //   1. hold the latest payload in a ref so a flush always uses fresh data,
+  //   2. expose a synchronous `flushJourneySave` that cancels the timer and
+  //      fires saveJourney immediately,
+  //   3. register that flush with `journeySaveFlush` so AuthContext.signOut
+  //      and AppLayout's idle-timeout can call it BEFORE clearing storage,
+  //   4. flush on component unmount, on `beforeunload` (browser tab close /
+  //      Android app backgrounded), and on any blur inside the Dashboard
+  //      (event delegation) so "save the moment a field is completed / the
+  //      user clicks away" is honoured without modifying every <Input>.
+  // ─────────────────────────────────────────────────────────────────────────
   const saveToSupabaseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestJourneyPayloadRef = useRef<Partial<JourneyRow> | null>(null);
+
+  // Keep the latest payload in a ref every render so flushJourneySave always
+  // writes the freshest values, even when called from outside React (e.g.
+  // beforeunload or the signOut path).
+  useEffect(() => {
+    if (!journey) return;
+    latestJourneyPayloadRef.current = {
+      weekly_data: weeklyData,
+      previous_week_data: previousWeekData,
+      completed_weeks: completedWeeks,
+      acclimation_data: acclimationData,
+      acclimation_steps: acclimationSteps,
+      recommended_steps: recommendedSteps,
+      recommended_calories: recommendedCalories,
+      weight_loss_start_date: weightLossStartDate || null,
+      weight_loss_start_is_anchor: true,
+      current_streak: currentStreak,
+      longest_streak: longestStreak,
+      week1_complete: isWeek1Complete,
+      week2_complete: isWeek2Complete,
+      week3_complete: isWeek3Complete,
+      week4_complete: isWeek4Complete,
+      starting_weight: startingWeight || null,
+      journey_complete: journeyComplete,
+      maintenance_phase: maintenancePhase,
+      archived_phases: archivedPhases,
+    };
+  });
+
+  const flushJourneySave = useCallback(() => {
+    // Only flush when there is genuinely a pending debounced save. This stops
+    // us from issuing a Supabase write every time a user tabs between fields
+    // without having changed anything — the autosave effect only schedules
+    // saveToSupabaseRef.current when state has actually changed, so its
+    // presence is a reliable "there are unsaved local changes" marker.
+    const hadPendingSave = saveToSupabaseRef.current !== null;
+    if (saveToSupabaseRef.current) {
+      clearTimeout(saveToSupabaseRef.current);
+      saveToSupabaseRef.current = null;
+    }
+    if (!hadPendingSave) return;
+    const payload = latestJourneyPayloadRef.current;
+    if (payload && journey) {
+      // Fire-and-forget: the HTTP request leaves with the current JWT, which
+      // remains valid server-side even after we sign out locally a moment
+      // later (Supabase JWTs are stateless until they expire). We deliberately
+      // do NOT await so this stays safe to call from sync contexts like
+      // beforeunload.
+      void saveJourney(payload);
+    }
+  }, [saveJourney, journey]);
+
   useEffect(() => {
     if (!journey) return;
     if (saveToSupabaseRef.current) clearTimeout(saveToSupabaseRef.current);
     saveToSupabaseRef.current = setTimeout(() => {
-      saveJourney({
-        weekly_data: weeklyData,
-        previous_week_data: previousWeekData,
-        completed_weeks: completedWeeks,
-        acclimation_data: acclimationData,
-        acclimation_steps: acclimationSteps,
-        recommended_steps: recommendedSteps,
-        recommended_calories: recommendedCalories,
-        weight_loss_start_date: weightLossStartDate || null,
-        weight_loss_start_is_anchor: true,
-        current_streak: currentStreak,
-        longest_streak: longestStreak,
-        week1_complete: isWeek1Complete,
-        week2_complete: isWeek2Complete,
-        week3_complete: isWeek3Complete,
-        week4_complete: isWeek4Complete,
-        starting_weight: startingWeight || null,
-        journey_complete: journeyComplete,
-        maintenance_phase: maintenancePhase,
-        archived_phases: archivedPhases,
-      });
+      const payload = latestJourneyPayloadRef.current;
+      if (payload) saveJourney(payload);
       saveToSupabaseRef.current = null;
     }, 800);
-    return () => {
-      if (saveToSupabaseRef.current) clearTimeout(saveToSupabaseRef.current);
-    };
+    // NOTE: deliberately NO cleanup-clearTimeout here. Cancelling the pending
+    // save on unmount is exactly what caused the original data-loss bug. The
+    // dedicated flush effect below takes care of unmount/exit cases.
   }, [
     journey?.id,
     weeklyData,
@@ -1004,6 +1048,26 @@ const Dashboard = () => {
     archivedPhases,
     saveJourney,
   ]);
+
+  // Register the flush so logout / idle-timeout / tab close all persist the
+  // user's latest changes BEFORE the session is torn down or storage cleared.
+  useEffect(() => {
+    if (!journey) return;
+    const unregister = registerJourneyFlush(flushJourneySave);
+    const onBeforeUnload = () => flushJourneySave();
+    const onPageHide = () => flushJourneySave();
+    window.addEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      unregister();
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("pagehide", onPageHide);
+      // Also flush on unmount (e.g. user navigates from Dashboard to /logout
+      // or any other route). Without this, switching tabs in the BottomNav
+      // mid-edit could drop the pending debounced save.
+      flushJourneySave();
+    };
+  }, [journey?.id, flushJourneySave]);
 
   // Calculate maintenance calories (TDEE at current weight - maintenance level)
   const calculateMaintenanceCalories = (currentWeight: number) => {
@@ -2198,17 +2262,25 @@ const Dashboard = () => {
 
   return (
     <TooltipProvider>
-      <div className="space-y-6 max-w-5xl mx-auto">
+      {/* onBlur on the root container fires whenever any descendant <Input>
+          loses focus (React's synthetic onBlur bubbles, unlike native blur).
+          This is how we honour "save the moment a field is completed / the
+          user clicks away" without modifying every single <Input> on the
+          page — the flush is debounced/idempotent so multiple blurs while
+          tabbing between Mon→Tue→Wed don't trigger redundant work. */}
+      <div className="space-y-6 max-w-5xl mx-auto" onBlur={() => flushJourneySave()}>
         <BackButton />
         
         {/* Welcome Section */}
         <div className="flex flex-col space-y-4 rounded-xl border-2 border-primary/60 bg-surface-container-low px-6 py-6 shadow-card">
           <h1 className="text-2xl md:text-4xl font-black tracking-tight text-primary">Hey, {userName || 'there'}!</h1>
           <div className="pt-3">
-            <p className="text-xs font-bold tracking-widest text-on-surface-variant uppercase mb-2">Daily Motivation</p>
+            <p className="text-xs font-bold tracking-widest text-on-surface-variant uppercase mb-2">Motivation</p>
             <blockquote>
-              <p className="text-base md:text-lg font-medium italic text-on-surface">"{dailyQuote.quote}"</p>
-              <footer className="text-sm text-on-surface-variant mt-1 italic">— {dailyQuote.author}</footer>
+              <p className="text-base md:text-lg font-medium italic text-on-surface">&quot;{loginSessionQuote.quote}&quot;</p>
+              {loginSessionQuote.author ? (
+                <footer className="text-sm text-on-surface-variant mt-1 italic">— {loginSessionQuote.author}</footer>
+              ) : null}
             </blockquote>
           </div>
         </div>

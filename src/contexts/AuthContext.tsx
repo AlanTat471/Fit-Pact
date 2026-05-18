@@ -8,6 +8,7 @@ import {
   clearExplicitLoginThisDocument,
   NUMI_LOGIN_OK_THIS_DOCUMENT_KEY,
 } from "@/lib/authSessionGate";
+import { flushPendingJourneySave } from "@/lib/journeySaveFlush";
 
 interface Profile {
   id: string;
@@ -214,6 +215,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionStorage.removeItem("authFlowPending");
       sessionStorage.removeItem(MOTIV_QUOTE_SESSION_KEY);
     }
+    // CRITICAL: flush any pending Dashboard saves BEFORE we tear the session
+    // down or wipe localStorage. Without this, a user who completed a Weight
+    // Loss week within the 800ms autosave debounce window and then clicked
+    // Log Out would lose that week on every device — the debounced timer was
+    // cancelled on Dashboard unmount, and the local copy got wiped a few
+    // lines below. flushPendingJourneySave() fires the save synchronously
+    // (request leaves with the current JWT, which Supabase honours
+    // server-side even after we sign out locally).
+    flushPendingJourneySave();
     setUser(null);
     setSession(null);
     setProfile(null);
