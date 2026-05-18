@@ -14,6 +14,72 @@ import { upsertProfile } from "@/lib/supabaseProfile";
 import { trackJourneySave } from "@/lib/journeySaveFlush";
 import { toast } from "@/hooks/use-toast";
 
+// ──────────────────────────────────────────────────────────────────────────
+// Stable JSON.stringify: sorts keys at every level so two logically-equal
+// objects always produce the same string regardless of property insertion
+// order. We use this for save-deduplication so a re-rendered payload that
+// happens to enumerate its keys in a different order (or whose nested
+// objects came back from Supabase with a different key order than we sent)
+// doesn't trick the dedupe into firing an unnecessary PATCH.
+// ──────────────────────────────────────────────────────────────────────────
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return "[" + value.map((v) => stableStringify(v)).join(",") + "]";
+  }
+  const keys = Object.keys(value as Record<string, unknown>).sort();
+  return (
+    "{" +
+    keys
+      .map(
+        (k) =>
+          JSON.stringify(k) + ":" + stableStringify((value as Record<string, unknown>)[k])
+      )
+      .join(",") +
+    "}"
+  );
+}
+
+/**
+ * v10 — Hard guard against runaway PATCHes.
+ *
+ * The v9 release shipped with at least one effect path that could trigger
+ * saveJourney() many times per second (the user saw 5,000+ PATCH requests
+ * accumulate after a single sign-in). The component-level dedupe in
+ * Dashboard.tsx was supposed to catch this but evidently didn't in every
+ * code path (e.g. direct saveJourney calls in click handlers, refresh
+ * paths, and any future caller we add).
+ *
+ * This map sits BELOW every caller: any saveJourney invocation is checked
+ * against the most recent successful save for the same journey id, both by
+ * content (stableStringify hash) AND by time (min interval). If either
+ * gate triggers, the save is skipped silently — the function still
+ * resolves, but no network request is made.
+ *
+ * Key choice: keep the map at module scope (not as a ref) so it survives
+ * a UserDataProvider remount, which is what happens during the Supabase
+ * onAuthStateChange race we hit in v9.
+ */
+const lastSaveByJourneyId = new Map<string, { hash: string; at: number }>();
+/** Minimum ms between two successful saves of byte-identical content. */
+const MIN_SAVE_INTERVAL_MS = 1500;
+
+/**
+ * v10 diagnostic counter. Every time saveJourney() is invoked we bump
+ * `attempted`; every time we actually fire a PATCH we bump `fired`. If
+ * something is calling saveJourney in a loop, attempted >> fired and
+ * the user can see "saves throttled: N" in the console.
+ *
+ * Exposed on window for live debugging without a redeploy:
+ *   window.__numiSaveStats        // { attempted, fired, throttled, failed }
+ */
+const saveStats = { attempted: 0, fired: 0, throttled: 0, failed: 0 };
+if (typeof window !== "undefined") {
+  (window as unknown as { __numiSaveStats: typeof saveStats }).__numiSaveStats = saveStats;
+}
+
 interface UserDataContextType {
   journey: JourneyRow | null;
   tdee: TdeeRow | null;
@@ -88,16 +154,63 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
 
   const saveJourney = useCallback(async (payload: Partial<JourneyRow>) => {
     if (!user || !journey) return;
+    const journeyId = journey.id;
+    saveStats.attempted += 1;
+
+    // v10 — Hard dedupe.
+    //
+    // 1) Compute a key-order-independent hash of the payload, ignoring
+    //    transient fields the client should never use to decide "is this
+    //    a real change?" (updated_at is added by upsertJourney itself).
+    // 2) Compare to the last successful save for this journey id. If the
+    //    content is identical AND less than MIN_SAVE_INTERVAL_MS has
+    //    elapsed, skip — this is the gate that stops a runaway autosave.
+    //
+    // We deliberately do NOT throw on a skip: legitimate callers (logout,
+    // beforeunload) await this Promise and should resolve cleanly when
+    // there's nothing new to persist.
+    const hash = stableStringify(payload);
+    const previous = lastSaveByJourneyId.get(journeyId);
+    if (previous && previous.hash === hash) {
+      const sinceLast = Date.now() - previous.at;
+      if (sinceLast < MIN_SAVE_INTERVAL_MS) {
+        // Throttled identical payload — no-op.
+        saveStats.throttled += 1;
+        // Surface a one-line console warning the FIRST time we throttle,
+        // then once per 100 throttles, so it's obvious in DevTools if a
+        // loop is happening without flooding the console.
+        if (saveStats.throttled === 1 || saveStats.throttled % 100 === 0) {
+          console.warn(
+            `[saveJourney] throttled ${saveStats.throttled} identical saves (fired=${saveStats.fired}, attempted=${saveStats.attempted}). Something is calling saveJourney in a loop — open window.__numiSaveStats.`
+          );
+        }
+        return;
+      }
+    }
+    // Optimistically record this attempt so concurrent callers within the
+    // same render burst dedupe immediately, BEFORE the network round-trip.
+    // If the save fails we restore the previous entry below.
+    lastSaveByJourneyId.set(journeyId, { hash, at: Date.now() });
+    saveStats.fired += 1;
+
     // Track the promise globally so sign-out / idle-timeout / app-pause
     // handlers can await it before invalidating the JWT or wiping
     // localStorage. Without this, every logout-while-saving lost the write.
-    const request = upsertJourney(journey.id, payload);
+    const request = upsertJourney(journeyId, payload);
     trackJourneySave(request);
     const { data: updated, error } = await request;
     if (updated) {
       setJourney(updated);
       syncJourneyToLocalStorage(updated);
     } else {
+      // Save failed — roll back the optimistic dedupe marker so the next
+      // attempt isn't suppressed.
+      if (previous) {
+        lastSaveByJourneyId.set(journeyId, previous);
+      } else {
+        lastSaveByJourneyId.delete(journeyId);
+      }
+      saveStats.failed += 1;
       const detail = error?.message ? ` ${error.message}` : "";
       toast({
         title: "Save failed",

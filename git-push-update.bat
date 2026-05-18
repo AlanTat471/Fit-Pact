@@ -1,6 +1,6 @@
 @echo off
 echo ================================================
-echo   Numi v9 - data loss on logout/login finally fixed
+echo   Numi v10 - hard cap on saveJourney + diagnostics
 echo ================================================
 echo.
 
@@ -8,62 +8,50 @@ cd /d "%~dp0"
 
 echo Adding changed files...
 
-REM v9 hardens the v8 flush so it actually waits for Supabase to confirm
-REM the write before we revoke the JWT and clear localStorage. v8 was
-REM fire-and-forget, so on Android the save consistently raced and lost
-REM against the token revocation -> 401 -> data gone on both ends.
-
-REM journeySaveFlush: now tracks every in-flight saveJourney Promise so
-REM signOut / idle-timeout / Capacitor pause can `await waitForInFlightSaves()`
-REM before tearing the session down.
-git add src/lib/journeySaveFlush.ts
-
-REM NEW: capacitorLifecycle wires Capacitor App pause / appStateChange so
-REM backgrounding the Android app (Home button, app switcher, OS reclaim)
-REM flushes pending saves. beforeunload / pagehide are unreliable inside
-REM the Android WebView; this plugin gives us the events we actually need.
-git add src/lib/capacitorLifecycle.ts
-git add src/main.tsx
-
-REM UserDataContext.saveJourney: wraps the Supabase upsert in trackJourneySave
-REM and re-throws on error so callers that DO await (signOut) can detect a
-REM failed save and preserve localStorage as recovery backup.
-REM Also strengthens migrateFromLocalStorage so a cloud journey that has
-REM completed_weeks but empty weekly_data is correctly recognised as having
-REM progress (so we don't overwrite it with stale localStorage on next login).
+REM v10 fixes a render-speed infinite save loop where Supabase was being
+REM hammered with thousands of identical PATCH /journeys requests every
+REM second after sign-in.
+REM
+REM v9 ALREADY:
+REM   - Tracked in-flight saves via journeySaveFlush so logout/idle wait
+REM     for the network round-trip before clearing localStorage.
+REM   - Made flushJourneySave stable (zero useCallback deps) via refs.
+REM   - Added a JSON-equality dedupe inside Dashboard's autosave path.
+REM
+REM ...but the user still saw 5,000+ identical PATCHes accumulate post-
+REM sign-in. The dedupe was clearly being bypassed by SOMETHING (a future
+REM caller we hadn't found yet, or a render path that produced subtly
+REM different JSON for logically identical content).
+REM
+REM v10 fix:
+REM   1. Move the dedupe DOWN to UserDataContext.saveJourney itself, the
+REM      single chokepoint every caller goes through. No matter how often
+REM      anyone calls saveJourney with the same content for the same
+REM      journey id within 1.5s, only ONE PATCH actually fires.
+REM   2. Use stableStringify (sorted keys at every level) for the hash so
+REM      the comparison is genuinely content-based, not order-sensitive.
+REM      A render that builds the payload in a different property order
+REM      cannot defeat the dedupe.
+REM   3. Track save attempts in a module-scope counter exposed on
+REM      window.__numiSaveStats so the next time a loop appears we can
+REM      see {attempted, fired, throttled, failed} live in DevTools.
+REM   4. Console.warn on the 1st throttled save and every 100th after
+REM      that, so a runaway caller is visible in DevTools immediately.
+REM
+REM Files touched in v10:
 git add src/contexts/UserDataContext.tsx
-
-REM AuthContext.signOut: now awaits waitForInFlightSaves() between
-REM flushPendingJourneySave() and supabase.auth.signOut(). If the save
-REM failed or timed out, localStorage is preserved so the next login's
-REM migrateFromLocalStorage can recover the data.
-git add src/contexts/AuthContext.tsx
-
-REM AppLayout idle-timeout: same await-saves-first treatment as signOut.
-git add src/layouts/AppLayout.tsx
-
-REM Dashboard.flushJourneySave: no longer gated on a pending debounce – it
-REM now always saves the latest payload when asked. Fixes the "user typed a
-REM value, debounce fired and finished, user immediately logs out" case
-REM where v8 would early-return and not save anything.
 git add src/pages/Dashboard.tsx
 
-REM Dependency: @capacitor/app (for the lifecycle listeners above).
-git add package.json
-git add package-lock.json
-
-REM Android: versionCode 8 -> 9, versionName 1.4 -> 1.5. Required by Play
-REM Console for any new AAB upload; bump in lockstep with this commit.
+REM versionCode 9 -> 10, versionName 1.5 -> 1.6. Required by Play Console.
 git add android/app/build.gradle
 
 git add git-push-update.bat
 
 echo Committing...
 git commit ^
-  -m "v9: actually wait for Supabase save before signing out / wiping localStorage" ^
-  -m "v8 attempted to flush pending Dashboard saves on logout / idle / unmount but did NOT await them. On Android this consistently lost the race: supabase.auth.signOut() revoked the JWT before the still-in-flight save HTTP request landed, Supabase responded 401, and AuthContext then wiped localStorage. Result: every logout/login cycle nuked the user's completed weeks." ^
-  -m "v9 introduces a global in-flight save tracker in journeySaveFlush.ts. Every saveJourney call adds its Promise to the set; signOut / idle-timeout / Capacitor pause call flushPendingJourneySave() to kick off any pending debounce, then await waitForInFlightSaves() before revoking the JWT. If the save fails or times out, localStorage is preserved so the next login can re-migrate. flushJourneySave is no longer gated on a pending debounce so explicit logout always saves." ^
-  -m "Also adds @capacitor/app + src/lib/capacitorLifecycle.ts: subscribes to pause / appStateChange so backgrounding the Android app flushes saves too. beforeunload and pagehide are unreliable inside Android WebView; this closes that gap. Web build is unaffected because Capacitor.isNativePlatform() is false there."
+  -m "v10: hard cap saveJourney() to prevent runaway PATCH loop" ^
+  -m "v9 saw 5k+ identical PATCH /journeys requests accumulate per sign-in despite component-level dedupe. v10 moves the dedupe into UserDataContext.saveJourney itself (single chokepoint) and uses stableStringify so property-order differences cannot bypass it. Min interval 1500ms between identical saves for the same journey id." ^
+  -m "Also exposes window.__numiSaveStats {attempted, fired, throttled, failed} and logs a console.warn on the 1st throttled call and every 100th after, so any future runaway caller is visible in DevTools without a redeploy."
 
 echo.
 echo Pushing to origin...
@@ -73,28 +61,32 @@ echo.
 echo ================================================
 echo   Push complete!
 echo.
-echo   THIS RELEASE REQUIRES `npm install` BEFORE BUILDING because
-echo   @capacitor/app was added to package.json.
+echo   This release does NOT add any new dependencies.
 echo.
 echo   Next steps (do in this order):
 echo     1. Vercel (web): auto-deploys from main branch.
-echo        Vercel runs `npm install` itself so this Just Works.
 echo        - confirm the build went green in the Vercel dashboard
 echo        - hard-refresh https://yourapp.com (Ctrl+Shift+R)
+echo        - open DevTools -^> Network tab, filter `journeys`
+echo          You should see at most a handful of PATCHes per minute
+echo          (NOT a continuous stream).
+echo        - in DevTools -^> Console, type:  window.__numiSaveStats
+echo          and press Enter. You'll see {attempted, fired, throttled,
+echo          failed}. If `throttled` is climbing fast that's the cap
+echo          doing its job - tell me the numbers and we'll trace the
+echo          underlying caller.
 echo     2. Android (Capacitor + Play Store): rebuild the AAB.
-echo        From this folder, in order:
-echo          npm install                       (picks up @capacitor/app)
-echo          npm run build                     (rebuilds dist/)
-echo          npx cap sync android              (copies dist/ + new plugin into android/)
-echo        Then either:
-echo          cd android ^&^& gradlew bundleRelease   (CLI)
-echo        OR open android/ in Android Studio:
+echo          npm run build
+echo          npx cap sync android
+echo        Then in Android Studio:
 echo          Build -^> Generate Signed Bundle / APK -^> Android App Bundle
 echo        Upload android/app/release/app-release.aab to:
 echo          Play Console -^> Testing -^> Internal testing
 echo          -^> Create new release -^> Upload AAB
 echo          -^> Save -^> Review release -^> Start rollout to Internal testing
-echo        versionCode is already bumped to 9 in android/app/build.gradle.
-echo     3. iOS: no iOS target in this project, no action.
+echo        versionCode is already 10, versionName 1.6.
+echo        Install v10 on the phone via Play Store (clear Play Store cache
+echo        first if it doesn't appear within a few minutes).
+echo     3. iOS: no iOS target, nothing to do.
 echo ================================================
 pause

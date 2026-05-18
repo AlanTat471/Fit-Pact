@@ -992,39 +992,67 @@ const Dashboard = () => {
     };
   });
 
+  // v10 NOTE — these refs deliberately make flushJourneySave fully stable
+  // (zero useCallback deps). The v9 implementation depended on the full
+  // `journey` object and on `saveJourney`, both of which got new references
+  // every time setJourney(updated) fired after a save. That caused the
+  // registration useEffect below to re-run on every save, whose cleanup then
+  // fired flushJourneySave() AGAIN — an infinite, render-speed save loop
+  // (~1000 requests/sec) that wiped user data on the phone too because the
+  // loop kept overwriting the cloud with the desktop's blank state.
+  //
+  // By stashing the latest saveJourney and journey?.id in refs, the
+  // useCallback can be empty-deps stable and the registration effect below
+  // only fires its cleanup when the Dashboard actually unmounts.
+  const saveJourneyRef = useRef(saveJourney);
+  const journeyIdForFlushRef = useRef<string | null>(journey?.id ?? null);
+  useEffect(() => { saveJourneyRef.current = saveJourney; }, [saveJourney]);
+  useEffect(() => { journeyIdForFlushRef.current = journey?.id ?? null; }, [journey?.id]);
+
+  // Track what we last successfully saved so a flush triggered by something
+  // OTHER than a real change (e.g. tab visibility, blur with no edit) doesn't
+  // resubmit the identical payload over and over.
+  const lastSavedPayloadJsonRef = useRef<string>("");
+
   const flushJourneySave = useCallback(() => {
-    // v9 change: always save the latest payload when asked to flush, even if
-    // no debounce timer is pending. Previously we early-returned when no
-    // debounce was scheduled, which broke the "explicit logout right after
-    // an autosave just completed" case AND the unmount-on-navigation case
-    // (the cleanup fires after every render, including renders with no
-    // pending change).
-    //
-    // The new saveJourney is also tracked via trackJourneySave() so the
-    // returned Promise can be awaited by signOut() / idle-timeout / app pause
-    // BEFORE the JWT is revoked. We still don't await here — these flush
-    // call-sites are synchronous contexts (beforeunload, unmount cleanup) —
-    // but the caller can `await waitForInFlightSaves()` immediately after.
     if (saveToSupabaseRef.current) {
       clearTimeout(saveToSupabaseRef.current);
       saveToSupabaseRef.current = null;
     }
     const payload = latestJourneyPayloadRef.current;
-    if (payload && journey) {
-      // Fire the save. Errors are swallowed here (saveJourney already toasts)
-      // because there's no UI to react in the unmount/logout/idle paths –
-      // signOut() will detect a failed in-flight save via the in-flight set
-      // and preserve localStorage as a backup instead of wiping it.
-      void saveJourney(payload).catch(() => {});
-    }
-  }, [saveJourney, journey]);
+    if (!payload) return;
+    if (!journeyIdForFlushRef.current) return;
+    // Skip if the payload is byte-identical to the last successful save.
+    // JSON.stringify is fine here – payloads are small (~few KB) and only
+    // contain plain JSON-serialisable data.
+    const json = JSON.stringify(payload);
+    if (json === lastSavedPayloadJsonRef.current) return;
+    lastSavedPayloadJsonRef.current = json;
+    // Fire the save. Errors are swallowed here (saveJourney already toasts) –
+    // signOut() detects failed in-flight saves via the global tracker and
+    // preserves localStorage as a backup instead of wiping it.
+    void saveJourneyRef.current(payload).catch(() => {});
+  }, []); // ← zero deps, fully stable reference
+
+  // Reset the dedup marker when the journey row changes (different user / new
+  // journey). Without this, signing in as a different account could prevent
+  // their first save from going through because of a stale match.
+  useEffect(() => {
+    lastSavedPayloadJsonRef.current = "";
+  }, [journey?.id]);
 
   useEffect(() => {
     if (!journey) return;
     if (saveToSupabaseRef.current) clearTimeout(saveToSupabaseRef.current);
     saveToSupabaseRef.current = setTimeout(() => {
       const payload = latestJourneyPayloadRef.current;
-      if (payload) saveJourney(payload);
+      if (payload) {
+        const json = JSON.stringify(payload);
+        if (json !== lastSavedPayloadJsonRef.current) {
+          lastSavedPayloadJsonRef.current = json;
+          void saveJourney(payload).catch(() => {});
+        }
+      }
       saveToSupabaseRef.current = null;
     }, 800);
     // NOTE: deliberately NO cleanup-clearTimeout here. Cancelling the pending
@@ -1055,8 +1083,12 @@ const Dashboard = () => {
 
   // Register the flush so logout / idle-timeout / tab close all persist the
   // user's latest changes BEFORE the session is torn down or storage cleared.
+  // With v10's stable flushJourneySave, this effect now ONLY re-runs when the
+  // journey id actually changes (user switch / new journey row), so the
+  // cleanup below only fires on a true unmount or a true row swap – never on
+  // every save.
   useEffect(() => {
-    if (!journey) return;
+    if (!journey?.id) return;
     const unregister = registerJourneyFlush(flushJourneySave);
     const onBeforeUnload = () => flushJourneySave();
     const onPageHide = () => flushJourneySave();
