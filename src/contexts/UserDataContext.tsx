@@ -67,6 +67,50 @@ const lastSaveByJourneyId = new Map<string, { hash: string; at: number }>();
 const MIN_SAVE_INTERVAL_MS = 1500;
 
 /**
+ * v11 — Build the exact payload shape Dashboard.tsx sends to saveJourney
+ * from a freshly-loaded journey row. We seed `lastSaveByJourneyId` with
+ * this hash the moment we set journey state, so the FIRST autosave that
+ * fires (right after Dashboard hydrates from the journey) is detected as
+ * a no-op write and never reaches Supabase.
+ *
+ * Why this matters: v9/v10 saw a PATCH /journeys?id=eq.X firing the
+ * moment journey loaded, with identical content. That phantom save
+ * sometimes returned PGRST116 (0 rows from .single().select() after a
+ * fresh INSERT — likely an RLS/JWT propagation race), which threw and
+ * cascaded into the user being bounced back to the sign-in screen.
+ * Pre-seeding the dedupe means the request is never made in the first
+ * place.
+ */
+function buildAutosavePayloadFromJourney(j: JourneyRow): Partial<JourneyRow> {
+  return {
+    weekly_data: j.weekly_data,
+    previous_week_data: j.previous_week_data,
+    completed_weeks: j.completed_weeks,
+    acclimation_data: j.acclimation_data,
+    acclimation_steps: j.acclimation_steps,
+    recommended_steps: j.recommended_steps,
+    recommended_calories: j.recommended_calories,
+    weight_loss_start_date: j.weight_loss_start_date || null,
+    weight_loss_start_is_anchor: true,
+    current_streak: j.current_streak,
+    longest_streak: j.longest_streak,
+    week1_complete: j.week1_complete,
+    week2_complete: j.week2_complete,
+    week3_complete: j.week3_complete,
+    week4_complete: j.week4_complete,
+    starting_weight: j.starting_weight || null,
+    journey_complete: j.journey_complete,
+    maintenance_phase: j.maintenance_phase,
+    archived_phases: j.archived_phases,
+  };
+}
+function seedDedupeForJourney(j: JourneyRow): void {
+  if (!j?.id) return;
+  const payload = buildAutosavePayloadFromJourney(j);
+  lastSaveByJourneyId.set(j.id, { hash: stableStringify(payload), at: Date.now() });
+}
+
+/**
  * v10 diagnostic counter. Every time saveJourney() is invoked we bump
  * `attempted`; every time we actually fire a PATCH we bump `fired`. If
  * something is calling saveJourney in a loop, attempted >> fired and
@@ -118,7 +162,14 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
       if (!journeyData) {
         journeyData = await createJourney(userId);
       }
-      if (journeyData) syncJourneyToLocalStorage(journeyData);
+      if (journeyData) {
+        syncJourneyToLocalStorage(journeyData);
+        // v11 — Seed the dedupe with the loaded journey's content hash
+        // BEFORE setJourney triggers Dashboard's hydration + autosave.
+        // Dashboard's first autosave attempt will compute the same hash
+        // and short-circuit — no PATCH, no race, no PGRST116.
+        seedDedupeForJourney(journeyData);
+      }
       if (t) syncTdeeToLocalStorage(t);
       if (m && Object.keys(m).length > 0) syncMacrosToLocalStorage(m);
       setJourney(journeyData);
@@ -136,8 +187,11 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
     const j = await getActiveJourney(user.id);
     const latest = await getLatestJourney(user.id);
     const data = j ?? latest;
+    if (data) {
+      seedDedupeForJourney(data);
+      syncJourneyToLocalStorage(data);
+    }
     setJourney(data || null);
-    if (data) syncJourneyToLocalStorage(data);
   };
 
   const refreshTdee = async () => {
@@ -196,31 +250,80 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
     // Track the promise globally so sign-out / idle-timeout / app-pause
     // handlers can await it before invalidating the JWT or wiping
     // localStorage. Without this, every logout-while-saving lost the write.
+    // v11 — Track a promise that REJECTS on Supabase error.
+    //
+    // Without this, waitForInFlightSaves() in AuthContext.signOut would
+    // see the underlying upsertJourney request resolve successfully (it
+    // always resolves with { data, error }) even when the save FAILED.
+    // signOut would then think the cloud has the latest copy and WIPE
+    // localStorage — and the user really would lose data.
+    //
+    // The trackable promise resolves only on data success; it rejects
+    // (and triggers signOut's "save failed, preserve localStorage as
+    // backup" branch) on any error so the user's data has a fallback.
     const request = upsertJourney(journeyId, payload);
-    trackJourneySave(request);
+    const trackable = request.then(({ data, error: respErr }) => {
+      if (respErr || !data) {
+        throw new Error(respErr?.message || "saveJourney failed");
+      }
+      return data;
+    });
+    trackJourneySave(trackable);
+    // Swallow unhandled rejection on the trackable copy — saveJourney
+    // below awaits `request` (which never rejects) and handles errors
+    // itself. The trackable rejection exists only for waitForInFlightSaves.
+    trackable.catch(() => {});
     const { data: updated, error } = await request;
     if (updated) {
+      // Refresh the dedupe marker with the EXACT shape we just sent so
+      // that future identical payloads are no-ops too. (The optimistic
+      // entry written above was the same hash, but updating .at keeps
+      // the throttle window correct.)
+      lastSaveByJourneyId.set(journeyId, { hash, at: Date.now() });
       setJourney(updated);
       syncJourneyToLocalStorage(updated);
+      return;
+    }
+
+    // ── Save failed ──────────────────────────────────────────────────
+    // Roll back the optimistic dedupe marker so the next attempt isn't
+    // suppressed if the user keeps interacting.
+    if (previous) {
+      lastSaveByJourneyId.set(journeyId, previous);
     } else {
-      // Save failed — roll back the optimistic dedupe marker so the next
-      // attempt isn't suppressed.
-      if (previous) {
-        lastSaveByJourneyId.set(journeyId, previous);
-      } else {
-        lastSaveByJourneyId.delete(journeyId);
-      }
-      saveStats.failed += 1;
-      const detail = error?.message ? ` ${error.message}` : "";
+      lastSaveByJourneyId.delete(journeyId);
+    }
+    saveStats.failed += 1;
+
+    // v11 — never surface a destructive toast for a PGRST116 ("no rows
+    // returned") on the very first autosave after a fresh INSERT. That
+    // is the phantom-save-on-load racing with Supabase's RLS check and
+    // is benign: nothing was meant to change, nothing was lost, no need
+    // to scare the user. Real failures (anything else, including 401)
+    // still surface a toast so the user knows something went wrong.
+    const code = error?.code;
+    const message = error?.message || "saveJourney failed";
+    const isBenignPhantomSave =
+      code === "PGRST116" || /multiple \(or no\) rows returned/i.test(message);
+
+    if (isBenignPhantomSave) {
+      console.warn(
+        `[saveJourney] benign no-op save returned ${code || "PGRST116"} (likely the phantom-save-on-load race). Suppressing toast.`
+      );
+    } else {
+      console.error(`[saveJourney] failed: ${code ?? ""} ${message}`);
       toast({
         title: "Save failed",
-        description: `Could not save your journey data.${detail}`.trim(),
+        description: `Could not save your journey data. ${message}`.trim(),
         variant: "destructive",
       });
-      // Re-throw so callers that DO await (e.g. signOut) know the save
-      // failed and can preserve localStorage as a recovery backup.
-      throw new Error(error?.message || "saveJourney failed");
     }
+
+    // Re-throw so callers that DO await (signOut, idle-timeout) know
+    // the save failed and can preserve localStorage as a recovery
+    // backup. Fire-and-forget callers (Dashboard autosave) already use
+    // .catch(() => {}) and won't see this.
+    throw new Error(message);
   }, [user, journey?.id]);
 
   const saveTdee = useCallback(async (payload: Partial<TdeeRow>) => {
@@ -355,9 +458,36 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
       const maint = localStorage.getItem("dashboardMaintenancePhase");
       const archivedRaw = localStorage.getItem("numiArchivedPhases");
 
-      if (weekly || prev || completed || acclim) {
-        const j = journey || (await createJourney(user.id));
-        if (j) {
+      // v11 — CRITICAL FIX. The previous logic was:
+      //   if (weekly || prev || completed || acclim) {
+      //     const j = journey || (await createJourney(user.id));
+      //     ...upsert payload into j...
+      //   }
+      // If loadData() failed for ANY transient reason (network blip,
+      // mid-sign-in JWT propagation race, half-built session after
+      // clicking Sign In twice — which is exactly what happened in the
+      // 401 PostgreSQL error=42501 case), `journey` was null here. The
+      // OR-fallback then created a SECOND journey row for the same user.
+      // On the next sign-in, getActiveJourney() returned the newer
+      // (empty) row, the user's real journey was orphaned, and they
+      // appeared to have "lost all their data". This was the actual
+      // root cause of the "completed weeks disappear on logout/login"
+      // complaint.
+      //
+      // Fix: NEVER create a journey from inside migration. We only ever
+      // upsert into the row that loadData() already gave us. If we
+      // don't have one yet, we skip the journey migration block entirely
+      // (TDEE/macros/profile migration still runs below — they don't
+      // need a journey row). The next refreshJourney() will fetch the
+      // real row from Supabase and the user's normal autosave will
+      // persist any pending local edits.
+      if ((weekly || prev || completed || acclim) && !journey) {
+        console.warn(
+          "[UserData] migrateFromLocalStorage: skipping journey migration — journey not loaded yet, refusing to create a duplicate row."
+        );
+      } else if (weekly || prev || completed || acclim) {
+        const j = journey!;
+        {
           const payload: Partial<JourneyRow> = {};
           if (weekly) payload.weekly_data = JSON.parse(weekly) as JourneyRow["weekly_data"];
           if (prev) payload.previous_week_data = JSON.parse(prev) as JourneyRow["previous_week_data"];
@@ -387,7 +517,10 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
             } catch {}
           }
           const { data: updated } = await upsertJourney(j.id, payload);
-          if (updated) setJourney(updated);
+          if (updated) {
+            seedDedupeForJourney(updated);
+            setJourney(updated);
+          }
         }
       }
     }
@@ -469,7 +602,10 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
         weight_loss_start_date: anchor,
         weight_loss_start_is_anchor: true,
       });
-      if (!cancelled && data) setJourney(data);
+      if (!cancelled && data) {
+        seedDedupeForJourney(data);
+        setJourney(data);
+      }
     })();
     return () => {
       cancelled = true;

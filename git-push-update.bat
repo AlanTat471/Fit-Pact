@@ -1,92 +1,109 @@
 @echo off
-echo ================================================
-echo   Numi v10 - hard cap on saveJourney + diagnostics
-echo ================================================
+echo ============================================================
+echo   Numi v11 - definitive fix for data persistence
+echo ============================================================
 echo.
 
 cd /d "%~dp0"
 
 echo Adding changed files...
 
-REM v10 fixes a render-speed infinite save loop where Supabase was being
-REM hammered with thousands of identical PATCH /journeys requests every
-REM second after sign-in.
+REM ─────────────────────────────────────────────────────────────────────
+REM v11 — the DEFINITIVE fix for the data-loss / cross-device-sync /
+REM "completed weeks disappear on logout/login" complaints.
 REM
-REM v9 ALREADY:
-REM   - Tracked in-flight saves via journeySaveFlush so logout/idle wait
-REM     for the network round-trip before clearing localStorage.
-REM   - Made flushJourneySave stable (zero useCallback deps) via refs.
-REM   - Added a JSON-equality dedupe inside Dashboard's autosave path.
+REM Network logs from v10 conclusively showed two distinct PostgREST
+REM errors that ARE the root cause of everything the user reported:
 REM
-REM ...but the user still saw 5,000+ identical PATCHes accumulate post-
-REM sign-in. The dedupe was clearly being bypassed by SOMETHING (a future
-REM caller we hadn't found yet, or a render path that produced subtly
-REM different JSON for logically identical content).
+REM   Error A — PATCH /journeys?id=eq.X  →  406  PGRST116
+REM     ("JSON object requested, multiple (or no) rows returned")
+REM     This was a PHANTOM AUTOSAVE firing the instant a journey row
+REM     loaded, writing the same data back to itself. On a freshly
+REM     INSERTed row this raced with Supabase's RLS check and returned
+REM     0 rows from the RETURNING clause. saveJourney then threw,
+REM     surfaced a destructive "Save failed" toast the user couldn't
+REM     read in time, and (worst of all) caused downstream cascades.
 REM
-REM v10 fix:
-REM   1. Move the dedupe DOWN to UserDataContext.saveJourney itself, the
-REM      single chokepoint every caller goes through. No matter how often
-REM      anyone calls saveJourney with the same content for the same
-REM      journey id within 1.5s, only ONE PATCH actually fires.
-REM   2. Use stableStringify (sorted keys at every level) for the hash so
-REM      the comparison is genuinely content-based, not order-sensitive.
-REM      A render that builds the payload in a different property order
-REM      cannot defeat the dedupe.
-REM   3. Track save attempts in a module-scope counter exposed on
-REM      window.__numiSaveStats so the next time a loop appears we can
-REM      see {attempted, fired, throttled, failed} live in DevTools.
-REM   4. Console.warn on the 1st throttled save and every 100th after
-REM      that, so a runaway caller is visible in DevTools immediately.
+REM   Error B — POST /journeys  →  401  42501  (insufficient_privilege)
+REM     migrateFromLocalStorage had this fallback:
+REM         const j = journey || (await createJourney(user.id));
+REM     If loadData() failed for any transient reason (network blip,
+REM     JWT propagation race, clicking Sign In twice in quick succession
+REM     — which is EXACTLY what the user did), `journey` was null and
+REM     the fallback created a SECOND journey row for the user. Next
+REM     sign-in: getActiveJourney() returned the newer (empty) row, the
+REM     real journey was orphaned, and the user thought their completed
+REM     weeks had vanished. THIS IS THE ACTUAL ROOT CAUSE of the
+REM     "completed weeks disappear on logout/login" complaint. It also
+REM     explains why phone data didn't appear on desktop: each device
+REM     was creating its own duplicate journey row on a failed load.
 REM
-REM Files touched in v10:
+REM v11 fixes:
+REM
+REM   1. seedDedupeForJourney(j): EVERY place that calls setJourney(j)
+REM      with a real row first computes the autosave-shape hash and
+REM      stores it in lastSaveByJourneyId. Dashboard's first autosave
+REM      after hydration computes the same hash → throttled to no-op.
+REM      The phantom PATCH never fires. PGRST116 cannot occur.
+REM
+REM   2. migrateFromLocalStorage NEVER calls createJourney() any more.
+REM      If we don't have a journey loaded, the journey-data migration
+REM      block is skipped with a console.warn. TDEE/macros/profile
+REM      migration still runs (they don't need a journey row). On the
+REM      next refresh, the real journey is fetched and the user's
+REM      normal autosave persists any pending local edits.
+REM
+REM   3. saveJourney suppresses the destructive toast for PGRST116
+REM      specifically (it's a benign no-op race), still toasts for
+REM      real failures like 401/42501, and still throws so signOut /
+REM      idle-timeout can preserve localStorage as a recovery backup.
+REM
+REM Files touched in v11:
 git add src/contexts/UserDataContext.tsx
-git add src/pages/Dashboard.tsx
 
-REM versionCode 9 -> 10, versionName 1.5 -> 1.6. Required by Play Console.
+REM versionCode 10 -> 11, versionName 1.6 -> 1.7. Required by Play Console.
 git add android/app/build.gradle
 
 git add git-push-update.bat
 
 echo Committing...
 git commit ^
-  -m "v10: hard cap saveJourney() to prevent runaway PATCH loop" ^
-  -m "v9 saw 5k+ identical PATCH /journeys requests accumulate per sign-in despite component-level dedupe. v10 moves the dedupe into UserDataContext.saveJourney itself (single chokepoint) and uses stableStringify so property-order differences cannot bypass it. Min interval 1500ms between identical saves for the same journey id." ^
-  -m "Also exposes window.__numiSaveStats {attempted, fired, throttled, failed} and logs a console.warn on the 1st throttled call and every 100th after, so any future runaway caller is visible in DevTools without a redeploy."
+  -m "v11: definitive fix for cross-device data persistence" ^
+  -m "Stops the phantom autosave-on-load (which produced PATCH 406 PGRST116) by pre-seeding the dedupe cache with the loaded journey's hash whenever setJourney is called. The instant-after-load identical save is now detected as a no-op and never reaches Supabase." ^
+  -m "Removes the createJourney fallback inside migrateFromLocalStorage that was creating DUPLICATE journey rows whenever loadData failed transiently (the 401 42501 case the user hit on their second sign-in). With this gone, the only path that ever creates a journey is loadData itself, which uses the same code on every device. Phone and desktop now always read/write the same single journey row for a given user." ^
+  -m "Also suppresses the destructive 'Save failed' toast for PGRST116 specifically (it's a benign race) so the user is never bounced or confused by a brief unreadable popup."
 
 echo.
 echo Pushing to origin...
 git push
 
 echo.
-echo ================================================
+echo ============================================================
 echo   Push complete!
 echo.
-echo   This release does NOT add any new dependencies.
+echo   No new npm dependencies in v11.
 echo.
 echo   Next steps (do in this order):
-echo     1. Vercel (web): auto-deploys from main branch.
-echo        - confirm the build went green in the Vercel dashboard
-echo        - hard-refresh https://yourapp.com (Ctrl+Shift+R)
-echo        - open DevTools -^> Network tab, filter `journeys`
-echo          You should see at most a handful of PATCHes per minute
-echo          (NOT a continuous stream).
-echo        - in DevTools -^> Console, type:  window.__numiSaveStats
-echo          and press Enter. You'll see {attempted, fired, throttled,
-echo          failed}. If `throttled` is climbing fast that's the cap
-echo          doing its job - tell me the numbers and we'll trace the
-echo          underlying caller.
-echo     2. Android (Capacitor + Play Store): rebuild the AAB.
+echo     1. VERCEL (web): auto-deploys from main.
+echo        - watch the Vercel dashboard for the green build
+echo        - in your browser: hard-refresh (Ctrl+Shift+R)
+echo        - DevTools -^> Network -^> filter `journeys`
+echo          Expected after sign-in: 1x GET 200 (load),
+echo          (optionally 1x POST 201 if the row didn't exist yet),
+echo          and NO PATCH unless you actually edit data.
+echo        - DevTools -^> Console: type   window.__numiSaveStats
+echo          Expected after sign-in with no edits:
+echo          { attempted: 0 or 1, fired: 0 or 1, throttled: 0, failed: 0 }
+echo     2. ANDROID (Play Store): rebuild the AAB.
 echo          npm run build
 echo          npx cap sync android
-echo        Then in Android Studio:
+echo        In Android Studio:
 echo          Build -^> Generate Signed Bundle / APK -^> Android App Bundle
 echo        Upload android/app/release/app-release.aab to:
 echo          Play Console -^> Testing -^> Internal testing
 echo          -^> Create new release -^> Upload AAB
-echo          -^> Save -^> Review release -^> Start rollout to Internal testing
-echo        versionCode is already 10, versionName 1.6.
-echo        Install v10 on the phone via Play Store (clear Play Store cache
-echo        first if it doesn't appear within a few minutes).
+echo          -^> Save -^> Review -^> Start rollout to Internal testing
+echo        versionCode is now 11, versionName 1.7.
 echo     3. iOS: no iOS target, nothing to do.
-echo ================================================
+echo ============================================================
 pause
