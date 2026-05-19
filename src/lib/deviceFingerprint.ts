@@ -1,7 +1,26 @@
 /**
- * Generate a stable-enough device fingerprint for "trusted device" detection.
- * We include a per-install random id so mobile/desktop OS or WebView updates
- * that tweak userAgent alone do not flip the device to "new" every sign-in.
+ * Generate a stable device fingerprint for "trusted device" detection.
+ *
+ * History:
+ *   • v1: the hash mixed in navigator.userAgent, navigator.language, timezone
+ *     and hardwareConcurrency on top of a localStorage UUID. Intent was extra
+ *     resilience, but the result was the opposite — every Chrome / Edge /
+ *     Safari / Android WebView auto-update rewrites userAgent, which flipped
+ *     the hash, which evicted the device from the Supabase `trusted_devices`
+ *     table on the next sign-in, which forced an OTP every ~4 weeks.
+ *
+ *   • v2 (this code): the fingerprint depends ONLY on the per-install random
+ *     UUID stored in localStorage. That UUID is generated once when the user
+ *     first lands on the site / installs the app, and stays put until the
+ *     browser's localStorage is explicitly cleared (or the Android app's
+ *     data is wiped). userAgent updates, language switches, and timezone
+ *     changes no longer invalidate trust.
+ *
+ *   • Migration: existing trusted_devices rows still contain v1 hashes. The
+ *     first time a previously-verified user signs in after this change ships,
+ *     their fingerprint will not match — they will OTP-verify once. After
+ *     that one re-verification, trust is permanent for the life of that
+ *     browser profile / app install.
  */
 const INSTALL_ID_KEY = "wlbd_install_id";
 
@@ -23,14 +42,11 @@ function getOrCreateInstallId(): string {
 }
 
 export function getDeviceFingerprint(): string {
-  const parts = [
-    getOrCreateInstallId(),
-    navigator.userAgent,
-    navigator.language,
-    new Date().getTimezoneOffset(),
-    navigator.hardwareConcurrency || 0,
-  ];
-  const str = parts.join("|");
+  // The install ID is already a unique random UUID per browser profile / app
+  // install. Hashing it through djb2 (matching the v1 helper) just gives us
+  // a compact base36 string with the same `wlbd_` prefix that the rest of
+  // the codebase already expects.
+  const str = getOrCreateInstallId();
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);

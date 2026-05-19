@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v11 - definitive fix for data persistence
+echo   Numi v12 - device-trust fingerprint fix + Stitch refresh
 echo ============================================================
 echo.
 
@@ -9,69 +9,60 @@ cd /d "%~dp0"
 echo Adding changed files...
 
 REM ─────────────────────────────────────────────────────────────────────
-REM v11 — the DEFINITIVE fix for the data-loss / cross-device-sync /
-REM "completed weeks disappear on logout/login" complaints.
+REM v12 — fixes the "verify on each previously-verified device" bug.
 REM
-REM Network logs from v10 conclusively showed two distinct PostgREST
-REM errors that ARE the root cause of everything the user reported:
+REM Root cause (confirmed by reading src/lib/deviceFingerprint.ts):
 REM
-REM   Error A — PATCH /journeys?id=eq.X  →  406  PGRST116
-REM     ("JSON object requested, multiple (or no) rows returned")
-REM     This was a PHANTOM AUTOSAVE firing the instant a journey row
-REM     loaded, writing the same data back to itself. On a freshly
-REM     INSERTed row this raced with Supabase's RLS check and returned
-REM     0 rows from the RETURNING clause. saveJourney then threw,
-REM     surfaced a destructive "Save failed" toast the user couldn't
-REM     read in time, and (worst of all) caused downstream cascades.
+REM   getDeviceFingerprint() hashed five inputs together:
+REM     - getOrCreateInstallId()   (stable UUID in localStorage)
+REM     - navigator.userAgent      (CHANGES on every browser auto-update)
+REM     - navigator.language
+REM     - new Date().getTimezoneOffset()
+REM     - navigator.hardwareConcurrency
 REM
-REM   Error B — POST /journeys  →  401  42501  (insufficient_privilege)
-REM     migrateFromLocalStorage had this fallback:
-REM         const j = journey || (await createJourney(user.id));
-REM     If loadData() failed for any transient reason (network blip,
-REM     JWT propagation race, clicking Sign In twice in quick succession
-REM     — which is EXACTLY what the user did), `journey` was null and
-REM     the fallback created a SECOND journey row for the user. Next
-REM     sign-in: getActiveJourney() returned the newer (empty) row, the
-REM     real journey was orphaned, and the user thought their completed
-REM     weeks had vanished. THIS IS THE ACTUAL ROOT CAUSE of the
-REM     "completed weeks disappear on logout/login" complaint. It also
-REM     explains why phone data didn't appear on desktop: each device
-REM     was creating its own duplicate journey row on a failed load.
+REM   Chrome / Edge / Safari / Android WebView all auto-update every
+REM   ~4 weeks and ship a new userAgent string each time. That change
+REM   was enough to flip the hash, evict the device from the
+REM   `trusted_devices` row in Supabase, and force an OTP re-verify
+REM   even though the install_id (the real device identity) had not
+REM   changed. Phone hit it less often because WebView updates less
+REM   frequently than desktop Chrome — matches the user's symptom of
+REM   "phone signs in fine, desktop always asks again".
 REM
-REM v11 fixes:
+REM v12 fix:
 REM
-REM   1. seedDedupeForJourney(j): EVERY place that calls setJourney(j)
-REM      with a real row first computes the autosave-shape hash and
-REM      stores it in lastSaveByJourneyId. Dashboard's first autosave
-REM      after hydration computes the same hash → throttled to no-op.
-REM      The phantom PATCH never fires. PGRST116 cannot occur.
+REM   getDeviceFingerprint() now hashes ONLY getOrCreateInstallId().
+REM   The install_id is already a unique random UUID stored in
+REM   localStorage at first visit — it IS the device identity.
+REM   Browser version bumps no longer invalidate trust.
 REM
-REM   2. migrateFromLocalStorage NEVER calls createJourney() any more.
-REM      If we don't have a journey loaded, the journey-data migration
-REM      block is skipped with a console.warn. TDEE/macros/profile
-REM      migration still runs (they don't need a journey row). On the
-REM      next refresh, the real journey is fetched and the user's
-REM      normal autosave persists any pending local edits.
+REM   Migration cost: each previously-trusted device will OTP-verify
+REM   ONCE more (because the new hash differs from the v1 hash stored
+REM   in Supabase). After that one OTP, trust is permanent for the
+REM   life of that browser profile / app install.
 REM
-REM   3. saveJourney suppresses the destructive toast for PGRST116
-REM      specifically (it's a benign no-op race), still toasts for
-REM      real failures like 401/42501, and still throws so signOut /
-REM      idle-timeout can preserve localStorage as a recovery backup.
+REM Also in v12: GOOGLE_STITCH_ALL_SCREENS_SINGLE_BUNDLE.md refreshed
+REM to reflect v11 (data-persistence fixes, hybrid tooltip behavior)
+REM and v12 (fingerprint fix), and adds the previously-missing
+REM Register and ResetPassword screens.
 REM
-REM Files touched in v11:
-git add src/contexts/UserDataContext.tsx
+REM Files touched in v12:
+git add src/lib/deviceFingerprint.ts
 
-REM versionCode 10 -> 11, versionName 1.6 -> 1.7. Required by Play Console.
+REM versionCode 11 -> 12, versionName 1.7 -> 1.8. Required by Play Console.
 git add android/app/build.gradle
+
+REM Refreshed Stitch bundle reflecting v11 + v12.
+git add GOOGLE_STITCH_ALL_SCREENS_SINGLE_BUNDLE.md
 
 git add git-push-update.bat
 
 echo Committing...
 git commit ^
-  -m "v11: definitive fix for cross-device data persistence" ^
-  -m "Stops the phantom autosave-on-load (which produced PATCH 406 PGRST116) by pre-seeding the dedupe cache with the loaded journey's hash whenever setJourney is called. The instant-after-load identical save is now detected as a no-op and never reaches Supabase." ^
-  -m "Removes the createJourney fallback inside migrateFromLocalStorage that was creating DUPLICATE journey rows whenever loadData failed transiently (the 401 42501 case the user hit on their second sign-in). With this gone, the only path that ever creates a journey is loadData itself, which uses the same code on every device. Phone and desktop now always read/write the same single journey row for a given user." ^
-  -m "Also suppresses the destructive 'Save failed' toast for PGRST116 specifically (it's a benign race) so the user is never bounced or confused by a brief unreadable popup."
+  -m "v12: device-trust fingerprint now depends only on install_id" ^
+  -m "Previously, getDeviceFingerprint() mixed navigator.userAgent into the hash. Every browser auto-update (Chrome / Edge / Safari / Android WebView) ships a new userAgent string, which changed the hash and silently evicted the device from the Supabase trusted_devices table, forcing an OTP re-verify roughly every 4 weeks. This is why the user saw 'I have to verify on desktop again' even after previously verifying that exact browser." ^
+  -m "v12 uses only the localStorage-stored install_id UUID (the actual stable device identity) in the fingerprint hash. Browser version bumps no longer invalidate trust. Existing trusted devices will OTP-verify ONCE on next sign-in (because the new hash differs from the v1 hash stored in Supabase) and then stay trusted permanently for the life of that browser profile / app install." ^
+  -m "Also refreshes GOOGLE_STITCH_ALL_SCREENS_SINGLE_BUNDLE.md to reflect v11 (data-persistence, hybrid tooltip) and v12 (fingerprint), and adds previously-missing Register and ResetPassword screens."
 
 echo.
 echo Pushing to origin...
@@ -81,29 +72,91 @@ echo.
 echo ============================================================
 echo   Push complete!
 echo.
-echo   No new npm dependencies in v11.
+echo   No new npm dependencies in v12.
 echo.
 echo   Next steps (do in this order):
-echo     1. VERCEL (web): auto-deploys from main.
-echo        - watch the Vercel dashboard for the green build
-echo        - in your browser: hard-refresh (Ctrl+Shift+R)
-echo        - DevTools -^> Network -^> filter `journeys`
-echo          Expected after sign-in: 1x GET 200 (load),
-echo          (optionally 1x POST 201 if the row didn't exist yet),
-echo          and NO PATCH unless you actually edit data.
-echo        - DevTools -^> Console: type   window.__numiSaveStats
-echo          Expected after sign-in with no edits:
-echo          { attempted: 0 or 1, fired: 0 or 1, throttled: 0, failed: 0 }
-echo     2. ANDROID (Play Store): rebuild the AAB.
-echo          npm run build
-echo          npx cap sync android
-echo        In Android Studio:
-echo          Build -^> Generate Signed Bundle / APK -^> Android App Bundle
-echo        Upload android/app/release/app-release.aab to:
-echo          Play Console -^> Testing -^> Internal testing
-echo          -^> Create new release -^> Upload AAB
-echo          -^> Save -^> Review -^> Start rollout to Internal testing
-echo        versionCode is now 11, versionName 1.7.
-echo     3. iOS: no iOS target, nothing to do.
+echo.
+echo   ----------------------------------------------------------
+echo   1. VERCEL (web): auto-deploys from main.
+echo   ----------------------------------------------------------
+echo      a. Open https://vercel.com -^> your Numi project.
+echo      b. Watch Deployments tab until the new commit shows
+echo         a green checkmark (~2 min).
+echo      c. In your browser, hard-refresh https://fit-pact.vercel.app
+echo         with Ctrl+Shift+R.
+echo      d. Sign in on a device you have ALREADY verified before.
+echo         FIRST TIME ONLY after this deploy you will see the
+echo         8-digit OTP code screen — enter the code from your
+echo         email. This is the one-time migration cost.
+echo      e. Sign out and sign back in on the same browser.
+echo         You should go STRAIGHT to the dashboard, no OTP.
+echo         That confirms the fingerprint is now stable.
+echo.
+echo   ----------------------------------------------------------
+echo   2. SUPABASE: nothing to do.
+echo   ----------------------------------------------------------
+echo      No schema, RLS, or function changes. The existing
+echo      trusted_devices table is reused — old rows from the v1
+echo      fingerprint are simply ignored and replaced on the
+echo      one-time re-verify in step 1.
+echo.
+echo   ----------------------------------------------------------
+echo   3. STRIPE: nothing to do.
+echo   ----------------------------------------------------------
+echo      No billing or webhook changes in v12.
+echo.
+echo   ----------------------------------------------------------
+echo   4. ANDROID (Play Store): rebuild the AAB.
+echo   ----------------------------------------------------------
+echo      a. Open Command Prompt at this folder and run:
+echo            npm run build
+echo            npx cap sync android
+echo      b. Open Android Studio and open the folder:
+echo            android\
+echo         (let Gradle sync, ~1-2 min)
+echo      c. Top menu: Build -^> Generate Signed Bundle / APK...
+echo         Choose: Android App Bundle -^> Next
+echo         Use the SAME keystore as the v11 release (a different
+echo         keystore is rejected by Play Console).
+echo         Build variant: release -^> Create
+echo      d. When the build finishes, click the bottom-right
+echo         "locate" notification. The AAB is at:
+echo            android\app\release\app-release.aab
+echo      e. Go to https://play.google.com/console -^> Numi -^>
+echo         Testing -^> Internal testing.
+echo         Click "Create new release".
+echo         Drag in app-release.aab.
+echo         Confirm versionCode = 12, versionName = 1.8.
+echo         Release notes:
+echo            v12 (1.8): Trusted devices stay trusted across
+echo            browser updates. Sign-in no longer prompts for
+echo            an 8-digit code on devices you have already
+echo            verified.
+echo         Save -^> Review release -^> Start rollout to Internal
+echo         testing -^> Rollout.
+echo      f. Wait ~5-15 minutes for Google to process. You will
+echo         get an email when the release is available.
+echo      g. On your test phone: open Play Store -^> search Numi
+echo         -^> tap Update. Open the app. Sign in once (OTP this
+echo         one time — the migration cost above). Sign out and
+echo         sign back in: should go straight to dashboard with
+echo         no OTP.
+echo.
+echo   ----------------------------------------------------------
+echo   5. iOS: no iOS target, nothing to do.
+echo   ----------------------------------------------------------
+echo.
+echo   ----------------------------------------------------------
+echo   Testing checklist (please verify after deploys):
+echo   ----------------------------------------------------------
+echo      [ ] Desktop Vercel: hard-refresh, sign-in, OTP once,
+echo          sign-out, sign-in again -^> no OTP.
+echo      [ ] Phone (after Play Store update): sign-in OTP once,
+echo          sign-out, sign-in again -^> no OTP.
+echo      [ ] Existing v11 data-persistence: typing a new value
+echo          on phone and signing back in on desktop still shows
+echo          that value (cross-device sync still works).
+echo      [ ] Completed weeks visible after logout/login on both
+echo          devices.
 echo ============================================================
 pause
