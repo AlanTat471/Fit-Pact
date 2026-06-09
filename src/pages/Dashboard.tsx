@@ -194,6 +194,8 @@ const Dashboard = () => {
   const loginSessionQuote = getMotivationalQuoteForSession();
   /** Set true when Week 12 summary is scheduled this session — blocks duplicate maintenance prompt from reload-recovery effect. */
   const week12SummaryScheduledRef = useRef(false);
+  /** Week 12 + targets popup: show summary only after user dismisses the targets dialog (avoids Radix overlay blocking "Got it"). */
+  const pendingWeek12SummaryRef = useRef(false);
   /**
    * Guards the journey-data hydration inside the load useEffect.
    * Stores the user ID for which we have already hydrated from Supabase.
@@ -467,6 +469,18 @@ const Dashboard = () => {
     } catch {}
     return [];
   });
+
+  /** After Week 12: user has not started maintenance yet — show fallback choice cards on Dashboard. */
+  const postWeek12FlowPending = useMemo(
+    () =>
+      journeyComplete &&
+      !maintenancePhase.active &&
+      typeof localStorage !== "undefined" &&
+      localStorage.getItem("numiPendingMaintenanceAfterWeek12") === "1",
+    [journeyComplete, maintenancePhase.active]
+  );
+
+  const nextWeightLossPhaseNumber = archivedPhases.length + 2;
 
   const earliestAllowedStartDate = useMemo(() => {
     if (archivedPhases.length === 0) return "";
@@ -816,14 +830,9 @@ const Dashboard = () => {
     return () => clearTimeout(tm);
   }, [user?.id]);
 
-  // If journey is complete and maintenance was not chosen yet, show the maintenance prompt after reload (skip when Week 12 summary just fired this session).
-  useEffect(() => {
-    if (!journeyComplete || maintenancePhase.active) return;
-    if (localStorage.getItem("numiPendingMaintenanceAfterWeek12") !== "1") return;
-    if (week12SummaryScheduledRef.current) return;
-    const t = window.setTimeout(() => setShowMaintenanceSuggestionDialog(true), 1200);
-    return () => window.clearTimeout(t);
-  }, [journeyComplete, maintenancePhase.active]);
+  // Post–Week 12: fallback choice cards on Dashboard (Maintenance / Weight Loss Phase #N) —
+  // no auto-popup here; user picks from visible sections or completes the dialog chain.
+  // (Previously auto-opened Maintenance suggestion after reload, which conflicted with Escape → fallback UX.)
 
   // Save completedWeeks to localStorage and recalculate targets whenever completedWeeks changes
   useEffect(() => {
@@ -1422,6 +1431,214 @@ const Dashboard = () => {
     await refreshJourney();
   };
 
+  const openWeek12SummaryIfPending = useCallback(() => {
+    if (!pendingWeek12SummaryRef.current) return;
+    pendingWeek12SummaryRef.current = false;
+    window.setTimeout(() => setShowWeek12SummaryDialog(true), 300);
+  }, []);
+
+  const dismissStepsCaloriesChangePopup = useCallback(
+    (continueWeek12Chain: boolean) => {
+      if (stepsCaloriesChangeInfo?.hitMinFloor) {
+        window.setTimeout(() => setShowMinCalorieDialog(true), 200);
+      }
+      setShowStepsCaloriesChangePopup(false);
+      setStepsCaloriesChangeInfo(null);
+      if (continueWeek12Chain) {
+        openWeek12SummaryIfPending();
+      } else {
+        pendingWeek12SummaryRef.current = false;
+      }
+    },
+    [stepsCaloriesChangeInfo, openWeek12SummaryIfPending]
+  );
+
+  useEffect(() => {
+    if (!showStepsCaloriesChangePopup) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      dismissStepsCaloriesChangePopup(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showStepsCaloriesChangePopup, dismissStepsCaloriesChangePopup]);
+
+  const handleStartMaintenancePhase = useCallback(() => {
+    localStorage.removeItem("numiPendingMaintenanceAfterWeek12");
+    const detailsElements = document.querySelectorAll(".completed-week-details");
+    detailsElements.forEach((el) => {
+      (el as HTMLDetailsElement).open = false;
+    });
+    setAllWeeksExpanded(false);
+    setAcclimationCollapsed(true);
+    setWeightLossCollapsed(true);
+    setMaintenancePhase((prev) => {
+      const next = { ...prev, active: true as const };
+      if (weightLossStartDate && (!prev.startDate || !prev.endDate)) {
+        const derived = deriveMaintenanceWindowFromJourneyAnchor(weightLossStartDate);
+        return {
+          ...next,
+          startDate: prev.startDate || derived.startDate,
+          endDate: prev.endDate || derived.endDate,
+        };
+      }
+      return next;
+    });
+    setShowMaintenanceSuggestionDialog(false);
+  }, [weightLossStartDate]);
+
+  /** Archive completed 12-week cycle (no maintenance) and start fresh Acclimation + Weight Loss. */
+  const beginNewCycleSkipMaintenance = async () => {
+    if (!journey) return;
+    const endWeight =
+      week12Stats.endWeight > 0
+        ? week12Stats.endWeight
+        : completedWeeks.length > 0
+          ? completedWeeks[completedWeeks.length - 1]?.averages?.weight ?? 0
+          : 0;
+    const acclimationAvg = getTotalAcclimationAverage();
+    const anchor = weightLossStartDate || null;
+    const acclStart = anchor;
+    const acclEnd = anchor ? addDaysIso(anchor, 27) : null;
+    const wlStart = anchor ? weightLossPhaseStartFromJourneyAnchor(anchor) : null;
+    const wlEnd = wlStart ? lastDayOfWeek12Iso(wlStart) : null;
+    const phaseEndDateIso = wlEnd;
+    const acclDays = acclStart && acclEnd ? inclusiveDaysBetween(acclStart, acclEnd) : null;
+    const wlDays = wlStart && wlEnd ? inclusiveDaysBetween(wlStart, wlEnd) : null;
+    const phaseSumDays = acclDays != null && wlDays != null ? acclDays + wlDays : null;
+    const wlStartToMaintenanceEndDays =
+      wlStart && phaseEndDateIso ? inclusiveDaysBetween(wlStart, phaseEndDateIso) : null;
+    const totalCalendarSpanDays =
+      acclStart && phaseEndDateIso ? inclusiveDaysBetween(acclStart, phaseEndDateIso) : null;
+    const totalWeightLossPhaseKg =
+      acclimationAvg > 0 && endWeight > 0 ? acclimationAvg - endWeight : week12Stats.totalLoss;
+
+    const bundle: ArchivedPhaseBundle = {
+      id: crypto.randomUUID(),
+      archivedAt: new Date().toISOString(),
+      phaseNumber: archivedPhases.length + 1,
+      phaseStartDateIso: acclStart,
+      phaseEndDateIso,
+      journeyAnchorDateIso: anchor,
+      acclimationPhaseStartDateIso: acclStart,
+      acclimationPhaseEndDateIso: acclEnd,
+      phaseSumDays: phaseSumDays ?? undefined,
+      wlStartToMaintenanceEndDays: wlStartToMaintenanceEndDays ?? undefined,
+      totalCalendarSpanDays: totalCalendarSpanDays ?? undefined,
+      acclimationAverageKg: acclimationAvg,
+      weightAtEndMaintenanceKg: endWeight,
+      totalWeightLossPhaseKg,
+      weightLossStartDate: anchor,
+      acclimationData: JSON.parse(JSON.stringify(acclimationData)) as Record<string, unknown>,
+      completedWeeks: JSON.parse(JSON.stringify(completedWeeks)) as unknown[],
+      maintenancePhase: { active: false, skipped: true },
+      week12Stats: { ...week12Stats },
+      maintenanceEndingAverageKg: endWeight,
+    };
+    const nextArch = [...archivedPhases, bundle];
+    setArchivedPhases(nextArch);
+
+    const emptyWeek = {
+      Monday: { steps: 0, calories: 0, weight: 0 },
+      Tuesday: { steps: 0, calories: 0, weight: 0 },
+      Wednesday: { steps: 0, calories: 0, weight: 0 },
+      Thursday: { steps: 0, calories: 0, weight: 0 },
+      Friday: { steps: 0, calories: 0, weight: 0 },
+      Saturday: { steps: 0, calories: 0, weight: 0 },
+      Sunday: { steps: 0, calories: 0, weight: 0 },
+    };
+    const emptyAccl = {
+      week1: { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0, Friday: 0, Saturday: 0, Sunday: 0 },
+      week2: { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0, Friday: 0, Saturday: 0, Sunday: 0 },
+      week3: { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0, Friday: 0, Saturday: 0, Sunday: 0 },
+      week4: { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0, Friday: 0, Saturday: 0, Sunday: 0 },
+    };
+    setWeeklyData(emptyWeek);
+    setPreviousWeekData(emptyWeek);
+    setCompletedWeeks([]);
+    setAcclimationData(emptyAccl);
+    setIsWeek1Complete(false);
+    setIsWeek2Complete(false);
+    setIsWeek3Complete(false);
+    setIsWeek4Complete(false);
+    setJourneyComplete(false);
+    localStorage.removeItem("numiPendingMaintenanceAfterWeek12");
+    localStorage.removeItem("dashboardJourneyComplete");
+    week12SummaryScheduledRef.current = false;
+    pendingWeek12SummaryRef.current = false;
+    setWeightLossStartDate("");
+    localStorage.removeItem("dashboardWeightLossStartDate");
+    setStartingWeight(endWeight > 0 ? endWeight.toFixed(2) : "");
+    setMaintenancePhase({
+      active: false,
+      startDate: "",
+      endDate: "",
+      baselineWeightKg: 0,
+      currentWeight: 0,
+      maintenanceCalories: 0,
+      completedWeeks: [],
+      week1Complete: false,
+      week2Complete: false,
+      week3Complete: false,
+      week4Complete: false,
+      weekData: emptyAccl,
+    });
+    setRecommendedSteps(ACCLIMATION_BASE_STEPS);
+    const sci = localStorage.getItem("startingCalorieIntake");
+    setAcclimationCalories(sci ? parseInt(sci, 10) : 0);
+    setRecommendedCalories(0);
+    setCurrentStreak(0);
+    setLongestStreak(0);
+    setShowWeek12SummaryDialog(false);
+    setShowMaintenanceSuggestionDialog(false);
+    setShowStepsCaloriesChangePopup(false);
+    setAcclimationCollapsed(false);
+    setWeightLossCollapsed(false);
+    setWeightLossMainCollapsed(false);
+
+    if (endWeight > 0 && user?.id) {
+      void upsertProfile(user.id, { current_weight: endWeight.toFixed(2) });
+      void refreshProfile();
+    }
+
+    await saveJourney({
+      archived_phases: nextArch,
+      weekly_data: emptyWeek,
+      previous_week_data: emptyWeek,
+      completed_weeks: [],
+      acclimation_data: emptyAccl,
+      acclimation_steps: ACCLIMATION_BASE_STEPS,
+      recommended_steps: ACCLIMATION_BASE_STEPS,
+      recommended_calories: null,
+      weight_loss_start_date: null,
+      weight_loss_start_is_anchor: true,
+      current_streak: 0,
+      longest_streak: 0,
+      week1_complete: false,
+      week2_complete: false,
+      week3_complete: false,
+      week4_complete: false,
+      starting_weight: endWeight > 0 ? endWeight.toFixed(2) : null,
+      journey_complete: false,
+      maintenance_phase: {
+        active: false,
+        startDate: "",
+        endDate: "",
+        baselineWeightKg: 0,
+        currentWeight: 0,
+        maintenanceCalories: 0,
+        completedWeeks: [],
+        week1Complete: false,
+        week2Complete: false,
+        week3Complete: false,
+        week4Complete: false,
+        weekData: emptyAccl,
+      },
+    });
+    await refreshJourney();
+  };
+
   const clearAllDashboardData = async () => {
     const keysToRemove = [
       'dashboardWeeklyData', 'dashboardPreviousWeekData', 'dashboardCompletedWeeks',
@@ -1916,7 +2133,10 @@ const Dashboard = () => {
     // If steps already at max AND already at min calories, don't change anything (no further reductions)
 
     const stepsIncreased = insufficientLoss && currentStepTarget < MAX_RECOMMENDED_STEPS && nextStepTarget > currentStepTarget;
-    if (stepsIncreased || caloriesReduced) {
+    const newCompletedCountPreview = completedWeeks.length + 1;
+    const willShowTargetsPopup = stepsIncreased || caloriesReduced;
+
+    if (willShowTargetsPopup) {
       setStepsCaloriesChangeInfo({
         stepsIncreased,
         stepsNewTarget: nextStepTarget,
@@ -1924,12 +2144,14 @@ const Dashboard = () => {
         caloriesNewTarget: nextCalTarget,
         hitMinFloor: caloriesReduced && hitMinFloor,
       });
+      if (newCompletedCountPreview >= 12) {
+        pendingWeek12SummaryRef.current = true;
+      }
       setTimeout(() => setShowStepsCaloriesChangePopup(true), 450);
     } else {
       // Week completed with no target changes – user is on track, show an encouraging message.
       // Don't show on Week 12 completion (the Week 12 summary dialog takes over).
-      const newCompletedCount = completedWeeks.length + 1;
-      if (newCompletedCount < 12) {
+      if (newCompletedCountPreview < 12) {
         setTimeout(() => setShowNoChangesPopup(true), 450);
       }
     }
@@ -2029,7 +2251,9 @@ const Dashboard = () => {
           maintenanceCalories: calculateMaintenanceCalories(ew),
         }));
       }
-      setTimeout(() => setShowWeek12SummaryDialog(true), 600);
+      if (!willShowTargetsPopup) {
+        setTimeout(() => setShowWeek12SummaryDialog(true), 600);
+      }
     }
   };
 
@@ -3210,6 +3434,65 @@ const Dashboard = () => {
 
           </CardContent>
         </Card>
+
+        {/* Post–Week 12 choices — visible when user closes popups (Escape) or has not picked maintenance yet */}
+        {postWeek12FlowPending && (
+          <div className="space-y-4">
+            <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <CardTitle className="flex items-center gap-2 text-foreground">
+                    <MaterialIcon name="event" size="sm" className="text-green-500" />
+                    Maintenance Phase
+                  </CardTitle>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs flex-1 sm:flex-none"
+                    onClick={() => handleStartMaintenancePhase()}
+                  >
+                    Start Maintenance Phase
+                  </Button>
+                </div>
+                <CardDescription className="mt-2">
+                  You completed 12 weeks of weight loss. Start your 4-week maintenance phase to stabilize at your new weight before your next journey.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <CardTitle className="flex items-center gap-2 text-foreground">
+                    <MaterialIcon name="event" size="sm" className="text-primary" />
+                    Weight Loss Phase #{nextWeightLossPhaseNumber}
+                  </CardTitle>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs flex-1 sm:flex-none"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          `Start Weight Loss Phase #${nextWeightLossPhaseNumber}? Your completed 12-week cycle will be archived and a fresh Acclimation Phase will begin.`
+                        )
+                      ) {
+                        void beginNewCycleSkipMaintenance();
+                      }
+                    }}
+                  >
+                    Start Weight Loss Phase #{nextWeightLossPhaseNumber}
+                  </Button>
+                </div>
+                <CardDescription className="mt-2">
+                  Prefer to skip maintenance and begin a new weight loss cycle now. Your completed phase is saved to Archived Phases; starting weight for the new cycle uses your Week 12 end weight.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        )}
 
         {/* Maintenance Phase Section - only visible when journey is complete and user chose maintenance */}
         {maintenancePhase.active && (
@@ -4632,20 +4915,17 @@ const Dashboard = () => {
 
       {/* Steps / Calories change popup – blurred backdrop, highlights new targets */}
       {showStepsCaloriesChangePopup && stepsCaloriesChangeInfo && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-on-surface/30 backdrop-blur-md"
             aria-hidden
-            onClick={() => {
-              if (stepsCaloriesChangeInfo?.hitMinFloor) setTimeout(() => setShowMinCalorieDialog(true), 200);
-              setShowStepsCaloriesChangePopup(false);
-              setStepsCaloriesChangeInfo(null);
-            }}
+            onClick={() => dismissStepsCaloriesChangePopup(true)}
           />
           <div
             className="relative z-10 bg-card border border-border rounded-xl shadow-2xl p-6 max-w-md w-full animate-in fade-in-0 zoom-in-95 duration-200"
             role="dialog"
             aria-labelledby="steps-calories-change-title"
+            aria-modal="true"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="steps-calories-change-title" className="text-lg font-semibold text-foreground mb-2">
@@ -4692,11 +4972,7 @@ const Dashboard = () => {
             <div className="mt-6 flex justify-end">
               <Button
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => {
-                  if (stepsCaloriesChangeInfo?.hitMinFloor) setTimeout(() => setShowMinCalorieDialog(true), 200);
-                  setShowStepsCaloriesChangePopup(false);
-                  setStepsCaloriesChangeInfo(null);
-                }}
+                onClick={() => dismissStepsCaloriesChangePopup(true)}
               >
                 Got it
               </Button>
@@ -4707,7 +4983,7 @@ const Dashboard = () => {
 
       {/* No-changes popup – shown when week completes with no steps or calorie adjustments */}
       {showNoChangesPopup && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-on-surface/30 backdrop-blur-md"
             aria-hidden
@@ -4741,7 +5017,15 @@ const Dashboard = () => {
       )}
 
       {/* Week 12 Summary Dialog (downloadable) */}
-      <AlertDialog open={showWeek12SummaryDialog} onOpenChange={setShowWeek12SummaryDialog}>
+      <AlertDialog
+        open={showWeek12SummaryDialog}
+        onOpenChange={(open) => {
+          setShowWeek12SummaryDialog(open);
+          if (!open) {
+            week12SummaryScheduledRef.current = false;
+          }
+        }}
+      >
         <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-foreground">
@@ -4821,7 +5105,12 @@ const Dashboard = () => {
       </AlertDialog>
 
       {/* Maintenance Phase Suggestion Dialog */}
-      <AlertDialog open={showMaintenanceSuggestionDialog} onOpenChange={setShowMaintenanceSuggestionDialog}>
+      <AlertDialog
+        open={showMaintenanceSuggestionDialog}
+        onOpenChange={(open) => {
+          setShowMaintenanceSuggestionDialog(open);
+        }}
+      >
         <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Maintenance Phase</AlertDialogTitle>
@@ -4844,31 +5133,7 @@ const Dashboard = () => {
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => {
-                localStorage.removeItem("numiPendingMaintenanceAfterWeek12");
-                // Collapse completed weeks and activate maintenance phase
-                const detailsElements = document.querySelectorAll('.completed-week-details');
-                detailsElements.forEach((el) => {
-                  (el as HTMLDetailsElement).open = false;
-                });
-                setAllWeeksExpanded(false);
-                // Auto-collapse Acclimation and Weight Loss sections
-                setAcclimationCollapsed(true);
-                setWeightLossCollapsed(true);
-                setMaintenancePhase((prev) => {
-                  const next = { ...prev, active: true as const };
-                  if (weightLossStartDate && (!prev.startDate || !prev.endDate)) {
-                    const derived = deriveMaintenanceWindowFromJourneyAnchor(weightLossStartDate);
-                    return {
-                      ...next,
-                      startDate: prev.startDate || derived.startDate,
-                      endDate: prev.endDate || derived.endDate,
-                    };
-                  }
-                  return next;
-                });
-                setShowMaintenanceSuggestionDialog(false);
-              }}
+              onClick={() => handleStartMaintenancePhase()}
             >
               Yes
             </AlertDialogAction>

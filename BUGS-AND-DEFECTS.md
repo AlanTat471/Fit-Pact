@@ -90,6 +90,27 @@ This document lists issues found during a codebase and logic audit. Fixes are or
 
 ---
 
+## v14 — Week 12 popup / maintenance flow (May 2026)
+
+### 12. ~~"Got it" frozen on targets-updated popup (Week 12 + weight gain)~~ — FIXED
+
+- **Where:** `src/pages/Dashboard.tsx` — steps/calories change popup + Week 12 summary `AlertDialog`
+- **Issue:** Completing Week 12 with a steps/calorie adjustment opened the custom targets popup at 450ms and the Radix Week 12 summary at 600ms. Radix’s overlay/focus trap blocked clicks on "Got it" on the targets popup.
+- **Fix:** Queue dialogs sequentially — Week 12 summary opens only after the user dismisses the targets popup. Raised popup z-index to `z-[200]`.
+
+### 13. ~~Escape on Week 12 popups left user stuck (no maintenance / no restart)~~ — FIXED
+
+- **Where:** `src/pages/Dashboard.tsx`
+- **Issue:** Escape closed dialogs but `week12SummaryScheduledRef` blocked the reload recovery path; no visible way to start Maintenance or a new Weight Loss phase.
+- **Fix:** Escape on targets popup closes without chaining; Dashboard shows **Maintenance Phase** and **Weight Loss Phase #N** fallback cards when `journeyComplete && !maintenancePhase.active && numiPendingMaintenanceAfterWeek12`. Removed auto-open maintenance dialog on reload.
+
+### 14. ~~No fallback to start Maintenance or Weight Loss Phase #2 after dismissing Week 12 flow~~ — FIXED
+
+- **Where:** `src/pages/Dashboard.tsx`
+- **Fix:** Added two Acclimation-style section cards with **Start Maintenance Phase** and **Start Weight Loss Phase #{archivedPhases.length + 2}**. Skip-maintenance archives the completed 12-week cycle immediately and starts fresh Acclimation using Week 12 end weight.
+
+---
+
 ## Summary
 
 | Severity  | Count | Status |
