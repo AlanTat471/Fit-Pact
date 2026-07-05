@@ -2794,14 +2794,11 @@ const Dashboard = () => {
                     type="text"
                     inputMode="numeric"
                     value={acclimationCalories > 0 ? acclimationCalories.toLocaleString() : ''}
-                    onChange={(e) => {
-                      const rawValue = e.target.value.replace(/,/g, '').replace(/[^0-9]/g, '');
-                      setAcclimationCalories(parseFloat(rawValue) || 0);
-                    }}
-                    className="w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    readOnly
+                    className="w-full bg-muted cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     placeholder="Auto-populated from TDEE Calculator"
                   />
-                  <p className="text-xs text-muted-foreground">From Your TDEE Calculator - Starting Calorie Intake</p>
+                  <p className="text-xs text-muted-foreground">Locked — reflects your Starting Calorie Intake from My TDEE Calculator</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="acclimationSteps" className="text-sm font-medium">Recommended Steps</Label>
@@ -3432,69 +3429,7 @@ const Dashboard = () => {
         </Card>
         )}
 
-          </CardContent>
-        </Card>
-
-        {/* Post–Week 12 choices — visible when user closes popups (Escape) or has not picked maintenance yet */}
-        {postWeek12FlowPending && (
-          <div className="space-y-4">
-            <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
-              <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <CardTitle className="flex items-center gap-2 text-foreground">
-                    <MaterialIcon name="event" size="sm" className="text-green-500" />
-                    Maintenance Phase
-                  </CardTitle>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-xs flex-1 sm:flex-none"
-                    onClick={() => handleStartMaintenancePhase()}
-                  >
-                    Start Maintenance Phase
-                  </Button>
-                </div>
-                <CardDescription className="mt-2">
-                  You completed 12 weeks of weight loss. Start your 4-week maintenance phase to stabilize at your new weight before your next journey.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
-              <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <CardTitle className="flex items-center gap-2 text-foreground">
-                    <MaterialIcon name="event" size="sm" className="text-primary" />
-                    Weight Loss Phase #{nextWeightLossPhaseNumber}
-                  </CardTitle>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-xs flex-1 sm:flex-none"
-                    onClick={() => {
-                      if (
-                        confirm(
-                          `Start Weight Loss Phase #${nextWeightLossPhaseNumber}? Your completed 12-week cycle will be archived and a fresh Acclimation Phase will begin.`
-                        )
-                      ) {
-                        void beginNewCycleSkipMaintenance();
-                      }
-                    }}
-                  >
-                    Start Weight Loss Phase #{nextWeightLossPhaseNumber}
-                  </Button>
-                </div>
-                <CardDescription className="mt-2">
-                  Prefer to skip maintenance and begin a new weight loss cycle now. Your completed phase is saved to Archived Phases; starting weight for the new cycle uses your Week 12 end weight.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-        )}
-
-        {/* Maintenance Phase Section - only visible when journey is complete and user chose maintenance */}
+        {/* Maintenance Phase Section - nested under Weight Loss main container (same box as Acclimation / WL) */}
         {maintenancePhase.active && (
           <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
             <CardHeader>
@@ -3523,7 +3458,7 @@ const Dashboard = () => {
                     size="sm"
                     className="text-xs flex-1 sm:flex-none"
                   >
-                    {maintenanceCollapsed ? "Expand All" : "Collapse All"}
+                    {maintenanceCollapsed ? "Expand Section" : "Collapse Section"}
                   </Button>
                 </div>
               </div>
@@ -3783,6 +3718,68 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
+        )}
+
+          </CardContent>
+        </Card>
+
+        {/* Post–Week 12 choices — visible when user closes popups (Escape) or has not picked maintenance yet */}
+        {postWeek12FlowPending && (
+          <div className="space-y-4">
+            <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <CardTitle className="flex items-center gap-2 text-foreground">
+                    <MaterialIcon name="event" size="sm" className="text-green-500" />
+                    Maintenance Phase
+                  </CardTitle>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs flex-1 sm:flex-none"
+                    onClick={() => handleStartMaintenancePhase()}
+                  >
+                    Start Maintenance Phase
+                  </Button>
+                </div>
+                <CardDescription className="mt-2">
+                  You completed 12 weeks of weight loss. Start your 4-week maintenance phase to stabilize at your new weight before your next journey.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <CardTitle className="flex items-center gap-2 text-foreground">
+                    <MaterialIcon name="event" size="sm" className="text-primary" />
+                    Weight Loss Phase #{nextWeightLossPhaseNumber}
+                  </CardTitle>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs flex-1 sm:flex-none"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          `Start Weight Loss Phase #${nextWeightLossPhaseNumber}? Your completed 12-week cycle will be archived and a fresh Acclimation Phase will begin.`
+                        )
+                      ) {
+                        void beginNewCycleSkipMaintenance();
+                      }
+                    }}
+                  >
+                    Start Weight Loss Phase #{nextWeightLossPhaseNumber}
+                  </Button>
+                </div>
+                <CardDescription className="mt-2">
+                  Prefer to skip maintenance and begin a new weight loss cycle now. Your completed phase is saved to Archived Phases; starting weight for the new cycle uses your Week 12 end weight.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
         )}
 
         {archivedPhases.length > 0 && (

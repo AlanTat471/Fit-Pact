@@ -27,7 +27,7 @@ import { upsertProfile } from "@/lib/supabaseProfile";
 import { useUserData } from "@/contexts/UserDataContext";
 import { toast } from "@/hooks/use-toast";
 
-type PlanType = 'free' | 'weekly' | 'fortnightly';
+type PlanType = 'free' | 'monthly' | 'annual';
 
 interface PaymentMethod {
   id: string;
@@ -178,8 +178,8 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
 
   const getPlanLabel = () => {
     switch (activePlan) {
-      case 'weekly': return { name: 'Weekly Plan', price: '$4.99/week' };
-      case 'fortnightly': return { name: 'Fortnightly Plan', price: '$8.99/billed fortnightly' };
+      case 'monthly': return { name: 'Monthly Plan', price: '$8.99/month' };
+      case 'annual': return { name: 'Annual Plan', price: '$5.99/month (billed at $71.88/year)' };
       default: return { name: 'Free Plan', price: 'Free' };
     }
   };
@@ -651,8 +651,8 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
           <div className="space-y-3 py-2">
             {[
               { plan: 'free' as PlanType, label: 'Free Plan', price: 'Free' },
-              { plan: 'weekly' as PlanType, label: 'Weekly', price: '$4.99/week' },
-              { plan: 'fortnightly' as PlanType, label: 'Fortnightly', price: '$8.99/billed fortnightly' },
+              { plan: 'monthly' as PlanType, label: 'Monthly', price: '$8.99/month' },
+              { plan: 'annual' as PlanType, label: 'Annual (Best Value)', price: '$5.99/mo — $71.88/year (save 33%)' },
             ].map(({ plan, label, price }) => (
               <button
                 key={plan}

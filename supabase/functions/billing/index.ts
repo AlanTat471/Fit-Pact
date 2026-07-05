@@ -14,8 +14,8 @@ function env(name: string): string {
 
 const STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY");
 const STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET");
-const STRIPE_PRICE_WEEKLY = env("STRIPE_PRICE_WEEKLY");
-const STRIPE_PRICE_FORTNIGHTLY = env("STRIPE_PRICE_FORTNIGHTLY");
+const STRIPE_PRICE_MONTHLY = env("STRIPE_PRICE_MONTHLY");
+const STRIPE_PRICE_ANNUAL = env("STRIPE_PRICE_ANNUAL");
 const APP_URL = env("APP_URL") || "http://localhost:5173";
 const SUPABASE_URL = env("SUPABASE_URL");
 const SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY");
@@ -24,8 +24,8 @@ const SUPABASE_SERVICE_ROLE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
 console.log("[billing] Boot — env check:", {
   hasStripeKey: !!STRIPE_SECRET_KEY,
   hasWebhookSecret: !!STRIPE_WEBHOOK_SECRET,
-  hasPriceWeekly: !!STRIPE_PRICE_WEEKLY,
-  hasPriceFortnightly: !!STRIPE_PRICE_FORTNIGHTLY,
+  hasPriceMonthly: !!STRIPE_PRICE_MONTHLY,
+  hasPriceAnnual: !!STRIPE_PRICE_ANNUAL,
   appUrl: APP_URL,
   hasSupabaseUrl: !!SUPABASE_URL,
   hasAnonKey: !!SUPABASE_ANON_KEY,
@@ -43,7 +43,7 @@ try {
   console.error("[billing] Failed to initialise Stripe client:", e);
 }
 
-type PlanType = "weekly" | "fortnightly" | "free";
+type PlanType = "monthly" | "annual" | "free";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -53,15 +53,15 @@ function json(body: unknown, status = 200) {
 }
 
 function priceId(plan: PlanType): string | null {
-  if (plan === "weekly") return STRIPE_PRICE_WEEKLY || null;
-  if (plan === "fortnightly") return STRIPE_PRICE_FORTNIGHTLY || null;
+  if (plan === "monthly") return STRIPE_PRICE_MONTHLY || null;
+  if (plan === "annual") return STRIPE_PRICE_ANNUAL || null;
   return null;
 }
 
 function planFromPrice(pid: string | null | undefined): PlanType {
   if (!pid) return "free";
-  if (pid === STRIPE_PRICE_WEEKLY) return "weekly";
-  if (pid === STRIPE_PRICE_FORTNIGHTLY) return "fortnightly";
+  if (pid === STRIPE_PRICE_MONTHLY) return "monthly";
+  if (pid === STRIPE_PRICE_ANNUAL) return "annual";
   return "free";
 }
 
@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
         return json({ error: "Invalid JSON body" }, 400);
       }
       const planType = body.planType as PlanType | undefined;
-      if (planType !== "weekly" && planType !== "fortnightly") {
+      if (planType !== "monthly" && planType !== "annual") {
         console.error("[billing] Invalid planType:", planType);
         return json({ error: `Invalid planType: ${planType}` }, 400);
       }
@@ -225,7 +225,7 @@ Deno.serve(async (req) => {
       // Step 4: Price lookup
       const stripePriceId = priceId(planType);
       if (!stripePriceId) {
-        console.error("[billing] No price ID for plan. STRIPE_PRICE_WEEKLY:", !!STRIPE_PRICE_WEEKLY, "STRIPE_PRICE_FORTNIGHTLY:", !!STRIPE_PRICE_FORTNIGHTLY);
+        console.error("[billing] No price ID for plan. STRIPE_PRICE_MONTHLY:", !!STRIPE_PRICE_MONTHLY, "STRIPE_PRICE_ANNUAL:", !!STRIPE_PRICE_ANNUAL);
         return json({
           error: `No Stripe price configured for "${planType}". Set STRIPE_PRICE_${planType.toUpperCase()} in Supabase secrets.`,
         }, 500);

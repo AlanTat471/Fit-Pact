@@ -21,7 +21,7 @@ import { getUserPref, setUserPref } from "@/lib/supabaseUserPrefs";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "@/hooks/use-toast";
 
-type PlanType = 'free' | 'weekly' | 'fortnightly';
+type PlanType = 'free' | 'monthly' | 'annual';
 
 const PaymentIcons = () => (
   <div className="flex items-center gap-0.5 mt-1 mb-1">
@@ -177,14 +177,20 @@ const PaymentDetails = () => {
   const statusLabel = (plan: PlanType) =>
     activePlan === plan ? 'your active subscription' : 'inactive subscription';
 
-  const PaidPlanCard = ({ plan, name, price, description }: {
+  const PaidPlanCard = ({ plan, name, price, billingLine, description, badge }: {
     plan: PlanType;
     name: string;
     price: string;
-    period: string;
+    billingLine: string;
     description: string;
+    badge?: string;
   }) => (
     <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === plan ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
+      {badge && (
+        <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-[9px] font-bold px-2 py-0.5 rounded-full tracking-wide uppercase">
+          {badge}
+        </div>
+      )}
       <CardHeader className="pb-3 min-h-[150px]">
         <CardTitle className="text-lg">{name}</CardTitle>
         <span className="text-[9px] tracking-wide text-on-surface-variant">({statusLabel(plan)})</span>
@@ -207,8 +213,6 @@ const PaymentDetails = () => {
             <p className="font-medium text-[12px]">Payment Method</p>
             <PaymentIcons />
             {hasSavedCard ? (
-              // Card on file: show masked details + small edit pen so the user
-              // can update without seeing fake placeholder data.
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="text-[10px] leading-snug text-muted-foreground truncate">
                   Default · •••• {savedCardLast4}
@@ -223,7 +227,6 @@ const PaymentDetails = () => {
                 </button>
               </div>
             ) : (
-              // No card on file yet: show only an add-payment-method link.
               <button
                 type="button"
                 onClick={() => setShowUpdatePayment(true)}
@@ -262,8 +265,8 @@ const PaymentDetails = () => {
               className="w-full h-[52px] px-3 flex flex-col items-center justify-center gap-0.5 leading-tight"
               disabled={billingLoading}
             >
-              <span className="text-xs font-bold">Subscribe</span>
-              <span className="text-[10px] opacity-90">{price} / billed {plan === "fortnightly" ? "fortnightly" : "weekly"}</span>
+              <span className="text-xs font-bold">{price}</span>
+              <span className="text-[10px] opacity-90">{billingLine}</span>
             </Button>
           )}
         </div>
@@ -328,19 +331,20 @@ const PaymentDetails = () => {
         </Card>
 
         <PaidPlanCard
-          plan="weekly"
-          name="Weekly"
-          price="$4.99"
-          period="week"
-          description="For a price of a small coffee, you can be on your way to looking and feeling better! Subscribe now!"
+          plan="monthly"
+          name="Monthly"
+          price="$8.99 / month"
+          billingLine="Billed monthly — cancel anytime"
+          description="Full access to all Numi features. For less than a daily coffee, kickstart your fitness journey today!"
         />
 
         <PaidPlanCard
-          plan="fortnightly"
-          name="Fortnightly"
-          price="$8.99"
-          period="2 weeks"
-          description="Save more with our fortnightly plan. All the same great features at a better value!"
+          plan="annual"
+          name="Annual (Best Value)"
+          price="$5.99 / month"
+          billingLine="Billed annually at $71.88 — saving 33%!"
+          description="Get 4 months free by switching to Annual! Billed at $71.88/year. You save $36 compared to monthly billing."
+          badge="Best Value"
         />
       </div>
 

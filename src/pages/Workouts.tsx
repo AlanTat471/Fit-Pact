@@ -646,7 +646,7 @@ const TDEE = () => {
         {/* Input Form */}
         <Card className="border-outline-variant transition-all duration-300 hover:shadow-card">
           <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
+            <CardTitle>My Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Gender */}
