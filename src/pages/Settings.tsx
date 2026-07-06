@@ -26,6 +26,8 @@ import { getUserPref, setUserPref } from "@/lib/supabaseUserPrefs";
 import { upsertProfile } from "@/lib/supabaseProfile";
 import { useUserData } from "@/contexts/UserDataContext";
 import { toast } from "@/hooks/use-toast";
+import { deleteUserAccount } from "@/lib/billingApi";
+import { supabase } from "@/lib/supabaseClient";
 
 type PlanType = 'free' | 'monthly' | 'annual';
 
@@ -45,6 +47,10 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
   const tabParam = searchParams.get('tab');
   const defaultTab = tabParam === 'payments' ? 'payments' : tabParam === 'privacy' ? 'privacy' : 'account';
   const checkoutParam = searchParams.get('checkout');
+
+  const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
+  const [showDeleteAccountSuccess, setShowDeleteAccountSuccess] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   // Privacy state
   const [privacy, setPrivacy] = useState({
@@ -379,114 +385,76 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
         <TabsContent value="privacy" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Privacy Controls</CardTitle>
-              <CardDescription>Manage your privacy and data sharing preferences</CardDescription>
+              <CardTitle className="flex items-center gap-2 flex-wrap">
+                Privacy Controls
+                <Badge variant="secondary" className="text-[10px]">Coming Soon!</Badge>
+              </CardTitle>
+              <CardDescription>Privacy settings are being built and will be available in a future update.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4 opacity-60 pointer-events-none">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Public Profile</Label>
                   <p className="text-sm text-muted-foreground">Make your profile visible to other users</p>
                 </div>
-                <Switch checked={privacy.profileVisibility} onCheckedChange={c => setPrivacy(p => ({ ...p, profileVisibility: c }))} />
+                <Switch checked={privacy.profileVisibility} disabled />
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Share Workouts</Label>
                   <p className="text-sm text-muted-foreground">Allow others to see your workout activities</p>
                 </div>
-                <Switch checked={privacy.shareWorkouts} onCheckedChange={c => setPrivacy(p => ({ ...p, shareWorkouts: c }))} />
+                <Switch checked={privacy.shareWorkouts} disabled />
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Share Progress</Label>
                   <p className="text-sm text-muted-foreground">Share your fitness progress with the community</p>
                 </div>
-                <Switch checked={privacy.shareProgress} onCheckedChange={c => setPrivacy(p => ({ ...p, shareProgress: c }))} />
-              </div>
-
-              <Separator />
-
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">Data Management</h4>
-                <div className="space-y-2">
-                  <Button variant="outline" className="w-full justify-start">
-                    <MaterialIcon name="language" size="sm" className="mr-2" />
-                    Download My Data
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground">
-                    <MaterialIcon name="delete" size="sm" className="mr-2" />
-                    Delete Account
-                  </Button>
-                </div>
+                <Switch checked={privacy.shareProgress} disabled />
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Notifications & Alerts</CardTitle>
-              <CardDescription>Choose what notifications and alerts you want to receive</CardDescription>
+              <CardTitle>Data Management</CardTitle>
+              <CardDescription>Manage your personal data and account</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Button variant="outline" className="w-full justify-start opacity-60" disabled>
+                  <MaterialIcon name="language" size="sm" className="mr-2" />
+                  Download My Data
+                  <Badge variant="secondary" className="ml-2 text-[10px]">Coming Soon!</Badge>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  onClick={() => setShowDeleteAccountConfirm(true)}
+                >
+                  <MaterialIcon name="delete" size="sm" className="mr-2" />
+                  Delete Account
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="opacity-60">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 flex-wrap">
+                Notifications &amp; Alerts
+                <Badge variant="secondary" className="text-[10px]">Coming Soon!</Badge>
+              </CardTitle>
+              <CardDescription>Notification preferences are not available yet.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 pointer-events-none">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="flex items-center gap-2"><MaterialIcon name="notifications_active" size="sm" /> Push Notifications</Label>
                   <p className="text-sm text-muted-foreground">Receive push notifications on your device</p>
                 </div>
-                <Switch checked={notifications.pushNotifications} onCheckedChange={c => setNotifications(p => ({ ...p, pushNotifications: c }))} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="flex items-center gap-2"><MaterialIcon name="notifications" size="sm" /> Workout Reminders</Label>
-                  <p className="text-sm text-muted-foreground">Get notified about scheduled workouts</p>
-                </div>
-                <Switch checked={notifications.workoutReminders} onCheckedChange={c => setNotifications(p => ({ ...p, workoutReminders: c }))} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Progress Updates</Label>
-                  <p className="text-sm text-muted-foreground">Weekly progress summaries</p>
-                </div>
-                <Switch checked={notifications.progressUpdates} onCheckedChange={c => setNotifications(p => ({ ...p, progressUpdates: c }))} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Social Updates</Label>
-                  <p className="text-sm text-muted-foreground">Friend activities and challenges</p>
-                </div>
-                <Switch checked={notifications.socialUpdates} onCheckedChange={c => setNotifications(p => ({ ...p, socialUpdates: c }))} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Weekly Report Email</Label>
-                  <p className="text-sm text-muted-foreground">Receive a weekly summary email</p>
-                </div>
-                <Switch checked={notifications.weeklyReport} onCheckedChange={c => setNotifications(p => ({ ...p, weeklyReport: c }))} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Achievement Alerts</Label>
-                  <p className="text-sm text-muted-foreground">Get notified when you unlock achievements</p>
-                </div>
-                <Switch checked={notifications.achievementAlerts} onCheckedChange={c => setNotifications(p => ({ ...p, achievementAlerts: c }))} />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="flex items-center gap-2"><MaterialIcon name="volume_up" size="sm" /> Sounds</Label>
-                  <p className="text-sm text-muted-foreground">Play sounds for notifications</p>
-                </div>
-                <Switch checked={notifications.sounds} onCheckedChange={c => setNotifications(p => ({ ...p, sounds: c }))} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="flex items-center gap-2"><MaterialIcon name="vibration" size="sm" /> Vibration</Label>
-                  <p className="text-sm text-muted-foreground">Vibrate on notifications</p>
-                </div>
-                <Switch checked={notifications.vibration} onCheckedChange={c => setNotifications(p => ({ ...p, vibration: c }))} />
+                <Switch checked={notifications.pushNotifications} disabled />
               </div>
             </CardContent>
           </Card>
@@ -784,6 +752,71 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
           <AlertDialogFooter>
             <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleAddCard}>Add Card</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Account Confirmation */}
+      <AlertDialog open={showDeleteAccountConfirm} onOpenChange={setShowDeleteAccountConfirm}>
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Delete Account</AlertDialogTitle>
+            <AlertDialogDescription className="text-foreground/70 space-y-2">
+              <p>You have clicked &apos;Delete Account&apos;. This will delete everything in the app and close your account. You will not be able to retrieve any archived, previous data, or account details.</p>
+              <p>Do you want to continue?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deletingAccount}
+              onClick={async (e) => {
+                e.preventDefault();
+                setDeletingAccount(true);
+                try {
+                  await deleteUserAccount();
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  setShowDeleteAccountConfirm(false);
+                  setShowDeleteAccountSuccess(true);
+                } catch (err) {
+                  toast({
+                    title: "Could not delete account",
+                    description: err instanceof Error ? err.message : "Please try again or contact support.",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setDeletingAccount(false);
+                }
+              }}
+            >
+              {deletingAccount ? "Deleting…" : "Yes"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Account Success */}
+      <AlertDialog open={showDeleteAccountSuccess} onOpenChange={setShowDeleteAccountSuccess}>
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Account deleted</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your account has been deleted. Click Ok to sign out.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={async () => {
+                setShowDeleteAccountSuccess(false);
+                await supabase.auth.signOut();
+                navigate("/");
+              }}
+            >
+              Ok
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

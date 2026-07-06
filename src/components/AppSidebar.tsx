@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { MaterialIcon } from "@/components/ui/material-icon";
+import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
@@ -17,7 +18,7 @@ const navigation = [
   { title: "My TDEE Calculator", url: "/tdee-calculator", icon: "calculate" },
   { title: "Dashboard", url: "/dashboard", icon: "dashboard" },
   { title: "Macro Breakdown", url: "/macro-breakdown", icon: "restaurant" },
-  { title: "My Achievements", url: "/achievements", icon: "emoji_events" },
+  { title: "My Achievements", url: "/achievements", icon: "emoji_events", comingSoon: true },
   { title: "Community & Help", url: "/community-help", icon: "help_outline" },
   { title: "Payment Details", url: "/payment-details", icon: "credit_card" },
   { title: "Settings", url: "/settings", icon: "settings" },
@@ -75,12 +76,22 @@ export function AppSidebar() {
             <SidebarMenu>
               {navigation.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url}>
+                  {item.comingSoon ? (
+                    <SidebarMenuButton disabled className="opacity-60 cursor-not-allowed">
                       <MaterialIcon name={item.icon} size="sm" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
+                      <span className="flex flex-col items-start leading-tight">
+                        <span>{item.title}</span>
+                        <Badge variant="secondary" className="text-[9px] px-1 py-0 h-auto mt-0.5">Coming soon</Badge>
+                      </span>
+                    </SidebarMenuButton>
+                  ) : (
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url}>
+                        <MaterialIcon name={item.icon} size="sm" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

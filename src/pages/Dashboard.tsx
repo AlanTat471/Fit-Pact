@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { BackButton } from "@/components/BackButton";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useUserData } from "@/contexts/UserDataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { upsertProfile } from "@/lib/supabaseProfile";
@@ -36,6 +36,8 @@ import {
 } from "@/lib/journeyAnchor";
 import { getMotivationalQuoteForSession } from "@/lib/motivationalQuotes";
 import { registerJourneyFlush } from "@/lib/journeySaveFlush";
+import { callBillingApi, loadPremiumAccessState } from "@/lib/billingApi";
+import { toast } from "@/hooks/use-toast";
 import type { JourneyRow } from "@/lib/supabaseJourney";
 
 /** One completed user cycle (acclimation + 12-week WL + maintenance) for Archived Phases */
@@ -188,6 +190,7 @@ type ArchivedWlWeekRow = {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { saveJourney, saveTdee, journey, tdee, lastSyncedAt, refreshJourney } = useUserData();
   const { user, profile, refreshProfile } = useAuth();
   /** One quote per sign-in session (stored in sessionStorage; cleared on logout). */
@@ -297,6 +300,13 @@ const Dashboard = () => {
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const [showAcclimationDialog, setShowAcclimationDialog] = useState(false);
   const [showAcclimationCompleteDialog, setShowAcclimationCompleteDialog] = useState(false);
+  const [acclimationCompleteMode, setAcclimationCompleteMode] = useState<"first_paywall" | "returning">("first_paywall");
+  const [showAcclimationDeclinedDialog, setShowAcclimationDeclinedDialog] = useState(false);
+  const [activatingSubscription, setActivatingSubscription] = useState(false);
+  const [premiumUnlocked, setPremiumUnlocked] = useState(() => localStorage.getItem("weightLossPhaseUnlocked") === "true");
+  const [hasEverSubscribed, setHasEverSubscribed] = useState(() => localStorage.getItem("hasEverSubscribed") === "true");
+  const [paymentMethodSaved, setPaymentMethodSaved] = useState(() => localStorage.getItem("paymentMethodSaved") === "true");
+  const [pendingPlan, setPendingPlan] = useState<string | null>(() => localStorage.getItem("pendingPlan"));
   const [showReadyToStartDialog, setShowReadyToStartDialog] = useState(false);
   const [userName, setUserName] = useState("");
 
@@ -830,6 +840,93 @@ const Dashboard = () => {
     return () => clearTimeout(tm);
   }, [user?.id]);
 
+  const canAccessPremiumPhases = premiumUnlocked;
+
+  const markPremiumUnlocked = async (plan?: string) => {
+    setPremiumUnlocked(true);
+    localStorage.setItem("weightLossPhaseUnlocked", "true");
+    localStorage.setItem("hasEverSubscribed", "true");
+    setHasEverSubscribed(true);
+    if (user?.id) {
+      await setUserPref(user.id, "weightLossPhaseUnlocked", "true");
+      await setUserPref(user.id, "hasEverSubscribed", "true");
+      if (plan) await setUserPref(user.id, "activePlan", plan);
+    }
+  };
+
+  useEffect(() => {
+    if (!user?.id) return;
+    loadPremiumAccessState(user.id).then((state) => {
+      setPremiumUnlocked(state.premiumUnlocked);
+      setHasEverSubscribed(state.hasEverSubscribed);
+      setPaymentMethodSaved(state.paymentMethodSaved);
+      setPendingPlan(state.pendingPlan);
+      localStorage.setItem("weightLossPhaseUnlocked", state.premiumUnlocked ? "true" : "false");
+      localStorage.setItem("hasEverSubscribed", state.hasEverSubscribed ? "true" : "false");
+      if (state.paymentMethodSaved) localStorage.setItem("paymentMethodSaved", "true");
+      if (state.pendingPlan) localStorage.setItem("pendingPlan", state.pendingPlan);
+    });
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (searchParams.get("checkout") === "success" && searchParams.get("unlocked") === "1") {
+      void markPremiumUnlocked().then(() => {
+        toast({
+          title: "Subscription active",
+          description: "Weight Loss and Maintenance phases are now unlocked!",
+        });
+      });
+    }
+  }, [searchParams]);
+
+  const handleAcclimationLetsGo = async () => {
+    if (hasEverSubscribed && premiumUnlocked) {
+      setShowAcclimationCompleteDialog(false);
+      return;
+    }
+    if (hasEverSubscribed) {
+      await markPremiumUnlocked();
+      setShowAcclimationCompleteDialog(false);
+      return;
+    }
+
+    setActivatingSubscription(true);
+    try {
+      const plan = (pendingPlan || localStorage.getItem("pendingPlan")) as "monthly" | "annual" | null;
+      if (!plan || (plan !== "monthly" && plan !== "annual")) {
+        setShowAcclimationCompleteDialog(false);
+        navigate("/payment-details?from=acclimationComplete");
+        return;
+      }
+
+      const result = await callBillingApi(plan, "activate");
+      if (result.error) {
+        if (result.needsPaymentSetup) {
+          setShowAcclimationCompleteDialog(false);
+          navigate("/payment-details?from=acclimationComplete");
+          return;
+        }
+        throw new Error(result.error);
+      }
+
+      await markPremiumUnlocked(plan);
+      localStorage.setItem("activePlan", plan);
+      setShowAcclimationCompleteDialog(false);
+      toast({
+        title: "You're subscribed!",
+        description: "Weight Loss and Maintenance phases are now available.",
+      });
+    } catch (err) {
+      toast({
+        title: "Could not activate subscription",
+        description: err instanceof Error ? err.message : "Please try again or visit Payment Details.",
+        variant: "destructive",
+      });
+    } finally {
+      setActivatingSubscription(false);
+    }
+  };
+
   // Post–Week 12: fallback choice cards on Dashboard (Maintenance / Weight Loss Phase #N) —
   // no auto-popup here; user picks from visible sections or completes the dialog chain.
   // (Previously auto-opened Maintenance suggestion after reload, which conflicted with Escape → fallback UX.)
@@ -838,10 +935,10 @@ const Dashboard = () => {
   useEffect(() => {
     localStorage.setItem('dashboardCompletedWeeks', JSON.stringify(completedWeeks));
     // Recalculate targets whenever in weight loss phase (acclimation complete), including Week 1 (0 completed weeks)
-    if (isAcclimationComplete()) {
+    if (isAcclimationComplete() && canAccessPremiumPhases) {
       recalculateTargets(completedWeeks);
     }
-  }, [completedWeeks, acclimationCalories, acclimationData, userGender]);
+  }, [completedWeeks, acclimationCalories, acclimationData, userGender, premiumUnlocked]);
 
   // Save acclimationData to localStorage whenever it changes
   useEffect(() => {
@@ -1394,6 +1491,10 @@ const Dashboard = () => {
     setAcclimationCollapsed(false);
     setWeightLossCollapsed(false);
 
+    setPremiumUnlocked(false);
+    localStorage.setItem("weightLossPhaseUnlocked", "false");
+    if (user?.id) await setUserPref(user.id, "weightLossPhaseUnlocked", "false");
+
     await saveJourney({
       archived_phases: nextArch,
       weekly_data: emptyWeek,
@@ -1597,6 +1698,10 @@ const Dashboard = () => {
     setWeightLossCollapsed(false);
     setWeightLossMainCollapsed(false);
 
+    setPremiumUnlocked(false);
+    localStorage.setItem("weightLossPhaseUnlocked", "false");
+    if (user?.id) await setUserPref(user.id, "weightLossPhaseUnlocked", "false");
+
     if (endWeight > 0 && user?.id) {
       void upsertProfile(user.id, { current_weight: endWeight.toFixed(2) });
       void refreshProfile();
@@ -1745,7 +1850,7 @@ const Dashboard = () => {
 
   /** Calorie reminders: run on blur only (after user finishes typing). High: over target. Low: under 85% of target. */
   const evaluateCalorieNudgeForDay = (day: string) => {
-    if (!isAcclimationComplete() || journeyComplete) return;
+    if (!isAcclimationComplete() || !canAccessPremiumPhases || journeyComplete) return;
     const cal = weeklyData[day as keyof typeof weeklyData]?.calories ?? 0;
     if (cal <= 0) return;
     const minCal = userGender === "female" ? 1300 : 1500;
@@ -1789,6 +1894,11 @@ const Dashboard = () => {
     if (weekNumber === 4) {
       setIsWeek4Complete(true);
       if (isWeek1Complete && isWeek2Complete && isWeek3Complete) {
+        if (hasEverSubscribed) {
+          setAcclimationCompleteMode("returning");
+        } else {
+          setAcclimationCompleteMode("first_paywall");
+        }
         setShowAcclimationCompleteDialog(true);
         const minCal = userGender === 'female' ? 1300 : 1500;
         if (acclimationCalories > 0 && (acclimationCalories - minCal) <= 200) {
@@ -2795,10 +2905,10 @@ const Dashboard = () => {
                     inputMode="numeric"
                     value={acclimationCalories > 0 ? acclimationCalories.toLocaleString() : ''}
                     readOnly
-                    className="w-full bg-muted cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full bg-muted [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     placeholder="Auto-populated from TDEE Calculator"
                   />
-                  <p className="text-xs text-muted-foreground">Locked — reflects your Starting Calorie Intake from My TDEE Calculator</p>
+                  <p className="text-xs text-muted-foreground">This is your starting calories from &apos;My TDEE Calculator.&apos;</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="acclimationSteps" className="text-sm font-medium">Recommended Steps</Label>
@@ -2811,7 +2921,7 @@ const Dashboard = () => {
                     className="w-full bg-muted [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     placeholder={ACCLIMATION_BASE_STEPS.toLocaleString()}
                   />
-                  <p className="text-xs text-muted-foreground">Baseline daily steps for Acclimation Phase (fixed)</p>
+                  <p className="text-xs text-muted-foreground">Daily baseline steps during &apos;Acclimation Phase.&apos;</p>
                 </div>
               </div>
               {/* Header Row - Days across the top */}
@@ -2909,8 +3019,28 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Week Overview - Hidden until acclimation is complete */}
-        {isAcclimationComplete() && (
+        {/* Locked premium phases — acclimation done but not subscribed */}
+        {isAcclimationComplete() && !canAccessPremiumPhases && (
+          <Card className="bg-muted/40 border-outline-variant border-dashed">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-muted-foreground text-lg">
+                <MaterialIcon name="lock" size="sm" />
+                Weight Loss &amp; Maintenance Phases
+              </CardTitle>
+              <CardDescription>
+                You have completed Acclimation. Subscribe to unlock your 12-week Weight Loss Phase, Maintenance Phase, progress tracking, and downloadable reports.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate("/payment-details?from=acclimationComplete")} className="w-full sm:w-auto">
+                Go to Payment Details
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Week Overview - Hidden until acclimation is complete and premium unlocked */}
+        {isAcclimationComplete() && canAccessPremiumPhases && (
         <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
           <CardHeader>
             {/* Responsive: title on its own line on mobile, action buttons underneath.
@@ -3430,7 +3560,7 @@ const Dashboard = () => {
         )}
 
         {/* Maintenance Phase Section - nested under Weight Loss main container (same box as Acclimation / WL) */}
-        {maintenancePhase.active && (
+        {maintenancePhase.active && canAccessPremiumPhases && (
           <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -4452,12 +4582,70 @@ const Dashboard = () => {
                 Congratulations!
               </AlertDialogTitle>
               <AlertDialogDescription className="text-foreground/70 space-y-3">
-                <p>Congratulations on completing your Acclimation Phase. This sets the baseline and now you are now ready to commence your 12 week weight loss journey.</p>
-                <p>Your 'Progress' is now available for you to start tracking! Good luck and stay consistent. Consistency is key!</p>
+                {acclimationCompleteMode === "returning" ? (
+                  <>
+                    <p>Congratulations on completing your Acclimation Phase. This sets the baseline and now you are ready to commence your 12 week weight loss journey.</p>
+                    <p>Your &apos;Weight Loss Phase&apos; and &apos;Maintenance Phase&apos; is now available for you to start tracking! Good luck and stay consistent. Consistency is key!</p>
+                  </>
+                ) : (
+                  <>
+                    <p>Congratulations on completing your Acclimation Phase. This sets the baseline and now you are ready to commence your 12 week weight loss journey.</p>
+                    <p>By clicking &apos;Let&apos;s Go!&apos; you will be charged at your chosen subscription and the &apos;Weight Loss Phase&apos; and all other features will be available to you. If you do not want to proceed please click &apos;No.&apos; and you will not be charged and all additional features will remain locked.</p>
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              {acclimationCompleteMode === "returning" ? (
+                <AlertDialogAction
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={() => void handleAcclimationLetsGo()}
+                >
+                  Let&apos;s Go!
+                </AlertDialogAction>
+              ) : (
+                <>
+                  <AlertDialogCancel
+                    className="bg-background text-foreground hover:bg-muted border-border"
+                    onClick={() => {
+                      setShowAcclimationCompleteDialog(false);
+                      setShowAcclimationDeclinedDialog(true);
+                    }}
+                  >
+                    No.
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    disabled={activatingSubscription}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      void handleAcclimationLetsGo();
+                    }}
+                  >
+                    {activatingSubscription ? "Processing…" : "Let's Go!"}
+                  </AlertDialogAction>
+                </>
+              )}
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Acclimation declined follow-up */}
+        <AlertDialog open={showAcclimationDeclinedDialog} onOpenChange={setShowAcclimationDeclinedDialog}>
+          <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-primary">No problem at all!</AlertDialogTitle>
+              <AlertDialogDescription className="text-foreground/70 space-y-3">
+                <p>Remember we are always here to help! When you are ready for your weight loss journey, please go to &apos;Payment Details&apos; and subscribe. Good luck with the rest of your journey and hope to see you soon!</p>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogAction className="bg-primary text-primary-foreground hover:bg-primary/90">Let's Go!</AlertDialogAction>
+              <AlertDialogAction
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => setShowAcclimationDeclinedDialog(false)}
+              >
+                Ok.
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

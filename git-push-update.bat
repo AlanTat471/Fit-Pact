@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v15 - Subscription plans, Macro education, UI locks
+echo   Numi v16 - Paywall, UI fixes, Settings, Achievements
 echo ============================================================
 echo.
 
@@ -8,26 +8,36 @@ cd /d "%~dp0"
 
 echo Adding changed files...
 
-REM v15 changes:
-REM   1. Subscription plans updated: Weekly/Fortnightly removed, Monthly ($8.99/mo)
-REM      and Annual ($5.99/mo billed at $71.88/yr, saving 33%) added
-REM   2. Macro Breakdown: added educational content (Protein, Fats, Carbs)
-REM   3. Dashboard: Acclimation Calories field is now locked (read-only)
-REM   4. TDEE Calculator: 'Personal Information' heading renamed to 'My Details'
-REM   5. Billing Edge Function: env vars updated to STRIPE_PRICE_MONTHLY/ANNUAL
+REM v16 changes:
+REM   - Acclimation caption/cursor fixes; Recommended Steps caption
+REM   - Payment Details button text fit; Annually + Best Value badge move
+REM   - 4-week free Acclimation; charge on Week 4 Let's Go
+REM   - Weight Loss + Maintenance locked until subscribe
+REM   - Returning subscribers skip re-charge prompt
+REM   - Macro education reworded (shorter)
+REM   - Achievements Coming Soon; Settings privacy/notifications phased
+REM   - Delete Account edge function + confirmation flow
+REM   - Billing: setup checkout, activate subscription actions
 REM
-git add src/pages/PaymentDetails.tsx
-git add src/pages/Settings.tsx
-git add src/pages/MacroBreakdown.tsx
 git add src/pages/Dashboard.tsx
-git add src/pages/Workouts.tsx
+git add src/pages/PaymentDetails.tsx
+git add src/pages/MacroBreakdown.tsx
+git add src/pages/Settings.tsx
+git add src/pages/Profile.tsx
+git add src/pages/Achievements.tsx
+git add src/components/BottomNav.tsx
+git add src/components/AppSidebar.tsx
+git add src/lib/billingApi.ts
+git add src/lib/supabaseSubscription.ts
 git add supabase/functions/billing/index.ts
+git add supabase/functions/delete-account/index.ts
+git add BUGS-AND-DEFECTS.md
 git add git-push-update.bat
 
 echo Committing...
 git commit ^
-  -m "v15: monthly/annual plans, macro education, locked acclimation calories, My Details heading" ^
-  -m "Replace weekly/fortnightly plans with Monthly ($8.99/mo) and Annual ($5.99/mo at $71.88/yr, 33% saving). Add macro educational content (Protein/Fats/Carbs what/benefits/impact) to Macro Breakdown page. Lock Acclimation Calories on Dashboard to reflect TDEE page (read-only). Rename Personal Information to My Details in TDEE Calculator. Update billing Edge Function to use STRIPE_PRICE_MONTHLY and STRIPE_PRICE_ANNUAL secrets."
+  -m "v16: acclimation paywall, deferred billing, UI fixes, delete account" ^
+  -m "Lock Weight Loss and Maintenance until subscription. Save plan+card via Stripe setup during Acclimation; charge on Week 4 Let's Go. Returning subscribers get no re-charge prompt. Fix Payment button text clipping. Phase out Achievements, Privacy Controls, Notifications. Add delete-account Edge Function."
 
 echo.
 echo Pushing to origin...
@@ -35,36 +45,30 @@ git push
 
 echo.
 echo ============================================================
-echo   Push complete!  v15
+echo   Push complete!  v16
 echo.
-echo   NEXT STEPS AFTER PUSH:
+echo   1. VERCEL: wait 2-3 mins, hard-refresh https://fit-pact.vercel.app
 echo.
-echo   1. VERCEL: wait 2-3 mins for green deploy, then hard-refresh
-echo      (Ctrl+Shift+R) on https://fit-pact.vercel.app
+echo   2. SUPABASE — deploy BOTH Edge Functions:
+echo      a) Dashboard ^> Edge Functions ^> billing ^> Deploy
+echo      b) Dashboard ^> Edge Functions ^> delete-account ^> Deploy
+echo         (If delete-account is new: Deploy new function from folder)
 echo.
-echo   2. STRIPE DASHBOARD - Create new products:
-echo      a) Go to https://dashboard.stripe.com ^> Products ^> + Add product
-echo      b) Create "Numi Monthly":
-echo           Name: Numi Monthly
-echo           Price: $8.99  Recurring: Monthly
-echo           Copy the Price ID (starts with price_...)
-echo      c) Create "Numi Annual":
-echo           Name: Numi Annual
-echo           Price: $71.88  Recurring: Yearly
-echo           Copy the Price ID (starts with price_...)
+echo   3. STRIPE — no new products needed (same Monthly/Annual prices)
+echo      Ensure webhook still points to billing/stripe-webhook
 echo.
-echo   3. SUPABASE - Update Edge Function secrets:
-echo      a) Go to https://supabase.com ^> Your Project ^> Edge Functions
-echo      b) Click on "billing" function ^> Secrets tab
-echo      c) ADD secret: STRIPE_PRICE_MONTHLY = [monthly price_ ID from step 2b]
-echo      d) ADD secret: STRIPE_PRICE_ANNUAL  = [annual  price_ ID from step 2c]
-echo      e) You can DELETE the old STRIPE_PRICE_WEEKLY and STRIPE_PRICE_FORTNIGHTLY
-echo      f) Redeploy the billing function (Deploy button)
+echo   4. TEST on web:
+echo      - Acclimation captions (no Locked word, no red cursor)
+echo      - Payment Details buttons fit in box
+echo      - Complete Week 4: Let's Go / No popups
+echo      - Weight Loss locked until subscribe
+echo      - Settings ^> Delete Account flow
+echo      - Achievements shows Coming Soon
 echo.
-echo   4. ANDROID:
+echo   5. ANDROID:
 echo        npm run build
 echo        npx cap sync android
-echo      Android Studio ^> signed AAB ^> Play Internal testing (v15)
-echo.
+echo      Android Studio ^> bump versionCode to 16, versionName 2.1
+echo      Build signed AAB ^> Play Internal testing
 echo ============================================================
 pause

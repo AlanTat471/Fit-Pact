@@ -594,45 +594,42 @@ const MacroBreakdown = () => {
       {/* Macro Education Section */}
       <section className="space-y-4">
         <p className="text-sm text-on-surface-variant leading-relaxed">
-          Carbohydrates, fats, and proteins are essential macronutrients. Carbohydrates fuel your brain and nervous system. Proteins act as building blocks for tissues and enzymes. Fats protect organs, produce hormones, and absorb vitamins. Without enough of them, you risk severe energy crashes, muscle loss, and hormonal imbalances.
+          Protein, fats, and carbs are the three macronutrients your body needs every day. Carbs mainly fuel your brain and daily movement. Protein rebuilds muscle and supports repair. Fats help with hormones, vitamin absorption, and long-lasting energy. If any of these run too low for too long, you may feel drained, lose strength, or struggle with recovery.
         </p>
 
-        {/* Protein */}
         <div className="bg-tertiary-container/40 p-5 rounded-xl border border-white/30">
           <h4 className="font-bold text-on-surface mb-3 flex items-center gap-2">
             <span className="inline-block w-3 h-3 rounded-full bg-primary shrink-0" />
             Protein
           </h4>
           <ul className="space-y-2 text-sm text-on-surface-variant">
-            <li><span className="font-semibold text-on-surface">What they do:</span> Proteins are the body's primary building material. They repair muscle fibres torn during exercise, synthesise enzymes that drive every metabolic reaction, and produce hormones such as insulin and growth factors. They also transport oxygen (haemoglobin) and support immune antibodies.</li>
-            <li><span className="font-semibold text-on-surface">Benefits:</span> Adequate protein preserves and builds lean muscle mass, keeps you feeling full (satiety), supports faster recovery after training, stabilises blood sugar when eaten alongside carbohydrates, and helps maintain healthy skin, hair, and nails.</li>
-            <li><span className="font-semibold text-on-surface">Impact of too low:</span> Insufficient protein leads to muscle breakdown (catabolism), weakened immunity, slower wound healing, brittle hair and nails, persistent fatigue, and difficulty recovering between workouts. Prolonged deficiency can impair organ function.</li>
+            <li><span className="font-semibold text-on-surface">What they do:</span> Build and repair muscle, skin, and tissue, and help make enzymes your body uses daily.</li>
+            <li><span className="font-semibold text-on-surface">Benefits:</span> Supports strength, recovery after training, and helps you feel fuller for longer.</li>
+            <li><span className="font-semibold text-on-surface">Impact of too low:</span> Muscle loss, slower recovery, low energy, and weaker immune support over time.</li>
           </ul>
         </div>
 
-        {/* Fats */}
         <div className="bg-primary-container/30 p-5 rounded-xl border border-white/30">
           <h4 className="font-bold text-on-surface mb-3 flex items-center gap-2">
             <span className="inline-block w-3 h-3 rounded-full bg-accent shrink-0" />
             Fats
           </h4>
           <ul className="space-y-2 text-sm text-on-surface-variant">
-            <li><span className="font-semibold text-on-surface">What they do:</span> Dietary fats (lipids) are essential for absorbing fat-soluble vitamins A, D, E, and K, producing steroid hormones (including testosterone, oestrogen, and cortisol), cushioning and protecting vital organs, maintaining cell membrane integrity, and fuelling low-intensity, sustained activity.</li>
-            <li><span className="font-semibold text-on-surface">Benefits:</span> Healthy fats (monounsaturated and polyunsaturated, including omega-3 and omega-6 fatty acids) reduce inflammation, improve cardiovascular health markers (raising HDL cholesterol), support brain function and mood regulation, and keep skin moisturised and supple.</li>
-            <li><span className="font-semibold text-on-surface">Impact of too low:</span> A very low fat intake disrupts hormonal production, leading to irregular menstrual cycles in women and reduced testosterone in men. It impairs vitamin absorption, dry skin, poor concentration, increased inflammation, and leaves joints poorly lubricated, raising injury risk.</li>
+            <li><span className="font-semibold text-on-surface">What they do:</span> Store energy, protect organs, and help your body absorb vitamins A, D, E, and K.</li>
+            <li><span className="font-semibold text-on-surface">Benefits:</span> Support hormone balance, brain function, and steady energy between meals.</li>
+            <li><span className="font-semibold text-on-surface">Impact of too low:</span> Hormone disruption, dry skin, poor focus, and reduced absorption of key vitamins.</li>
           </ul>
         </div>
 
-        {/* Carbohydrates */}
         <div className="bg-secondary-container/40 p-5 rounded-xl border border-white/30">
           <h4 className="font-bold text-on-surface mb-3 flex items-center gap-2">
             <span className="inline-block w-3 h-3 rounded-full bg-secondary shrink-0" />
             Carbohydrates
           </h4>
           <ul className="space-y-2 text-sm text-on-surface-variant">
-            <li><span className="font-semibold text-on-surface">What they do:</span> Carbohydrates are the body's preferred and fastest fuel source. They are broken down into glucose, which powers the brain, red blood cells, and central nervous system exclusively, and are stored as glycogen in muscles and the liver to fuel moderate-to-high-intensity exercise.</li>
-            <li><span className="font-semibold text-on-surface">Benefits:</span> Sufficient carbohydrate intake maintains mental clarity and concentration, fuels high-intensity training performance, spares protein from being used as fuel (protein-sparing effect), supports gut health via dietary fibre, and regulates blood sugar for sustained energy throughout the day.</li>
-            <li><span className="font-semibold text-on-surface">Impact of too low:</span> Severely restricting carbohydrates depletes glycogen stores, causing intense fatigue, brain fog, irritability, and poor athletic performance. The body enters a catabolic state where muscle protein is broken down for energy. Long-term deficiency can disrupt thyroid function and elevate cortisol (stress hormone) levels.</li>
+            <li><span className="font-semibold text-on-surface">What they do:</span> Break down into glucose — your body&apos;s main quick fuel for the brain, muscles, and daily activity.</li>
+            <li><span className="font-semibold text-on-surface">Benefits:</span> Better training performance, clearer focus, and less chance of protein being used as fuel.</li>
+            <li><span className="font-semibold text-on-surface">Impact of too low:</span> Fatigue, brain fog, irritability, and poorer workout output if intake stays too low.</li>
           </ul>
         </div>
       </section>

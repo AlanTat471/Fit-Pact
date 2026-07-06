@@ -21,29 +21,17 @@ const SUPABASE_URL = env("SUPABASE_URL");
 const SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY");
 const SUPABASE_SERVICE_ROLE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
 
-console.log("[billing] Boot — env check:", {
-  hasStripeKey: !!STRIPE_SECRET_KEY,
-  hasWebhookSecret: !!STRIPE_WEBHOOK_SECRET,
-  hasPriceMonthly: !!STRIPE_PRICE_MONTHLY,
-  hasPriceAnnual: !!STRIPE_PRICE_ANNUAL,
-  appUrl: APP_URL,
-  hasSupabaseUrl: !!SUPABASE_URL,
-  hasAnonKey: !!SUPABASE_ANON_KEY,
-  hasServiceRole: !!SUPABASE_SERVICE_ROLE_KEY,
-});
-
 let stripe: Stripe | null = null;
 try {
   if (STRIPE_SECRET_KEY) {
     stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
-  } else {
-    console.error("[billing] STRIPE_SECRET_KEY is empty — Stripe calls will fail");
   }
 } catch (e) {
   console.error("[billing] Failed to initialise Stripe client:", e);
 }
 
 type PlanType = "monthly" | "annual" | "free";
+type BillingAction = "setup" | "checkout" | "activate";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -69,7 +57,68 @@ function isoOrNull(ts: number | null | undefined): string | null {
   return ts ? new Date(ts * 1000).toISOString() : null;
 }
 
-// ── Webhook helper ──────────────────────────────────────────────────────
+async function setUserPref(
+  svc: ReturnType<typeof createClient>,
+  userId: string,
+  key: string,
+  value: string,
+) {
+  await svc.from("user_preferences").upsert(
+    { user_id: userId, key, value },
+    { onConflict: "user_id,key" },
+  );
+}
+
+async function unlockPremium(
+  svc: ReturnType<typeof createClient>,
+  userId: string,
+  plan: PlanType,
+) {
+  await setUserPref(svc, userId, "weightLossPhaseUnlocked", "true");
+  await setUserPref(svc, userId, "hasEverSubscribed", "true");
+  if (plan !== "free") {
+    await setUserPref(svc, userId, "activePlan", plan);
+  }
+}
+
+async function getOrCreateCustomer(
+  svc: ReturnType<typeof createClient>,
+  userId: string,
+  email?: string | null,
+  name?: string,
+): Promise<string> {
+  if (!stripe) throw new Error("Stripe not configured");
+
+  const { data: existingSub } = await svc
+    .from("subscriptions")
+    .select("stripe_customer_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existingSub?.stripe_customer_id) {
+    return existingSub.stripe_customer_id;
+  }
+
+  const customer = await stripe.customers.create({
+    email: email ?? undefined,
+    name: name || undefined,
+    metadata: { supabase_user_id: userId },
+  });
+
+  await svc.from("subscriptions").upsert(
+    {
+      user_id: userId,
+      stripe_customer_id: customer.id,
+      status: "free",
+      plan_type: "free",
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+
+  return customer.id;
+}
+
 async function upsertSub(
   svc: ReturnType<typeof createClient>,
   sub: Stripe.Subscription,
@@ -120,13 +169,56 @@ async function upsertSub(
     { onConflict: "user_id" },
   );
 
-  await svc.from("user_preferences").upsert(
-    { user_id: userId, key: "activePlan", value: activePlan },
-    { onConflict: "user_id,key" },
-  );
+  if (activePlan !== "free") {
+    await unlockPremium(svc, userId, activePlan);
+  } else {
+    await setUserPref(svc, userId, "activePlan", "free");
+  }
 }
 
-// ── Main handler ────────────────────────────────────────────────────────
+async function handleSetupCompleted(
+  svc: ReturnType<typeof createClient>,
+  sess: Stripe.Checkout.Session,
+) {
+  const userId = sess.metadata?.supabase_user_id;
+  if (!userId || !stripe) return;
+
+  const planType = (sess.metadata?.plan_type as PlanType) || "monthly";
+  const custId =
+    typeof sess.customer === "string" ? sess.customer : sess.customer?.id;
+
+  if (custId && sess.setup_intent && typeof sess.setup_intent === "string") {
+    try {
+      const si = await stripe.setupIntents.retrieve(sess.setup_intent);
+      if (si.payment_method) {
+        await stripe.customers.update(custId, {
+          invoice_settings: {
+            default_payment_method: si.payment_method as string,
+          },
+        });
+      }
+    } catch (e) {
+      console.warn("[billing] Could not set default payment method:", e);
+    }
+  }
+
+  if (custId) {
+    await svc.from("subscriptions").upsert(
+      {
+        user_id: userId,
+        stripe_customer_id: custId,
+        status: "free",
+        plan_type: "free",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+  }
+
+  await setUserPref(svc, userId, "pendingPlan", planType);
+  await setUserPref(svc, userId, "paymentMethodSaved", "true");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -134,9 +226,7 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   const path = url.pathname;
-  console.log("[billing]", req.method, path);
 
-  // ── Stripe Webhook ──────────────────────────────────────────────────
   if (req.method === "POST" && path.endsWith("/stripe-webhook")) {
     try {
       if (!stripe) return json({ error: "Stripe not configured" }, 500);
@@ -152,22 +242,21 @@ Deno.serve(async (req) => {
       );
       const svc = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-      if (
-        event.type === "checkout.session.completed" ||
+      if (event.type === "checkout.session.completed") {
+        const sess = event.data.object as Stripe.Checkout.Session;
+        if (sess.mode === "setup") {
+          await handleSetupCompleted(svc, sess);
+        } else if (sess.subscription && typeof sess.subscription === "string") {
+          const subscription = await stripe.subscriptions.retrieve(sess.subscription);
+          await upsertSub(svc, subscription);
+        }
+      } else if (
         event.type === "customer.subscription.created" ||
         event.type === "customer.subscription.updated" ||
         event.type === "customer.subscription.deleted"
       ) {
-        let subscription: Stripe.Subscription | null = null;
-        if (event.type === "checkout.session.completed") {
-          const sess = event.data.object as Stripe.Checkout.Session;
-          if (sess.subscription && typeof sess.subscription === "string") {
-            subscription = await stripe.subscriptions.retrieve(sess.subscription);
-          }
-        } else {
-          subscription = event.data.object as Stripe.Subscription;
-        }
-        if (subscription) await upsertSub(svc, subscription);
+        const subscription = event.data.object as Stripe.Subscription;
+        await upsertSub(svc, subscription);
       }
       return json({ received: true });
     } catch (e) {
@@ -177,24 +266,15 @@ Deno.serve(async (req) => {
     }
   }
 
-  // ── Create Checkout Session (any other POST) ────────────────────────
   if (req.method === "POST") {
     try {
-      // Step 1: Stripe client
       if (!stripe) {
-        console.error("[billing] Stripe client not initialised");
-        return json({ error: "Stripe is not configured on the server. Check STRIPE_SECRET_KEY." }, 500);
+        return json({ error: "Stripe is not configured on the server." }, 500);
       }
 
-      // Step 2: Auth
       const authHeader = req.headers.get("Authorization");
       if (!authHeader) {
-        console.error("[billing] No Authorization header");
         return json({ error: "Missing Authorization header" }, 401);
-      }
-      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-        console.error("[billing] Missing SUPABASE_URL or SUPABASE_ANON_KEY");
-        return json({ error: "Server misconfiguration (Supabase env)" }, 500);
       }
 
       const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -202,37 +282,20 @@ Deno.serve(async (req) => {
       });
       const { data: userData, error: userErr } = await userClient.auth.getUser();
       if (userErr || !userData.user) {
-        console.error("[billing] getUser failed:", userErr?.message);
-        return json({ error: `Authentication failed: ${userErr?.message || "no user"}` }, 401);
+        return json({ error: "Authentication failed" }, 401);
       }
       const userId = userData.user.id;
-      console.log("[billing] Authenticated user:", userId);
 
-      // Step 3: Parse body
       let body: { planType?: string; action?: string };
       try {
         body = await req.json();
       } catch {
         return json({ error: "Invalid JSON body" }, 400);
       }
+
+      const action = (body.action || "setup") as BillingAction;
       const planType = body.planType as PlanType | undefined;
-      if (planType !== "monthly" && planType !== "annual") {
-        console.error("[billing] Invalid planType:", planType);
-        return json({ error: `Invalid planType: ${planType}` }, 400);
-      }
-      console.log("[billing] planType:", planType);
 
-      // Step 4: Price lookup
-      const stripePriceId = priceId(planType);
-      if (!stripePriceId) {
-        console.error("[billing] No price ID for plan. STRIPE_PRICE_MONTHLY:", !!STRIPE_PRICE_MONTHLY, "STRIPE_PRICE_ANNUAL:", !!STRIPE_PRICE_ANNUAL);
-        return json({
-          error: `No Stripe price configured for "${planType}". Set STRIPE_PRICE_${planType.toUpperCase()} in Supabase secrets.`,
-        }, 500);
-      }
-      console.log("[billing] Using price:", stripePriceId);
-
-      // Step 5: Get or create Stripe customer
       const svc = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       const { data: profile } = await svc
         .from("profiles")
@@ -240,47 +303,112 @@ Deno.serve(async (req) => {
         .eq("id", userId)
         .maybeSingle();
 
-      let customerId: string | null = null;
-      const { data: existingSub } = await svc
-        .from("subscriptions")
-        .select("stripe_customer_id")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (existingSub?.stripe_customer_id) {
-        customerId = existingSub.stripe_customer_id;
-        console.log("[billing] Existing Stripe customer:", customerId);
-      }
+      const customerName =
+        [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
+        undefined;
 
-      if (!customerId) {
-        console.log("[billing] Creating new Stripe customer…");
-        const customer = await stripe.customers.create({
-          email: profile?.email ?? userData.user.email ?? undefined,
-          name:
-            [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
-            undefined,
-          metadata: { supabase_user_id: userId },
+      const customerId = await getOrCreateCustomer(
+        svc,
+        userId,
+        profile?.email ?? userData.user.email,
+        customerName,
+      );
+
+      // ── Activate subscription (Week 4 Let's Go — charge saved card) ──
+      if (action === "activate") {
+        const { data: pendingPref } = await svc
+          .from("user_preferences")
+          .select("value")
+          .eq("user_id", userId)
+          .eq("key", "pendingPlan")
+          .maybeSingle();
+
+        const plan = (pendingPref?.value as PlanType) || planType;
+        if (plan !== "monthly" && plan !== "annual") {
+          return json({ error: "No plan selected. Please choose a plan in Payment Details first." }, 400);
+        }
+
+        const stripePriceId = priceId(plan);
+        if (!stripePriceId) {
+          return json({ error: `No Stripe price configured for "${plan}".` }, 500);
+        }
+
+        const customer = await stripe.customers.retrieve(customerId);
+        if ("deleted" in customer && customer.deleted) {
+          return json({ error: "Stripe customer not found." }, 400);
+        }
+
+        const defaultPm =
+          typeof customer.invoice_settings?.default_payment_method === "string"
+            ? customer.invoice_settings.default_payment_method
+            : null;
+
+        let paymentMethodId = defaultPm;
+        if (!paymentMethodId) {
+          const pms = await stripe.paymentMethods.list({
+            customer: customerId,
+            type: "card",
+            limit: 1,
+          });
+          paymentMethodId = pms.data[0]?.id ?? null;
+        }
+
+        if (!paymentMethodId) {
+          return json({
+            error: "No payment method on file. Please add your card in Payment Details first.",
+            needsPaymentSetup: true,
+          }, 400);
+        }
+
+        const subscription = await stripe.subscriptions.create({
+          customer: customerId,
+          items: [{ price: stripePriceId }],
+          default_payment_method: paymentMethodId,
+          metadata: { supabase_user_id: userId, plan_type: plan },
         });
-        customerId = customer.id;
-        console.log("[billing] Created customer:", customerId);
+
+        await upsertSub(svc, subscription);
+        return json({ success: true, planType: plan });
       }
 
-      // Step 6: Create Checkout Session
-      console.log("[billing] Creating checkout session…");
-      const session = await stripe.checkout.sessions.create({
-        mode: "subscription",
-        customer: customerId,
-        line_items: [{ price: stripePriceId, quantity: 1 }],
-        success_url: `${APP_URL}/settings?tab=payments&checkout=success`,
-        cancel_url: `${APP_URL}/settings?tab=payments&checkout=cancelled`,
-        metadata: { supabase_user_id: userId, plan_type: planType },
-        allow_promotion_codes: true,
-      });
+      if (planType !== "monthly" && planType !== "annual") {
+        return json({ error: `Invalid planType: ${planType}` }, 400);
+      }
 
-      console.log("[billing] Checkout session created:", session.id);
+      const stripePriceId = priceId(planType);
+      if (!stripePriceId && action === "checkout") {
+        return json({ error: `No Stripe price configured for "${planType}".` }, 500);
+      }
+
+      // ── Immediate subscription checkout (from Week 4 redirect) ──
+      if (action === "checkout") {
+        await setUserPref(svc, userId, "pendingPlan", planType);
+        const session = await stripe.checkout.sessions.create({
+          mode: "subscription",
+          customer: customerId,
+          line_items: [{ price: stripePriceId!, quantity: 1 }],
+          success_url: `${APP_URL}/dashboard?checkout=success&unlocked=1`,
+          cancel_url: `${APP_URL}/payment-details?from=acclimationComplete&checkout=cancelled`,
+          metadata: { supabase_user_id: userId, plan_type: planType },
+          allow_promotion_codes: true,
+        });
+        return json({ url: session.url });
+      }
+
+      // ── Setup mode — save card + plan, charge later on Week 4 ──
+      await setUserPref(svc, userId, "pendingPlan", planType);
+      const session = await stripe.checkout.sessions.create({
+        mode: "setup",
+        customer: customerId,
+        payment_method_types: ["card"],
+        success_url: `${APP_URL}/payment-details?setup=success&plan=${planType}`,
+        cancel_url: `${APP_URL}/payment-details?setup=cancelled`,
+        metadata: { supabase_user_id: userId, plan_type: planType },
+      });
       return json({ url: session.url });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
-      console.error("[billing] checkout error:", msg, e);
+      console.error("[billing] error:", msg, e);
       return json({ error: msg }, 500);
     }
   }

@@ -147,3 +147,65 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
 - **Achievements:** Unlock state derived from localStorage (#9).
 - **Settings / PaymentDetails / AppSidebar / BackButton:** Present and wired.
 - **Popups/dialogs:** TDEE overview, TDEE change warning, Register error, Forgot password, and MacroBreakdown popups work.
+
+---
+
+## v15 — Subscription plans, macro education, UI locks (Jul 2026)
+
+### 15. Monthly / Annual plans replace Weekly / Fortnightly
+
+- **Where:** `PaymentDetails.tsx`, `Settings.tsx`, `supabase/functions/billing/index.ts`
+- **Change:** Monthly ($8.99/mo) and Annually ($5.99/mo, $71.88/yr) only. Stripe secrets: `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_ANNUAL`.
+
+### 16. Macro Breakdown educational content
+
+- **Where:** `MacroBreakdown.tsx`
+- **Change:** Intro + Protein/Fats/Carbs bullet points under hero section.
+
+### 17. Acclimation Calories locked on Dashboard
+
+- **Where:** `Dashboard.tsx`
+- **Change:** Read-only field synced from TDEE Starting Calorie Intake.
+
+### 18. TDEE heading renamed to My Details
+
+- **Where:** `Workouts.tsx`
+
+---
+
+## v16 — Acclimation paywall, deferred billing, phased features (Jul 2026)
+
+### 19. Four-week free Acclimation; charge on Week 4
+
+- **Where:** `Dashboard.tsx`, `PaymentDetails.tsx`, `billing/index.ts`, `billingApi.ts`
+- **Flow:** User saves plan + card via Stripe **setup** checkout (no charge). Weight Loss + Maintenance locked until Week 4 **Let's Go!** triggers `activate` subscription, or user subscribes immediately via Payment Details redirect (`checkout` action).
+- **Returning users:** `hasEverSubscribed` — Week 4 popup skips payment; unlock without re-charge.
+
+### 20. Payment Details button text clipping — FIXED
+
+- **Where:** `PaymentDetails.tsx`
+- **Fix:** Taller buttons (`min-h-[56px]`), smaller billing line text (`text-[9px]`), wrap allowed. Annually heading + Best Value badge under title.
+
+### 21. Dashboard caption / cursor fixes — FIXED
+
+- **Acclimation Calories:** Caption without "Locked"; removed `cursor-not-allowed`.
+- **Recommended Steps:** "Daily baseline steps during 'Acclimation Phase.'"
+
+### 22. Macro education reworded (shorter, original copy)
+
+- **Where:** `MacroBreakdown.tsx`
+
+### 23. Achievements phased out — Coming Soon
+
+- **Where:** `BottomNav.tsx`, `AppSidebar.tsx`, `Achievements.tsx`, `Profile.tsx`
+
+### 24. Settings Privacy / Notifications phased out; Delete Account
+
+- **Where:** `Settings.tsx`, `supabase/functions/delete-account/index.ts`
+- **Delete Account:** Confirmation dialog → deletes auth user + profile, journey, TDEE, subscriptions, prefs → sign out.
+
+### 25. Deploy notes (v16)
+
+- Deploy **billing** and **delete-account** Edge Functions in Supabase.
+- Vercel auto-deploy from git push.
+- Android: bump `versionCode` to 16, sync Capacitor, upload AAB to Play Internal testing.

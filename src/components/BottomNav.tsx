@@ -7,7 +7,7 @@ const navItems = [
   { label: "TDEE", path: "/tdee-calculator", icon: "calculate" },
   { label: "Dashboard", path: "/dashboard", icon: "dashboard" },
   { label: "Macros", path: "/macro-breakdown", icon: "restaurant" },
-  { label: "Achievements", path: "/achievements", icon: "emoji_events" },
+  { label: "Achievements", path: "/achievements", icon: "emoji_events", comingSoon: true },
 ] as const;
 
 export function BottomNav() {
@@ -16,7 +16,22 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background flex justify-around items-center px-2 pt-2 pb-safe-nav border-t border-outline-variant/30 min-h-[5rem]">
       {navItems.map((item) => {
-        const active = pathname === item.path;
+        const active = !item.comingSoon && pathname === item.path;
+
+        if (item.comingSoon) {
+          return (
+            <div
+              key={item.path}
+              className="flex flex-col items-center justify-center px-2 py-2 rounded-full text-[10px] font-semibold tracking-wide text-on-surface-variant/60 cursor-not-allowed opacity-70"
+              aria-disabled
+            >
+              <MaterialIcon name={item.icon} size="sm" />
+              <span className="mt-0.5 leading-tight text-center">{item.label}</span>
+              <span className="text-[8px] font-normal opacity-80">Coming Soon!</span>
+            </div>
+          );
+        }
+
         return (
           <NavLink
             key={item.path}

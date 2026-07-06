@@ -7,7 +7,7 @@ export interface SubscriptionRow {
   stripe_customer_id: string | null;
   stripe_price_id: string | null;
   status: "free" | "active" | "cancelled" | "past_due" | "trialing";
-  plan_type: "free" | "weekly" | "fortnightly";
+  plan_type: "free" | "monthly" | "annual";
   cancel_at_period_end: boolean;
   current_period_start: string | null;
   current_period_end: string | null;

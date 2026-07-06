@@ -968,9 +968,9 @@ const Profile = () => {
           <MaterialIcon name="gps_fixed" size="sm" />
           Go to my Community
         </Button>
-        <Button variant="default" onClick={() => navigate('/achievements')} className="gap-2">
+        <Button variant="outline" disabled className="gap-2 opacity-60">
           <MaterialIcon name="emoji_events" size="sm" />
-          Go to my Achievements
+          Achievements — Coming Soon!
         </Button>
       </div>
 
