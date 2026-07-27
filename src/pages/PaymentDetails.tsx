@@ -293,7 +293,7 @@ const PaymentDetails = () => {
               disabled={billingLoading}
             >
               <span className="text-[11px] font-bold leading-tight text-center">{price}</span>
-              <span className="text-[9px] opacity-90 text-center leading-snug max-w-full whitespace-normal">
+              <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">
                 {subscribeLabel || billingLine}
               </span>
             </Button>
@@ -370,7 +370,7 @@ const PaymentDetails = () => {
           name="Monthly"
           price="$8.99 / month"
           billingLine="Billed monthly. Cancel anytime."
-          subscribeLabel={fromAcclimationComplete ? "Subscribe now via Stripe" : "Save plan & add card — charged after Week 4"}
+          subscribeLabel={fromAcclimationComplete ? "Subscribe now via Stripe" : "Subscribe - Charged after Week 4"}
           description="Full access to all Numi features after your free Acclimation Phase. Less than a daily coffee to kickstart your journey!"
         />
 
@@ -379,8 +379,8 @@ const PaymentDetails = () => {
           name="Annually"
           price="$71.88 / year"
           billingLine="Billed annually. Cancel anytime."
-          subscribeLabel={fromAcclimationComplete ? "Subscribe now via Stripe" : "Save plan & add card — charged after Week 4"}
-          description="Get 4 months free with annual billing at $71.88 (or $5.99/month) - saving $36 compared to paying monthly!"
+          subscribeLabel={fromAcclimationComplete ? "Subscribe now via Stripe" : "Subscribe - Charged after Week 4"}
+          description="Get 4 months free with annual billing at $71.88 (equivalent to $5.99/month) - saving of $36 compared to Monthly subscription!"
           badge="Best Value - 33% discount!"
         />
       </div>

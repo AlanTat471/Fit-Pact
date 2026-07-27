@@ -2,12 +2,13 @@ import { supabase } from "./supabaseClient";
 import { getSubscription } from "./supabaseSubscription";
 import { getUserPref } from "./supabaseUserPrefs";
 
-export type BillingAction = "setup" | "checkout" | "activate" | "cancel";
+export type BillingAction = "setup" | "checkout" | "activate" | "cancel" | "verify";
 export type PaidPlanType = "monthly" | "annual";
 
 export async function callBillingApi(
   planType: PaidPlanType | undefined,
   action: BillingAction,
+  sessionId?: string,
 ): Promise<{
   url?: string;
   success?: boolean;
@@ -15,6 +16,7 @@ export async function callBillingApi(
   needsPaymentSetup?: boolean;
   cancelAtPeriodEnd?: boolean;
   currentPeriodEnd?: string | null;
+  planType?: string;
 }> {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   if (sessionError || !sessionData.session?.access_token) {
@@ -34,7 +36,7 @@ export async function callBillingApi(
       Authorization: `Bearer ${sessionData.session.access_token}`,
       apikey: supabaseAnonKey,
     },
-    body: JSON.stringify({ planType, action }),
+    body: JSON.stringify({ planType, action, sessionId }),
   });
 
   const text = await res.text();
@@ -45,6 +47,7 @@ export async function callBillingApi(
     needsPaymentSetup?: boolean;
     cancelAtPeriodEnd?: boolean;
     currentPeriodEnd?: string | null;
+    planType?: string;
   } = {};
   try {
     payload = JSON.parse(text);

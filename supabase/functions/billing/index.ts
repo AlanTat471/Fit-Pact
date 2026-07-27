@@ -31,7 +31,7 @@ try {
 }
 
 type PlanType = "monthly" | "annual" | "free";
-type BillingAction = "setup" | "checkout" | "activate" | "cancel";
+type BillingAction = "setup" | "checkout" | "activate" | "cancel" | "verify";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -287,7 +287,7 @@ Deno.serve(async (req) => {
       }
       const userId = userData.user.id;
 
-      let body: { planType?: string; action?: string };
+      let body: { planType?: string; action?: string; sessionId?: string };
       try {
         body = await req.json();
       } catch {
@@ -298,6 +298,36 @@ Deno.serve(async (req) => {
       const planType = body.planType as PlanType | undefined;
 
       const svc = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+      // ── Verify a completed checkout with Stripe before unlocking anything.
+      // The client is never trusted: we look the session up at Stripe, confirm it
+      // belongs to this user and that the subscription is genuinely paid/active.
+      if (action === "verify") {
+        const sessionId = body.sessionId;
+        if (!sessionId) {
+          return json({ error: "Missing checkout session id." }, 400);
+        }
+
+        const sess = await stripe.checkout.sessions.retrieve(sessionId);
+        if (sess.metadata?.supabase_user_id !== userId) {
+          return json({ error: "This checkout session does not belong to your account." }, 403);
+        }
+        if (sess.mode !== "subscription" || sess.status !== "complete" || sess.payment_status !== "paid") {
+          return json({ error: "Payment has not been completed for this checkout session." }, 402);
+        }
+        if (!sess.subscription || typeof sess.subscription !== "string") {
+          return json({ error: "No subscription found on this checkout session." }, 402);
+        }
+
+        const subscription = await stripe.subscriptions.retrieve(sess.subscription);
+        if (subscription.status !== "active" && subscription.status !== "trialing") {
+          return json({ error: "The subscription is not active yet. Payment may still be processing." }, 402);
+        }
+
+        await upsertSub(svc, subscription);
+        const plan = planFromPrice(subscription.items.data[0]?.price?.id);
+        return json({ success: true, planType: plan });
+      }
 
       // Cancel at the end of the paid billing period. Stripe continues to
       // provide access until current_period_end, then stops future renewals.
@@ -388,12 +418,34 @@ Deno.serve(async (req) => {
           }, 400);
         }
 
-        const subscription = await stripe.subscriptions.create({
-          customer: customerId,
-          items: [{ price: stripePriceId }],
-          default_payment_method: paymentMethodId,
-          metadata: { supabase_user_id: userId, plan_type: plan },
-        });
+        let subscription: Stripe.Subscription;
+        try {
+          subscription = await stripe.subscriptions.create({
+            customer: customerId,
+            items: [{ price: stripePriceId }],
+            default_payment_method: paymentMethodId,
+            metadata: { supabase_user_id: userId, plan_type: plan },
+            // Fail immediately if the card is declined instead of leaving an
+            // "incomplete" subscription behind — nothing unlocks without payment.
+            payment_behavior: "error_if_incomplete",
+          });
+        } catch (chargeErr) {
+          const msg = chargeErr instanceof Error ? chargeErr.message : "Card charge failed";
+          return json({
+            error: `Payment failed: ${msg}. Please update your card in Payment Details.`,
+            needsPaymentSetup: true,
+          }, 402);
+        }
+
+        if (subscription.status !== "active" && subscription.status !== "trialing") {
+          try {
+            await stripe.subscriptions.cancel(subscription.id);
+          } catch (_) { /* incomplete subs expire on their own */ }
+          return json({
+            error: "Payment was not completed. Please update your card in Payment Details.",
+            needsPaymentSetup: true,
+          }, 402);
+        }
 
         await upsertSub(svc, subscription);
         return json({ success: true, planType: plan });
@@ -415,7 +467,7 @@ Deno.serve(async (req) => {
           mode: "subscription",
           customer: customerId,
           line_items: [{ price: stripePriceId!, quantity: 1 }],
-          success_url: `${APP_URL}/dashboard?checkout=success&unlocked=1`,
+          success_url: `${APP_URL}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${APP_URL}/payment-details?from=acclimationComplete&checkout=cancelled`,
           metadata: { supabase_user_id: userId, plan_type: planType },
           allow_promotion_codes: true,

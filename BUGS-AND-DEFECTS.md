@@ -236,3 +236,61 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
 
 - **Where:** `NEW_PC_MIGRATION_GUIDE.md`
 - **Change:** Exact GitHub repository URL, same-OneDrive secret transfer, detailed explanation of `.env.local`, Android Studio setup, emulator/device tests, and Play Internal testing steps.
+
+---
+
+## v16.2 — Subscription wording, restart popup flow, Starting Weight sync (Jul 2026)
+
+### 30. Annual description wording updated
+
+- **Where:** `PaymentDetails.tsx`
+- **Change:** Annually description now reads: *"Get 4 months free with annual billing at $71.88 (equivalent to $5.99/month) - saving of $36 compared to Monthly subscription!"*
+
+### 31. Subscribe button wording simplified
+
+- **Where:** `PaymentDetails.tsx`
+- **Change:** Both Monthly and Annually buttons now show **"Subscribe - Charged after Week 4"** under the price ("$8.99 / month" / "$71.88 / year") when browsing plans normally. When arriving from the Week 4 "Congratulations" popup, the button still says "Subscribe now via Stripe". Sub-label font increased from 9px to 10px since the shorter text fits comfortably.
+
+### 32. Restart flow popup order corrected
+
+- **Where:** `Dashboard.tsx`
+- **Previous issue:** After "Clear All Dashboard Data" → TDEE re-entry → Dashboard, the popup order was Welcome → Acclimation info → journey start date, so the date prompt came last.
+- **Fix:** The **"Ready to Start?"** (journey start date) popup now appears directly after the Welcome popup's Continue button. The Acclimation info popup is shown *after* the user saves their start date via "Let's Go!". The page-load popup check follows the same priority so the order holds even if the app is closed mid-flow.
+
+### 33. Starting Weight did not match TDEE Current Body Weight — FIXED
+
+- **Where:** `Dashboard.tsx`
+- **Previous issue:** The TDEE weight was only copied into "Starting Weight" when the field was empty (`!startingWeight` guard). If the user later changed their weight on the TDEE page, the Dashboard kept showing (and re-saving) the stale value.
+- **Fix:** Until Acclimation Week 4 completes, Starting Weight now always mirrors the TDEE "Current Body Weight" and live-updates on change. Once Acclimation completes, the 4-week acclimation average takes over (existing intended design, unchanged).
+
+### 34. Weight loss end date hint expanded
+
+- **Where:** `Dashboard.tsx`
+- **Change:** Tooltip now ends with *"This does not include the 'Maintenance Phase'."* clarifying that the calculated end date covers only the 12-week Weight Loss Phase.
+
+---
+
+## v16.3 — Week 4 popup rewrite + payment verification hardening (Jul 2026)
+
+### 35. Week 4 "Congratulations" popup reworded; button renamed to Subscribe
+
+- **Where:** `Dashboard.tsx`
+- **Change (first-time users):** New copy: *"Congratulations! You have successfully completed the 'Acclimation Phase'! You are now primed for weight loss, hit 'Subscribe' now to begin your life-changing weight loss journey. Numi will be with you every step of the way. This is your moment to make a change, let's do it together! New You, New Me!"* followed by a bold warning: *"Warning - you will be charged at your chosen 'Subscription' method upon clicking 'Subscribe'."* The primary button is now **Subscribe** (was "Let's Go!"). The "No." decline path is unchanged. Returning-subscriber wording and "Let's Go!" button are unchanged.
+
+### 36. Checkout unlock no longer trusts the redirect URL — FIXED (security)
+
+- **Where:** `billing/index.ts`, `billingApi.ts`, `Dashboard.tsx`
+- **Previous issue:** Landing on `/dashboard?checkout=success&unlocked=1` unlocked premium with no server check. Stripe only redirects there after payment, but the URL could be typed manually to unlock without paying.
+- **Fix:** The Stripe success URL now carries `session_id={CHECKOUT_SESSION_ID}`. The Dashboard calls a new **verify** billing action; the server retrieves the session from Stripe and confirms (a) it belongs to the signed-in user, (b) mode is subscription, status complete, `payment_status === "paid"`, and (c) the subscription is active/trialing. Only then are phases unlocked (server-side prefs + client state). On failure a "Payment not confirmed" toast shows and phases stay locked. Checkout params are stripped from the URL after handling so refresh doesn't re-verify.
+- **Back-button case:** returning from the Stripe page without paying never reaches the success URL, so nothing unlocks; the cancel URL carries no unlock parameters.
+
+### 37. Saved-card activation could unlock on a declined charge — FIXED (security)
+
+- **Where:** `billing/index.ts` (`activate` action)
+- **Previous issue:** `stripe.subscriptions.create` defaults to allowing "incomplete" subscriptions; a declined card still returned `success: true` and unlocked phases with no money taken.
+- **Fix:** Activation now uses `payment_behavior: "error_if_incomplete"` so a declined card fails immediately (HTTP 402, `needsPaymentSetup: true` → user is sent to Payment Details). As a belt-and-braces check, any subscription not active/trialing after creation is cancelled and rejected.
+
+### 38. Deploy notes (v16.3)
+
+- **Supabase:** the **billing** Edge Function MUST be redeployed (`deploy-supabase-functions.bat`) or checkout returns will fail verification.
+- Vercel auto-deploys from git push. No Stripe dashboard changes needed.

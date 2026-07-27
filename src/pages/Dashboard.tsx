@@ -539,7 +539,8 @@ const Dashboard = () => {
       })();
       if (values) {
         setTdeeValues(values);
-        if (values.currentWeight && !startingWeight) setStartingWeight(values.currentWeight);
+        // Starting Weight is kept in sync with the TDEE "Current Body Weight" by a
+        // dedicated effect below (mirrors until Acclimation completes).
       }
     };
     loadTdeeValues();
@@ -799,17 +800,19 @@ const Dashboard = () => {
         localStorage.setItem('dashboardTdeeOverviewShown', 'true');
         setUserPref(uid, "dashboardWelcomeShown", "true");
         setUserPref(uid, "dashboardTdeeOverviewShown", "true");
-      } else if (!hasSeenAcclimation && !isAcclimationComplete()) {
-        setShowAcclimationDialog(true);
-        localStorage.setItem('dashboardAcclimationShown', 'true');
-        setUserPref(uid, "dashboardAcclimationShown", "true");
       } else {
+        // Date entry takes priority over the Acclimation info popup so the user
+        // always sets their journey start date first after a restart.
         const showReadyToStart = localStorage.getItem('showReadyToStartPopup');
         if (showReadyToStart === 'true' && !hasSeenReady) {
           setShowReadyToStartDialog(true);
           localStorage.removeItem('showReadyToStartPopup');
         } else if (showReadyToStart === 'true') {
           localStorage.removeItem('showReadyToStartPopup');
+        } else if (!hasSeenAcclimation && !isAcclimationComplete()) {
+          setShowAcclimationDialog(true);
+          localStorage.setItem('dashboardAcclimationShown', 'true');
+          setUserPref(uid, "dashboardAcclimationShown", "true");
         }
       }
     };
@@ -868,15 +871,39 @@ const Dashboard = () => {
     });
   }, [user?.id]);
 
+  // Returning from Stripe checkout: never trust the URL alone. The session id is
+  // verified with Stripe on the server; phases unlock only if payment really completed.
+  const checkoutVerifiedRef = useRef(false);
   useEffect(() => {
-    if (searchParams.get("checkout") === "success" && searchParams.get("unlocked") === "1") {
-      void markPremiumUnlocked().then(() => {
+    const sessionId = searchParams.get("session_id");
+    if (searchParams.get("checkout") !== "success" || !sessionId) return;
+    if (checkoutVerifiedRef.current) return;
+    checkoutVerifiedRef.current = true;
+
+    (async () => {
+      try {
+        const result = await callBillingApi(undefined, "verify", sessionId);
+        if (result.error || !result.success) {
+          throw new Error(result.error || "Payment could not be verified.");
+        }
+        const paidPlan = result.planType && result.planType !== "free" ? result.planType : undefined;
+        await markPremiumUnlocked(paidPlan);
+        if (paidPlan) localStorage.setItem("activePlan", paidPlan);
         toast({
           title: "Subscription active",
           description: "Weight Loss and Maintenance phases are now unlocked!",
         });
-      });
-    }
+      } catch (err) {
+        toast({
+          title: "Payment not confirmed",
+          description: err instanceof Error ? err.message : "Your payment could not be verified. Phases remain locked.",
+          variant: "destructive",
+        });
+      } finally {
+        // Remove the checkout params so refreshing doesn't re-run verification.
+        navigate("/dashboard", { replace: true });
+      }
+    })();
   }, [searchParams]);
 
   const handleAcclimationLetsGo = async () => {
@@ -1934,6 +1961,16 @@ const Dashboard = () => {
       : 0;
   };
 
+  // Before acclimation completes, Starting Weight mirrors the TDEE "Current Body Weight"
+  // so changes made on the TDEE page are always reflected here.
+  useEffect(() => {
+    if (isAcclimationComplete()) return;
+    const w = tdeeValues?.currentWeight ? String(tdeeValues.currentWeight) : "";
+    if (w && parseFloat(w) > 0 && w !== startingWeight) {
+      setStartingWeight(w);
+    }
+  }, [tdeeValues, startingWeight, isWeek1Complete, isWeek2Complete, isWeek3Complete, isWeek4Complete]);
+
   // Once acclimation is complete, baseline the 12-week journey from the 4-week average.
   useEffect(() => {
     if (!isAcclimationComplete()) return;
@@ -2704,7 +2741,7 @@ const Dashboard = () => {
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
                       <p className="text-sm">
-                        Last day of your 12-week Weight Loss Phase. Weight Loss Week 1 begins 28 days after your journey start (after Acclimation); this date is 12 weeks from that Week 1 start.
+                        Last day of your 12-week Weight Loss Phase. Weight Loss Week 1 begins 28 days after your journey start (after Acclimation); this date is 12 weeks from that Week 1 start. This does not include the 'Maintenance Phase'.
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -4518,19 +4555,23 @@ const Dashboard = () => {
             <AlertDialogFooter>
               <AlertDialogAction className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => {
                 setShowWelcomeDialog(false);
-                const hasSeenAcclimation = localStorage.getItem('dashboardAcclimationShown') === 'true';
-                if (!hasSeenAcclimation && !isWeek1Complete && !isWeek2Complete && !isWeek3Complete && !isWeek4Complete) {
-                  setShowAcclimationDialog(true);
-                  localStorage.setItem('dashboardAcclimationShown', 'true');
-                  if (user?.id) setUserPref(user.id, "dashboardAcclimationShown", "true");
+                // The journey start date popup takes priority: if the user has no start date yet
+                // (e.g. right after "Clear All Dashboard Data" + re-entering TDEE), ask for it first.
+                // The Acclimation info popup is shown afterwards, from the "Ready to Start?" dialog.
+                const showReadyToStartFlag = localStorage.getItem('showReadyToStartPopup');
+                const hasSeenReadyToStart = localStorage.getItem('readyToStartShown') === 'true';
+                const needsStartDate =
+                  (showReadyToStartFlag === 'true' && !hasSeenReadyToStart) ||
+                  (!hasSeenReadyToStart && journey && !resolveJourneyAnchorFromRow(journey));
+                if (needsStartDate) {
+                  setShowReadyToStartDialog(true);
+                  if (showReadyToStartFlag === 'true') localStorage.removeItem('showReadyToStartPopup');
                 } else {
-                  const showReadyToStartFlag = localStorage.getItem('showReadyToStartPopup');
-                  const hasSeenReadyToStart = localStorage.getItem('readyToStartShown') === 'true';
-                  if (showReadyToStartFlag === 'true' && !hasSeenReadyToStart) {
-                    setShowReadyToStartDialog(true);
-                    localStorage.removeItem('showReadyToStartPopup');
-                  } else if (!hasSeenReadyToStart && journey && !resolveJourneyAnchorFromRow(journey)) {
-                    setShowReadyToStartDialog(true);
+                  const hasSeenAcclimation = localStorage.getItem('dashboardAcclimationShown') === 'true';
+                  if (!hasSeenAcclimation && !isWeek1Complete && !isWeek2Complete && !isWeek3Complete && !isWeek4Complete) {
+                    setShowAcclimationDialog(true);
+                    localStorage.setItem('dashboardAcclimationShown', 'true');
+                    if (user?.id) setUserPref(user.id, "dashboardAcclimationShown", "true");
                   }
                 }
               }}>Continue</AlertDialogAction>
@@ -4581,8 +4622,8 @@ const Dashboard = () => {
                   </>
                 ) : (
                   <>
-                    <p>Congratulations on completing your Acclimation Phase. This sets the baseline and now you are ready to commence your 12 week weight loss journey.</p>
-                    <p>By clicking &apos;Let&apos;s Go!&apos; you will be charged at your chosen subscription and the &apos;Weight Loss Phase&apos; and all other features will be available to you. If you do not want to proceed please click &apos;No.&apos; and you will not be charged and all additional features will remain locked.</p>
+                    <p>Congratulations! You have successfully completed the &apos;Acclimation Phase&apos;! You are now primed for weight loss, hit &apos;Subscribe&apos; now to begin your life-changing weight loss journey. Numi will be with you every step of the way. This is your moment to make a change, let&apos;s do it together! New You, New Me!</p>
+                    <p className="font-semibold text-foreground">Warning - you will be charged at your chosen &apos;Subscription&apos; method upon clicking &apos;Subscribe&apos;.</p>
                   </>
                 )}
               </AlertDialogDescription>
@@ -4614,7 +4655,7 @@ const Dashboard = () => {
                       void handleAcclimationLetsGo();
                     }}
                   >
-                    {activatingSubscription ? "Processing…" : "Let's Go!"}
+                    {activatingSubscription ? "Processing…" : "Subscribe"}
                   </AlertDialogAction>
                 </>
               )}
@@ -5040,6 +5081,13 @@ const Dashboard = () => {
                 localStorage.setItem("dashboardWeightLossStartDate", weightLossStartDate);
                 localStorage.setItem("readyToStartShown", "true");
                 if (user?.id) void setUserPref(user.id, "readyToStartShown", "true");
+                // Show the Acclimation info popup after the start date is saved (restart flow).
+                const hasSeenAcclimation = localStorage.getItem('dashboardAcclimationShown') === 'true';
+                if (!hasSeenAcclimation && !isAcclimationComplete()) {
+                  setShowAcclimationDialog(true);
+                  localStorage.setItem('dashboardAcclimationShown', 'true');
+                  if (user?.id) void setUserPref(user.id, "dashboardAcclimationShown", "true");
+                }
               }}
             >
               Let's Go!
