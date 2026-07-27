@@ -330,8 +330,33 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
 - **Where:** `Settings.tsx`
 - The old dialog only changed a label with no billing effect. "Change Plan" now opens the Payment Details page where the real switching logic lives. The dead dialog was removed.
 
-### 45. Deploy notes (v16.4)
+### 45. Pre-charge (before Week 4) plan change/cancel was invisible and impossible — FIXED
+
+- **Where:** `PaymentDetails.tsx`, `Settings.tsx`
+- **Previous issue:** Before Week 4 no Stripe subscription exists (nothing has been charged), so "Cancel Subscription" in Settings was greyed out and selecting a different plan gave only a toast with no visible change — the user appeared unable to change or cancel anything.
+- **Fix:**
+  - The chosen plan card now shows "your selected plan — charged after Week 4" and its button reads "Selected ✓ — Charged after Week 4". Clicking another plan moves the selection instantly (no payment screen — the saved card is reused).
+  - Clicking "Switch to Free Plan" with a selected plan opens a "Cancel your selected plan?" popup explaining nothing has been charged; confirming clears the selection so nothing is charged after Week 4.
+  - Settings → Billing now shows "Selected plan: … — you will only be charged after completing Acclimation Week 4", and the button becomes "Cancel Selected Plan" (enabled), which clears the selection with matching popup wording. With a real active subscription the original Stripe cancellation flow is used, unchanged.
+
+### 46. Deploy notes (v16.4)
 
 - **Supabase:** redeploy the **billing** Edge Function (required for switch/resume/guards).
 - **Stripe:** no dashboard changes; ensure the webhook for `customer.subscription.*` events remains configured so access locks automatically when a cancelled period ends.
 - Dates shown in popups use Stripe's real billing dates (monthly renews on the same calendar date next month; "paid up until" is the day before renewal, inclusive).
+
+---
+
+## v16.5 — Free Plan "Active" lock blocked cancel before Week 4 (Jul 2026)
+
+### 47. Free Plan stayed "Active" so cancel was unreachable — FIXED
+
+- **Where:** `PaymentDetails.tsx`, `Settings.tsx`
+- **Root cause:** Before Week 4, `activePlan` is still `free` (no Stripe subscription yet). The Free card therefore showed a disabled **Active** button, so the user could never open the cancel-selection popup. Settings Cancel stayed grey when pending plan state was stale.
+- **Fix:**
+  - Free card shows **"Cancel selected plan / Nothing charged yet"** whenever Monthly or Annually is selected with a saved card.
+  - Selected paid card is highlighted; button shows **"Selected ✓ — Charged after Week 4 — tap another plan to switch"**.
+  - Info banner explains change/cancel is always allowed; charge still only after Week 4 Subscribe.
+  - Settings shows **"Monthly (selected)" / "Annually (selected)"** with charge-after-Week-4 pricing text, and enables **"Cancel Selected Plan"**.
+  - Pending plan refreshes when returning to Settings (focus + storage sync).
+- **Unchanged:** After a real payment, v16.4 switch/cancel-at-period-end rules still apply.

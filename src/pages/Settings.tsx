@@ -126,6 +126,11 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
     }
   }, [profile, user?.id]);
 
+  // Plan chosen before Week 4 (card saved, nothing charged yet)
+  const [pendingPlan, setPendingPlan] = useState<string | null>(
+    () => localStorage.getItem('pendingPlan') || null,
+  );
+
   // Load activePlan, paymentMethods from Supabase (or localStorage fallback)
   useEffect(() => {
     if (!user?.id) {
@@ -137,8 +142,10 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
     (async () => {
       const plan = await getUserPref(user.id, 'activePlan');
       const methods = await getUserPref(user.id, 'paymentMethods');
+      const pending = await getUserPref(user.id, 'pendingPlan');
       if (plan) setActivePlan(plan as PlanType);
       else setActivePlan((localStorage.getItem('activePlan') as PlanType) || 'free');
+      setPendingPlan(pending || localStorage.getItem('pendingPlan') || null);
       if (methods) {
         try { setPaymentMethods(JSON.parse(methods)); } catch {}
       } else {
@@ -167,13 +174,20 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
     navigate(`${basePath}?${next.toString()}`, { replace: true });
   }, [checkoutParam, navigate, searchParams]);
 
-  // Listen for plan changes from PaymentDetails page (cross-tab)
+  // Listen for plan changes from PaymentDetails (same tab + when returning to this page)
   useEffect(() => {
-    const handleStorage = () => {
+    const syncPlans = () => {
       setActivePlan((localStorage.getItem('activePlan') as PlanType) || 'free');
+      const pending = localStorage.getItem('pendingPlan');
+      setPendingPlan(pending === 'monthly' || pending === 'annual' ? pending : null);
     };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener('storage', syncPlans);
+    window.addEventListener('focus', syncPlans);
+    syncPlans();
+    return () => {
+      window.removeEventListener('storage', syncPlans);
+      window.removeEventListener('focus', syncPlans);
+    };
   }, []);
 
   const savePaymentMethods = async (methods: PaymentMethod[]) => {
@@ -182,7 +196,19 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
     if (user?.id) await setUserPref(user.id, 'paymentMethods', JSON.stringify(methods));
   };
 
+  /** True when the user has only chosen a plan (pre-Week 4) and no money has been taken. */
+  const hasPendingPlanOnly =
+    activePlan === 'free' &&
+    !!pendingPlan &&
+    (pendingPlan === 'monthly' || pendingPlan === 'annual');
+
   const getPlanLabel = () => {
+    if (hasPendingPlanOnly) {
+      if (pendingPlan === 'annual') {
+        return { name: 'Annually (selected)', price: '$71.88/year — charged after Week 4' };
+      }
+      return { name: 'Monthly (selected)', price: '$8.99/month — charged after Week 4' };
+    }
     switch (activePlan) {
       case 'monthly': return { name: 'Monthly Plan', price: '$8.99/month' };
       case 'annual': return { name: 'Annual Plan', price: '$71.88/year ($5.99/month equivalent)' };
@@ -191,6 +217,20 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
   };
 
   const handleCancelSubscription = async () => {
+    // Pre-charge: nothing exists in Stripe yet — just clear the selected plan.
+    if (hasPendingPlanOnly) {
+      localStorage.removeItem('pendingPlan');
+      if (user?.id) await setUserPref(user.id, 'pendingPlan', '');
+      setPendingPlan(null);
+      setShowCancelSub(false);
+      window.dispatchEvent(new Event("storage"));
+      toast({
+        title: "Selected plan cancelled",
+        description: "You have not been charged and nothing will be charged after Week 4. You can choose a plan again anytime.",
+      });
+      return;
+    }
+
     setCancellingSubscription(true);
     try {
       const result = await callBillingApi(undefined, "cancel");
@@ -485,6 +525,11 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
                   <p className="text-sm text-muted-foreground">
                     {activePlan === 'free' ? 'Basic features with limited access' : 'Full access to all premium features'}
                   </p>
+                  {hasPendingPlanOnly && (
+                    <p className="text-xs text-primary mt-1">
+                      Selected plan: {pendingPlan === 'annual' ? 'Annually ($71.88/year)' : 'Monthly ($8.99/month)'} — you will only be charged after completing Acclimation Week 4.
+                    </p>
+                  )}
                 </div>
                 <div className="text-right">
                   <Badge variant="secondary" className="mb-2">Active</Badge>
@@ -497,10 +542,10 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
                 <Button
                   variant="outline"
                   onClick={() => setShowCancelSub(true)}
-                  disabled={activePlan === 'free'}
-                  className={activePlan === 'free' ? 'opacity-50' : ''}
+                  disabled={activePlan === 'free' && !hasPendingPlanOnly}
+                  className={activePlan === 'free' && !hasPendingPlanOnly ? 'opacity-50' : ''}
                 >
-                  Cancel Subscription
+                  {hasPendingPlanOnly ? 'Cancel Selected Plan' : 'Cancel Subscription'}
                 </Button>
               </div>
             </CardContent>
@@ -621,9 +666,11 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
       <AlertDialog open={showCancelSub} onOpenChange={setShowCancelSub}>
         <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Cancel Subscription</AlertDialogTitle>
+            <AlertDialogTitle className="text-foreground">{hasPendingPlanOnly ? 'Cancel Selected Plan' : 'Cancel Subscription'}</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70">
-              Your subscription will stop renewing at the end of your current paid billing period. You will keep premium access until that date, and Stripe will not charge you again afterwards. Your saved journey data will not be deleted. Are you sure you want to cancel?
+              {hasPendingPlanOnly
+                ? "You have not been charged yet — the charge only happens after you complete Acclimation Week 4 and confirm. Cancelling your selected plan means nothing will be charged, and the Weight Loss and Maintenance phases stay locked until you subscribe. You can choose a plan again anytime. Continue?"
+                : "Your subscription will stop renewing at the end of your current paid billing period. You will keep premium access until that date, and Stripe will not charge you again afterwards. Your saved journey data will not be deleted. Are you sure you want to cancel?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -636,7 +683,7 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
               }}
               disabled={cancellingSubscription}
             >
-              {cancellingSubscription ? "Cancelling…" : "Yes, cancel renewal"}
+              {cancellingSubscription ? "Cancelling…" : (hasPendingPlanOnly ? "Yes, cancel selection" : "Yes, cancel renewal")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

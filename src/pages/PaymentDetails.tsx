@@ -46,6 +46,10 @@ const PaymentDetails = () => {
   const [premiumUnlocked, setPremiumUnlocked] = useState(false);
   const [paymentMethodSaved, setPaymentMethodSaved] = useState(false);
   const [subscription, setSubscription] = useState<SubscriptionRow | null>(null);
+  // Plan chosen before Week 4 (card saved, nothing charged yet).
+  const [pendingPlanChoice, setPendingPlanChoice] = useState<PlanType | null>(
+    () => (localStorage.getItem('pendingPlan') as PlanType) || null,
+  );
 
   const refreshSubscription = async () => {
     if (!user?.id) return;
@@ -63,6 +67,7 @@ const PaymentDetails = () => {
       }
       setPremiumUnlocked(state.premiumUnlocked);
       setPaymentMethodSaved(state.paymentMethodSaved);
+      setPendingPlanChoice((state.pendingPlan as PlanType) || null);
       await refreshSubscription();
     })();
   }, [user?.id]);
@@ -87,17 +92,18 @@ const PaymentDetails = () => {
   useEffect(() => {
     const setup = searchParams.get("setup");
     if (setup === "success") {
-      const plan = searchParams.get("plan");
-      if (plan) {
+      const plan = searchParams.get("plan") as PlanType | null;
+      if (plan === "monthly" || plan === "annual") {
         localStorage.setItem("pendingPlan", plan);
         if (user?.id) setUserPref(user.id, "pendingPlan", plan);
+        setPendingPlanChoice(plan);
       }
       localStorage.setItem("paymentMethodSaved", "true");
       if (user?.id) setUserPref(user.id, "paymentMethodSaved", "true");
       setPaymentMethodSaved(true);
       toast({
         title: "Card saved",
-        description: "Your plan and payment method are saved. You will be charged when you complete Acclimation Week 4 and click Let's Go!",
+        description: "Your plan and payment method are saved. You can change or cancel this selection anytime. You will only be charged when you complete Acclimation Week 4 and click Subscribe.",
       });
     }
   }, [searchParams, user?.id]);
@@ -120,6 +126,7 @@ const PaymentDetails = () => {
   const [showSwitchToFree, setShowSwitchToFree] = useState(false);
   const [showResumePlan, setShowResumePlan] = useState(false);
   const [switchTargetPlan, setSwitchTargetPlan] = useState<PlanType | null>(null);
+  const [showCancelPendingPlan, setShowCancelPendingPlan] = useState(false);
 
   const setActivePlanEverywhere = async (plan: PlanType) => {
     setActivePlan(plan);
@@ -157,6 +164,11 @@ const PaymentDetails = () => {
 
     // ── No active Stripe subscription below this point ──
     if (plan === "free") {
+      if (pendingPlanChoice && pendingPlanChoice !== "free") {
+        // A plan is selected for after Week 4 — confirm cancelling it.
+        setShowCancelPendingPlan(true);
+        return;
+      }
       await setActivePlanEverywhere("free");
       return;
     }
@@ -175,9 +187,11 @@ const PaymentDetails = () => {
     if (!fromAcclimationComplete && paymentMethodSaved) {
       localStorage.setItem("pendingPlan", plan);
       await setUserPref(user.id, "pendingPlan", plan);
+      setPendingPlanChoice(plan);
+      window.dispatchEvent(new Event("storage"));
       toast({
         title: "Plan updated",
-        description: `Your card is already saved. You will be charged for the ${planDisplayName(plan)} plan after you complete Acclimation Week 4.`,
+        description: `Your card is already saved. You will be charged for the ${planDisplayName(plan)} plan after you complete Acclimation Week 4. You can change or cancel this anytime before then.`,
       });
       return;
     }
@@ -208,6 +222,19 @@ const PaymentDetails = () => {
     } finally {
       setBillingLoading(false);
     }
+  };
+
+  const confirmCancelPendingPlan = async () => {
+    localStorage.removeItem("pendingPlan");
+    if (user?.id) await setUserPref(user.id, "pendingPlan", "");
+    setPendingPlanChoice(null);
+    await setActivePlanEverywhere("free");
+    setShowCancelPendingPlan(false);
+    window.dispatchEvent(new Event("storage"));
+    toast({
+      title: "Selected plan cancelled",
+      description: "You have not been charged and nothing will be charged after Week 4. You can choose a plan again anytime.",
+    });
   };
 
   const confirmSwitchToFree = async () => {
@@ -377,7 +404,20 @@ const PaymentDetails = () => {
     localStorage.removeItem('numiSavedCardName');
   };
 
+  // Pre-Week-4: a Monthly/Annual choice with a saved card, nothing charged yet.
+  const hasPendingSelection =
+    !hasActiveStripeSub &&
+    paymentMethodSaved &&
+    !!pendingPlanChoice &&
+    (pendingPlanChoice === "monthly" || pendingPlanChoice === "annual");
+
   const statusLabel = (plan: PlanType) => {
+    if (hasPendingSelection && plan === pendingPlanChoice) {
+      return 'your selected plan — charged after Week 4';
+    }
+    if (hasPendingSelection && plan === 'free') {
+      return 'current access (plan selected below)';
+    }
     if (activePlan !== plan) return 'inactive subscription';
     if (hasActiveStripeSub && subscription?.cancel_at_period_end && subscription.plan_type === plan && paidUntilDate) {
       return `your active subscription — ends ${paidUntilDate}`;
@@ -394,7 +434,7 @@ const PaymentDetails = () => {
     badge?: string;
     subscribeLabel?: string;
   }) => (
-    <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === plan && premiumUnlocked ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
+    <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${(activePlan === plan && premiumUnlocked) || (hasPendingSelection && pendingPlanChoice === plan) ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
       <CardHeader className="pb-3 min-h-[150px]">
         <CardTitle className="text-lg">{name}</CardTitle>
         {badge && (
@@ -488,10 +528,21 @@ const PaymentDetails = () => {
               className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight"
               disabled={billingLoading}
             >
-              <span className="text-[11px] font-bold leading-tight text-center">{price}</span>
-              <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">
-                {subscribeLabel || billingLine}
-              </span>
+                {!hasActiveStripeSub && pendingPlanChoice === plan && paymentMethodSaved ? (
+                  <>
+                    <span className="text-[11px] font-bold leading-tight text-center">Selected ✓</span>
+                    <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">
+                      Charged after Week 4 — tap another plan to switch
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-[11px] font-bold leading-tight text-center">{price}</span>
+                    <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">
+                      {subscribeLabel || billingLine}
+                    </span>
+                  </>
+                )}
             </Button>
           )}
         </div>
@@ -514,10 +565,21 @@ const PaymentDetails = () => {
         </div>
       )}
 
+      {hasPendingSelection && !fromAcclimationComplete && (
+        <div className="max-w-4xl mx-auto rounded-xl border border-primary/40 bg-primary/5 px-4 py-3 text-sm text-on-surface space-y-1">
+          <p>
+            <span className="font-semibold">{planDisplayName(pendingPlanChoice!)}</span> is selected. You have not been charged yet — the charge happens after Acclimation Week 4 when you click Subscribe.
+          </p>
+          <p className="text-on-surface-variant text-[12px]">
+            You can switch Monthly/Annually anytime, or tap &quot;Cancel selected plan&quot; on the Free card (or Cancel in Settings) to clear this selection with no charge.
+          </p>
+        </div>
+      )}
+
       {/* Plans Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto items-stretch">
         {/* Free Plan */}
-        <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === 'free' ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
+        <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === 'free' && !hasPendingSelection && !hasActiveStripeSub ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
           <CardHeader className="pb-3 min-h-[150px]">
             <CardTitle className="text-lg">Free Plan</CardTitle>
             <span className="text-[9px] tracking-wide text-on-surface-variant">({statusLabel('free')})</span>
@@ -548,9 +610,14 @@ const PaymentDetails = () => {
               </div>
             </div>
             <div className="absolute left-6 right-6 bottom-6">
-              {activePlan !== 'free' ? (
+              {hasActiveStripeSub ? (
                 <Button onClick={() => handleSelectPlan('free')} variant="default" className="w-full h-[52px] px-3 flex flex-col items-center justify-center gap-0.5 leading-tight" disabled={billingLoading}>
                   <span className="text-xs font-bold">Switch to Free Plan</span>
+                </Button>
+              ) : hasPendingSelection ? (
+                <Button onClick={() => handleSelectPlan('free')} variant="default" className="w-full h-[52px] px-3 flex flex-col items-center justify-center gap-0.5 leading-tight" disabled={billingLoading}>
+                  <span className="text-xs font-bold">Cancel selected plan</span>
+                  <span className="text-[9px] opacity-90 text-center leading-snug">Nothing charged yet</span>
                 </Button>
               ) : (
                 <Button variant="default" className="w-full h-[52px] px-3 flex items-center justify-center leading-tight" disabled>
@@ -649,6 +716,34 @@ const PaymentDetails = () => {
             )}
             <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleSavePayment}>Save Card Details</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Pending (pre-charge) Plan Dialog */}
+      <AlertDialog open={showCancelPendingPlan} onOpenChange={setShowCancelPendingPlan}>
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-foreground">
+              <MaterialIcon name="info" size="sm" className="text-primary" />
+              Cancel your selected plan?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-foreground/70 space-y-2">
+              <p>You currently have the <span className="font-semibold text-foreground">{planDisplayName(pendingPlanChoice || 'monthly')}</span> plan selected. You have <span className="font-semibold text-foreground">not been charged</span> — the charge only happens after you complete Acclimation Week 4 and confirm.</p>
+              <p>If you cancel this selection, nothing will be charged and the Weight Loss and Maintenance phases will stay locked until you subscribe. You can choose a plan again anytime.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">No, keep it</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmCancelPendingPlan();
+              }}
+            >
+              Yes, cancel selection
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

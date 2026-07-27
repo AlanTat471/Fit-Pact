@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v16.4 - Plan switching + double-charge protection
+echo   Numi v16.5 - Change/cancel plan anytime (pre Week 4 fix)
 echo ============================================================
 echo.
 
@@ -8,15 +8,11 @@ cd /d "%~dp0"
 
 echo Adding changed files...
 
-REM v16.4 changes:
-REM   - Switch to Free: warning popup with paid-until date, real Stripe cancel at period end
-REM   - Resume plan: paid -> free -> paid again without any new charge
-REM   - Monthly <-> Annually switch on existing subscription, no charge today
-REM   - Server guards: activate/checkout can never create a second subscription
-REM   - Card updates always via Stripe setup flow (no charge)
-REM   - Settings "Change Plan" now opens Payment Details (single source of truth)
-REM   (also includes v16.2/v16.3: subscribe wording, restart popups, Starting
-REM    Weight sync, Week 4 Subscribe popup, checkout verification)
+REM v16.5 changes:
+REM   - Free Plan button becomes "Cancel selected plan" when Monthly/Annual is pending
+REM   - Selected plan highlights; switch Monthly/Annually anytime before charge
+REM   - Settings Cancel enabled for pending selection; shows selected plan clearly
+REM   - Still no charge until Week 4 Subscribe (or paid-period switch rules from v16.4)
 REM
 git add src/pages/Dashboard.tsx
 git add src/pages/PaymentDetails.tsx
@@ -26,11 +22,12 @@ git add supabase/functions/billing/index.ts
 git add BUGS-AND-DEFECTS.md
 git add git-push-update.bat
 git add build-and-android-sync.bat
+git add deploy-supabase-functions.bat
 
 echo Committing...
 git commit ^
-  -m "v16.4: real plan switching and cancellation via Stripe; block all double-charge paths" ^
-  -m "Switch to Free now schedules a real Stripe cancellation with a paid-until warning popup. Resuming within the paid period and switching Monthly/Annually happen on the existing subscription with no new charge. Server-side guards stop activate/checkout from ever creating a second subscription. Settings Change Plan opens Payment Details."
+  -m "v16.5: allow change and cancel of selected plan anytime before Week 4 charge" ^
+  -m "Free Plan no longer stays locked as Active when a paid plan is only selected. Users can switch Monthly/Annually or cancel the selection with no charge. Settings Cancel Selected Plan is enabled for pending selections. Paid-period switch/cancel behaviour from v16.4 is unchanged."
 
 echo.
 echo Pushing to origin...
@@ -38,31 +35,32 @@ git push
 
 echo.
 echo ============================================================
-echo   Push complete!  v16.4
+echo   Push complete!  v16.5
 echo.
-echo   1. SUPABASE (REQUIRED): redeploy the billing function:
+echo   1. VERCEL: wait 2-3 mins, hard-refresh https://fit-pact.vercel.app
+echo      (Ctrl+Shift+R)
+echo.
+echo   2. SUPABASE: if you have not yet redeployed for v16.4, do it now:
 echo      Double-click deploy-supabase-functions.bat
+echo      (v16.5 itself is frontend-only; billing redeploy still needed
+echo       for switch/resume/webhook JWT fix from v16.4)
 echo.
-echo   2. VERCEL: wait 2-3 mins, hard-refresh https://fit-pact.vercel.app
+echo   3. STRIPE: finish webhook fix if not done:
+echo      - Signing secret whsec_ into STRIPE_WEBHOOK_SECRET in Supabase
+echo      - Resend a failed delivery or subscribe once to confirm Succeeded
 echo.
-echo   3. STRIPE: no changes. Keep webhook for customer.subscription.*
-echo      events so access locks when a cancelled period ends.
-echo.
-echo   4. TEST on web (Stripe TEST mode, card 4242 4242 4242 4242):
-echo      - Subscribe Monthly -^> Switch to Free Plan -^> warning popup
-echo        shows paid-until date -^> Yes -^> still have premium access
-echo      - Stripe dashboard: subscription shows "Cancels on <date>"
-echo      - Plan card button now says "Resume plan" -^> popup -^> continue
-echo        -^> Stripe shows cancellation removed, NO new charge
-echo      - While subscribed Monthly, click Annually -^> switch popup with
-echo        dates -^> Yes -^> Stripe subscription price becomes annual,
-echo        NO invoice today
-echo      - Click own active plan button -^> never opens payment screen
-echo      - Settings -^> Change Plan -^> opens Payment Details page
+echo   4. TEST on web:
+echo      - Save card + select Monthly -^> card shows Selected, Free shows
+echo        "Cancel selected plan"
+echo      - Switch to Annually -^> selection updates, no Stripe checkout
+echo      - Cancel selected plan -^> confirm -^> nothing charged after Week 4
+echo      - Settings Billing: Cancel Selected Plan is enabled
+echo      - After real payment: Switch Free / Monthly / Annual still works
+echo        with paid-until popups
 echo.
 echo   5. ANDROID:
 echo        Double-click build-and-android-sync.bat
-echo      Android Studio ^> bump versionCode to 17, versionName 2.2
+echo      Android Studio ^> bump versionCode to 18, versionName 2.3
 echo      Build signed AAB ^> Play Internal testing
 echo ============================================================
 pause

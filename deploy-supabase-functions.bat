@@ -28,7 +28,10 @@ if errorlevel 1 (
 
 echo.
 echo Step 3 - Deploy billing (Stripe + Week 4 paywall)...
-call npx supabase functions deploy billing --project-ref qavbkmmspbtrqqeiczrd
+REM --no-verify-jwt lets Stripe webhooks through. Safe: the function itself
+REM checks the user's login token for app actions and Stripe's signature
+REM for webhook calls.
+call npx supabase functions deploy billing --no-verify-jwt --project-ref qavbkmmspbtrqqeiczrd
 if errorlevel 1 (
   echo billing deploy FAILED.
   pause
