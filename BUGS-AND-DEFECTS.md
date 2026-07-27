@@ -179,7 +179,7 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
 
 - **Where:** `Dashboard.tsx`, `PaymentDetails.tsx`, `billing/index.ts`, `billingApi.ts`
 - **Flow:** User saves plan + card via Stripe **setup** checkout (no charge). Weight Loss + Maintenance locked until Week 4 **Let's Go!** triggers `activate` subscription, or user subscribes immediately via Payment Details redirect (`checkout` action).
-- **Returning users:** `hasEverSubscribed` — Week 4 popup skips payment; unlock without re-charge.
+- **Returning users:** Week 4 must not create a duplicate Stripe subscription or an extra one-off charge. Their existing Monthly/Annual subscription continues its normal automatic renewal schedule.
 
 ### 20. Payment Details button text clipping — FIXED
 
@@ -209,3 +209,30 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
 - Deploy **billing** and **delete-account** Edge Functions in Supabase.
 - Vercel auto-deploy from git push.
 - Android: bump `versionCode` to 16, sync Capacitor, upload AAB to Play Internal testing.
+
+---
+
+## v16.1 — Annual display, recurring billing clarification, cancellation (Jul 2026)
+
+### 26. Annual price display corrected
+
+- **Where:** `PaymentDetails.tsx`, `Settings.tsx`
+- **Change:** Annual button now shows **$71.88/year**. The description states the equivalent **$5.99/month**, $36 saving, and the badge states **Best Value - 33% discount!**
+- **Math:** Monthly comparison is $8.99 × 12 = $107.88. Saving is $107.88 − $71.88 = $36.00. Discount is 33.37%, rounded to **33%**.
+
+### 27. Subscription renewal semantics clarified
+
+- **Monthly:** Stripe renews at $8.99 every month until cancellation.
+- **Annual:** Stripe renews at $71.88 every year until cancellation.
+- **Returning cycle:** No duplicate subscription or extra one-off charge is created; the existing recurring Stripe subscription remains responsible for scheduled renewals.
+
+### 28. Cancel Subscription now reaches Stripe — FIXED
+
+- **Where:** `billing/index.ts`, `billingApi.ts`, `Settings.tsx`, `PaymentDetails.tsx`
+- **Previous issue:** The UI only changed local `activePlan` to free; it did not stop Stripe renewal.
+- **Fix:** New billing `cancel` action sets Stripe `cancel_at_period_end`. Access remains active through the paid period; future renewal stops after that date.
+
+### 29. New PC migration guide refreshed
+
+- **Where:** `NEW_PC_MIGRATION_GUIDE.md`
+- **Change:** Exact GitHub repository URL, same-OneDrive secret transfer, detailed explanation of `.env.local`, Android Studio setup, emulator/device tests, and Play Internal testing steps.

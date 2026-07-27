@@ -26,7 +26,7 @@ import { getUserPref, setUserPref } from "@/lib/supabaseUserPrefs";
 import { upsertProfile } from "@/lib/supabaseProfile";
 import { useUserData } from "@/contexts/UserDataContext";
 import { toast } from "@/hooks/use-toast";
-import { deleteUserAccount } from "@/lib/billingApi";
+import { callBillingApi, deleteUserAccount } from "@/lib/billingApi";
 import { supabase } from "@/lib/supabaseClient";
 
 type PlanType = 'free' | 'monthly' | 'annual';
@@ -83,6 +83,7 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
   // Dialogs
   const [showChangePlan, setShowChangePlan] = useState(false);
   const [showCancelSub, setShowCancelSub] = useState(false);
+  const [cancellingSubscription, setCancellingSubscription] = useState(false);
   const [showEditCard, setShowEditCard] = useState(false);
   const [showRemoveCard, setShowRemoveCard] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
@@ -185,7 +186,7 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
   const getPlanLabel = () => {
     switch (activePlan) {
       case 'monthly': return { name: 'Monthly Plan', price: '$8.99/month' };
-      case 'annual': return { name: 'Annual Plan', price: '$5.99/month (billed at $71.88/year)' };
+      case 'annual': return { name: 'Annual Plan', price: '$71.88/year ($5.99/month equivalent)' };
       default: return { name: 'Free Plan', price: 'Free' };
     }
   };
@@ -199,11 +200,29 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
   };
 
   const handleCancelSubscription = async () => {
-    setActivePlan('free');
-    localStorage.setItem('activePlan', 'free');
-    if (user?.id) await setUserPref(user.id, 'activePlan', 'free');
-    setShowCancelSub(false);
-    window.dispatchEvent(new Event('storage'));
+    setCancellingSubscription(true);
+    try {
+      const result = await callBillingApi(undefined, "cancel");
+      if (result.error) throw new Error(result.error);
+
+      const endDate = result.currentPeriodEnd
+        ? new Date(result.currentPeriodEnd).toLocaleDateString()
+        : "the end of your current billing period";
+
+      setShowCancelSub(false);
+      toast({
+        title: "Subscription cancellation scheduled",
+        description: `You will keep access until ${endDate}. Stripe will not renew or charge you again after that date.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Could not cancel subscription",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setCancellingSubscription(false);
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -620,7 +639,7 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
             {[
               { plan: 'free' as PlanType, label: 'Free Plan', price: 'Free' },
               { plan: 'monthly' as PlanType, label: 'Monthly', price: '$8.99/month' },
-              { plan: 'annual' as PlanType, label: 'Annual (Best Value)', price: '$5.99/mo — $71.88/year (save 33%)' },
+              { plan: 'annual' as PlanType, label: 'Annually — Best Value', price: '$71.88/year ($5.99/month equivalent, 33% discount)' },
             ].map(({ plan, label, price }) => (
               <button
                 key={plan}
@@ -647,12 +666,21 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Cancel Subscription</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70">
-              You will lose your premium features and revert back to the 'Free Plan'. You might also lose all your progress. Are you sure you want to cancel subscription?
+              Your subscription will stop renewing at the end of your current paid billing period. You will keep premium access until that date, and Stripe will not charge you again afterwards. Your saved journey data will not be deleted. Are you sure you want to cancel?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">No</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleCancelSubscription}>Yes</AlertDialogAction>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                void handleCancelSubscription();
+              }}
+              disabled={cancellingSubscription}
+            >
+              {cancellingSubscription ? "Cancelling…" : "Yes, cancel renewal"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

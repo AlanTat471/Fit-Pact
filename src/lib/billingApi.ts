@@ -2,13 +2,20 @@ import { supabase } from "./supabaseClient";
 import { getSubscription } from "./supabaseSubscription";
 import { getUserPref } from "./supabaseUserPrefs";
 
-export type BillingAction = "setup" | "checkout" | "activate";
+export type BillingAction = "setup" | "checkout" | "activate" | "cancel";
 export type PaidPlanType = "monthly" | "annual";
 
 export async function callBillingApi(
   planType: PaidPlanType | undefined,
   action: BillingAction,
-): Promise<{ url?: string; success?: boolean; error?: string; needsPaymentSetup?: boolean }> {
+): Promise<{
+  url?: string;
+  success?: boolean;
+  error?: string;
+  needsPaymentSetup?: boolean;
+  cancelAtPeriodEnd?: boolean;
+  currentPeriodEnd?: string | null;
+}> {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   if (sessionError || !sessionData.session?.access_token) {
     throw new Error("Could not verify your session. Please sign in again.");
@@ -31,7 +38,14 @@ export async function callBillingApi(
   });
 
   const text = await res.text();
-  let payload: { url?: string; success?: boolean; error?: string; needsPaymentSetup?: boolean } = {};
+  let payload: {
+    url?: string;
+    success?: boolean;
+    error?: string;
+    needsPaymentSetup?: boolean;
+    cancelAtPeriodEnd?: boolean;
+    currentPeriodEnd?: string | null;
+  } = {};
   try {
     payload = JSON.parse(text);
   } catch {
@@ -93,9 +107,9 @@ export async function loadPremiumAccessState(userId: string): Promise<PremiumAcc
     sub?.status === "past_due";
 
   const premiumUnlocked =
-    unlockedPref === "true" ||
-    subActive ||
-    localStorage.getItem("weightLossPhaseUnlocked") === "true";
+    unlockedPref !== null
+      ? unlockedPref === "true" || subActive
+      : subActive || localStorage.getItem("weightLossPhaseUnlocked") === "true";
 
   const hasEverSubscribed =
     everPref === "true" ||

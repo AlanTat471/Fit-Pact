@@ -148,11 +148,28 @@ const PaymentDetails = () => {
     await handleSelectPlan(plan);
   };
 
-  const handleCancelSubscription = () => {
-    setActivePlan('free');
-    localStorage.setItem('activePlan', 'free');
-    if (user?.id) setUserPref(user.id, 'activePlan', 'free');
-    setShowCancelSubscription(false);
+  const handleCancelSubscription = async () => {
+    setBillingLoading(true);
+    try {
+      const result = await callBillingApi(undefined, "cancel");
+      if (result.error) throw new Error(result.error);
+      const endDate = result.currentPeriodEnd
+        ? new Date(result.currentPeriodEnd).toLocaleDateString()
+        : "the end of your current billing period";
+      setShowCancelSubscription(false);
+      toast({
+        title: "Subscription cancellation scheduled",
+        description: `You will keep access until ${endDate}. Stripe will not renew or charge you again after that date.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Could not cancel subscription",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBillingLoading(false);
+    }
   };
 
   const handleSavePayment = () => {
@@ -360,11 +377,11 @@ const PaymentDetails = () => {
         <PaidPlanCard
           plan="annual"
           name="Annually"
-          price="$5.99 / month"
-          billingLine="Billed at $71.88/year. Save 33%!"
+          price="$71.88 / year"
+          billingLine="Billed annually. Cancel anytime."
           subscribeLabel={fromAcclimationComplete ? "Subscribe now via Stripe" : "Save plan & add card — charged after Week 4"}
-          description="Get 4 months free with annual billing at $71.88/year — save $36 compared to paying monthly."
-          badge="Best Value"
+          description="Get 4 months free with annual billing at $71.88 (or $5.99/month) - saving $36 compared to paying monthly!"
+          badge="Best Value - 33% discount!"
         />
       </div>
 
@@ -459,7 +476,16 @@ const PaymentDetails = () => {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">Keep Subscription</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleCancelSubscription}>Yes, Cancel Subscription</AlertDialogAction>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={billingLoading}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleCancelSubscription();
+              }}
+            >
+              {billingLoading ? "Cancelling…" : "Yes, Cancel Subscription"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -31,7 +31,7 @@ try {
 }
 
 type PlanType = "monthly" | "annual" | "free";
-type BillingAction = "setup" | "checkout" | "activate";
+type BillingAction = "setup" | "checkout" | "activate" | "cancel";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -173,6 +173,7 @@ async function upsertSub(
     await unlockPremium(svc, userId, activePlan);
   } else {
     await setUserPref(svc, userId, "activePlan", "free");
+    await setUserPref(svc, userId, "weightLossPhaseUnlocked", "false");
   }
 }
 
@@ -297,6 +298,33 @@ Deno.serve(async (req) => {
       const planType = body.planType as PlanType | undefined;
 
       const svc = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+      // Cancel at the end of the paid billing period. Stripe continues to
+      // provide access until current_period_end, then stops future renewals.
+      if (action === "cancel") {
+        const { data: currentSub, error: subError } = await svc
+          .from("subscriptions")
+          .select("stripe_subscription_id")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (subError || !currentSub?.stripe_subscription_id) {
+          return json({ error: "No active Stripe subscription was found." }, 404);
+        }
+
+        const cancelledSub = await stripe.subscriptions.update(
+          currentSub.stripe_subscription_id,
+          { cancel_at_period_end: true },
+        );
+        await upsertSub(svc, cancelledSub);
+
+        return json({
+          success: true,
+          cancelAtPeriodEnd: true,
+          currentPeriodEnd: isoOrNull(cancelledSub.current_period_end),
+        });
+      }
+
       const { data: profile } = await svc
         .from("profiles")
         .select("email, first_name, last_name")

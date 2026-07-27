@@ -885,8 +885,8 @@ const Dashboard = () => {
       return;
     }
     if (hasEverSubscribed) {
-      await markPremiumUnlocked();
       setShowAcclimationCompleteDialog(false);
+      navigate("/payment-details?from=acclimationComplete");
       return;
     }
 
@@ -1491,10 +1491,6 @@ const Dashboard = () => {
     setAcclimationCollapsed(false);
     setWeightLossCollapsed(false);
 
-    setPremiumUnlocked(false);
-    localStorage.setItem("weightLossPhaseUnlocked", "false");
-    if (user?.id) await setUserPref(user.id, "weightLossPhaseUnlocked", "false");
-
     await saveJourney({
       archived_phases: nextArch,
       weekly_data: emptyWeek,
@@ -1698,10 +1694,6 @@ const Dashboard = () => {
     setWeightLossCollapsed(false);
     setWeightLossMainCollapsed(false);
 
-    setPremiumUnlocked(false);
-    localStorage.setItem("weightLossPhaseUnlocked", "false");
-    if (user?.id) await setUserPref(user.id, "weightLossPhaseUnlocked", "false");
-
     if (endWeight > 0 && user?.id) {
       void upsertProfile(user.id, { current_weight: endWeight.toFixed(2) });
       void refreshProfile();
@@ -1894,7 +1886,7 @@ const Dashboard = () => {
     if (weekNumber === 4) {
       setIsWeek4Complete(true);
       if (isWeek1Complete && isWeek2Complete && isWeek3Complete) {
-        if (hasEverSubscribed) {
+        if (hasEverSubscribed && premiumUnlocked) {
           setAcclimationCompleteMode("returning");
         } else {
           setAcclimationCompleteMode("first_paywall");
