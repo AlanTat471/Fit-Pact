@@ -31,7 +31,7 @@ try {
 }
 
 type PlanType = "monthly" | "annual" | "free";
-type BillingAction = "setup" | "checkout" | "activate" | "cancel" | "verify";
+type BillingAction = "setup" | "checkout" | "activate" | "cancel" | "verify" | "switch" | "resume";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -355,6 +355,76 @@ Deno.serve(async (req) => {
         });
       }
 
+      // ── Switch plan on the existing subscription / resume a scheduled cancellation.
+      // Neither action ever charges the user today: "switch" changes the price with
+      // no proration so the new plan is billed only when the current paid period
+      // ends; "resume" simply removes a pending cancel_at_period_end.
+      if (action === "switch" || action === "resume") {
+        const { data: currentSub } = await svc
+          .from("subscriptions")
+          .select("stripe_subscription_id")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (!currentSub?.stripe_subscription_id) {
+          return json({ error: "No active Stripe subscription was found.", needsPaymentSetup: true }, 404);
+        }
+
+        const sub = await stripe.subscriptions.retrieve(currentSub.stripe_subscription_id);
+        if (sub.status !== "active" && sub.status !== "trialing" && sub.status !== "past_due") {
+          return json({
+            error: "Your subscription is no longer active. Please subscribe again.",
+            needsPaymentSetup: true,
+          }, 400);
+        }
+
+        if (action === "resume") {
+          const resumed = sub.cancel_at_period_end
+            ? await stripe.subscriptions.update(sub.id, { cancel_at_period_end: false })
+            : sub;
+          await upsertSub(svc, resumed);
+          return json({
+            success: true,
+            planType: planFromPrice(resumed.items.data[0]?.price?.id),
+            currentPeriodEnd: isoOrNull(resumed.current_period_end),
+          });
+        }
+
+        // switch
+        if (planType !== "monthly" && planType !== "annual") {
+          return json({ error: `Invalid planType: ${planType}` }, 400);
+        }
+        const newPrice = priceId(planType);
+        if (!newPrice) {
+          return json({ error: `No Stripe price configured for "${planType}".` }, 500);
+        }
+
+        const currentItem = sub.items.data[0];
+        if (currentItem?.price?.id === newPrice) {
+          const resumed = sub.cancel_at_period_end
+            ? await stripe.subscriptions.update(sub.id, { cancel_at_period_end: false })
+            : sub;
+          await upsertSub(svc, resumed);
+          return json({
+            success: true,
+            planType,
+            currentPeriodEnd: isoOrNull(resumed.current_period_end),
+          });
+        }
+
+        const updated = await stripe.subscriptions.update(sub.id, {
+          items: [{ id: currentItem.id, price: newPrice }],
+          proration_behavior: "none",
+          cancel_at_period_end: false,
+        });
+        await upsertSub(svc, updated);
+        return json({
+          success: true,
+          planType,
+          currentPeriodEnd: isoOrNull(updated.current_period_end),
+        });
+      }
+
       const { data: profile } = await svc
         .from("profiles")
         .select("email, first_name, last_name")
@@ -372,8 +442,36 @@ Deno.serve(async (req) => {
         customerName,
       );
 
+      // Guard shared by activate/checkout: if the user already has a live Stripe
+      // subscription, never create a second one (prevents any double charge).
+      const findExistingActiveSub = async (): Promise<Stripe.Subscription | null> => {
+        const { data: existingRow } = await svc
+          .from("subscriptions")
+          .select("stripe_subscription_id")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (!existingRow?.stripe_subscription_id) return null;
+        try {
+          const existing = await stripe!.subscriptions.retrieve(existingRow.stripe_subscription_id);
+          if (existing.status === "active" || existing.status === "trialing") return existing;
+        } catch (_) { /* stale id — treat as no subscription */ }
+        return null;
+      };
+
       // ── Activate subscription (Week 4 Let's Go — charge saved card) ──
       if (action === "activate") {
+        const alreadyActive = await findExistingActiveSub();
+        if (alreadyActive) {
+          const ensured = alreadyActive.cancel_at_period_end
+            ? await stripe.subscriptions.update(alreadyActive.id, { cancel_at_period_end: false })
+            : alreadyActive;
+          await upsertSub(svc, ensured);
+          return json({
+            success: true,
+            planType: planFromPrice(ensured.items.data[0]?.price?.id),
+          });
+        }
+
         const { data: pendingPref } = await svc
           .from("user_preferences")
           .select("value")
@@ -462,6 +560,13 @@ Deno.serve(async (req) => {
 
       // ── Immediate subscription checkout (from Week 4 redirect) ──
       if (action === "checkout") {
+        const alreadyActive = await findExistingActiveSub();
+        if (alreadyActive) {
+          await upsertSub(svc, alreadyActive);
+          return json({
+            error: "You already have an active subscription — no new payment is needed. Your phases are unlocked.",
+          }, 400);
+        }
         await setUserPref(svc, userId, "pendingPlan", planType);
         const session = await stripe.checkout.sessions.create({
           mode: "subscription",

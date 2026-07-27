@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v16.3 - Subscribe popup wording + payment verification
+echo   Numi v16.4 - Plan switching + double-charge protection
 echo ============================================================
 echo.
 
@@ -8,17 +8,19 @@ cd /d "%~dp0"
 
 echo Adding changed files...
 
-REM v16.2 + v16.3 changes:
-REM   - Annually description + "Subscribe - Charged after Week 4" buttons
-REM   - Restart flow: Welcome -> journey start date -> Acclimation info popup
-REM   - Starting Weight mirrors TDEE Current Body Weight until Acclimation completes
-REM   - Weight loss end date tooltip: excludes Maintenance Phase
-REM   - Week 4 popup: new "New You, New Me!" wording + Subscribe button + charge warning
-REM   - SECURITY: checkout unlock now verified with Stripe server-side (verify action)
-REM   - SECURITY: declined saved-card charge no longer unlocks phases
+REM v16.4 changes:
+REM   - Switch to Free: warning popup with paid-until date, real Stripe cancel at period end
+REM   - Resume plan: paid -> free -> paid again without any new charge
+REM   - Monthly <-> Annually switch on existing subscription, no charge today
+REM   - Server guards: activate/checkout can never create a second subscription
+REM   - Card updates always via Stripe setup flow (no charge)
+REM   - Settings "Change Plan" now opens Payment Details (single source of truth)
+REM   (also includes v16.2/v16.3: subscribe wording, restart popups, Starting
+REM    Weight sync, Week 4 Subscribe popup, checkout verification)
 REM
 git add src/pages/Dashboard.tsx
 git add src/pages/PaymentDetails.tsx
+git add src/pages/Settings.tsx
 git add src/lib/billingApi.ts
 git add supabase/functions/billing/index.ts
 git add BUGS-AND-DEFECTS.md
@@ -27,8 +29,8 @@ git add build-and-android-sync.bat
 
 echo Committing...
 git commit ^
-  -m "v16.3: Week 4 Subscribe popup wording; verify Stripe payment before unlocking phases" ^
-  -m "Reword the Acclimation-complete popup with a Subscribe button and charge warning. Harden the paywall: the checkout success redirect is now verified with Stripe via a new server-side verify action, and saved-card activation fails closed on declined charges. Also includes v16.2 subscribe button wording, restart popup order, Starting Weight sync, and end-date tooltip."
+  -m "v16.4: real plan switching and cancellation via Stripe; block all double-charge paths" ^
+  -m "Switch to Free now schedules a real Stripe cancellation with a paid-until warning popup. Resuming within the paid period and switching Monthly/Annually happen on the existing subscription with no new charge. Server-side guards stop activate/checkout from ever creating a second subscription. Settings Change Plan opens Payment Details."
 
 echo.
 echo Pushing to origin...
@@ -36,25 +38,27 @@ git push
 
 echo.
 echo ============================================================
-echo   Push complete!  v16.3
+echo   Push complete!  v16.4
 echo.
-echo   1. SUPABASE (REQUIRED): redeploy the billing function or
-echo      checkout verification will fail:
+echo   1. SUPABASE (REQUIRED): redeploy the billing function:
 echo      Double-click deploy-supabase-functions.bat
 echo.
 echo   2. VERCEL: wait 2-3 mins, hard-refresh https://fit-pact.vercel.app
 echo.
-echo   3. STRIPE: no dashboard changes needed
+echo   3. STRIPE: no changes. Keep webhook for customer.subscription.*
+echo      events so access locks when a cancelled period ends.
 echo.
-echo   4. TEST on web (use Stripe TEST mode):
-echo      - Payment Details: buttons say "Subscribe - Charged after Week 4"
-echo      - Week 4 complete popup: new wording + Subscribe / No. buttons
-echo      - Subscribe -^> pay on Stripe -^> phases unlock with toast
-echo      - Subscribe -^> click Back on Stripe page -^> phases stay LOCKED
-echo      - Type /dashboard?checkout=success^&unlocked=1 manually -^> stays LOCKED
-echo      - Test declined card 4000 0000 0000 0002 -^> stays LOCKED
-echo      - Clear All Data flow: Welcome -^> date popup -^> Acclimation info
-echo      - TDEE weight change reflects in Dashboard Starting Weight
+echo   4. TEST on web (Stripe TEST mode, card 4242 4242 4242 4242):
+echo      - Subscribe Monthly -^> Switch to Free Plan -^> warning popup
+echo        shows paid-until date -^> Yes -^> still have premium access
+echo      - Stripe dashboard: subscription shows "Cancels on <date>"
+echo      - Plan card button now says "Resume plan" -^> popup -^> continue
+echo        -^> Stripe shows cancellation removed, NO new charge
+echo      - While subscribed Monthly, click Annually -^> switch popup with
+echo        dates -^> Yes -^> Stripe subscription price becomes annual,
+echo        NO invoice today
+echo      - Click own active plan button -^> never opens payment screen
+echo      - Settings -^> Change Plan -^> opens Payment Details page
 echo.
 echo   5. ANDROID:
 echo        Double-click build-and-android-sync.bat

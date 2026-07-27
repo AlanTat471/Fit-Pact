@@ -81,7 +81,6 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
   ]);
 
   // Dialogs
-  const [showChangePlan, setShowChangePlan] = useState(false);
   const [showCancelSub, setShowCancelSub] = useState(false);
   const [cancellingSubscription, setCancellingSubscription] = useState(false);
   const [showEditCard, setShowEditCard] = useState(false);
@@ -189,14 +188,6 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
       case 'annual': return { name: 'Annual Plan', price: '$71.88/year ($5.99/month equivalent)' };
       default: return { name: 'Free Plan', price: 'Free' };
     }
-  };
-
-  const handleChangePlan = async (plan: PlanType) => {
-    setActivePlan(plan);
-    localStorage.setItem('activePlan', plan);
-    if (user?.id) await setUserPref(user.id, 'activePlan', plan);
-    setShowChangePlan(false);
-    window.dispatchEvent(new Event('storage'));
   };
 
   const handleCancelSubscription = async () => {
@@ -502,7 +493,7 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button variant="outline" onClick={() => setShowChangePlan(true)}>Change Plan</Button>
+                <Button variant="outline" onClick={() => navigate('/payment-details')}>Change Plan</Button>
                 <Button
                   variant="outline"
                   onClick={() => setShowCancelSub(true)}
@@ -625,40 +616,6 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Change Plan Dialog */}
-      <AlertDialog open={showChangePlan} onOpenChange={setShowChangePlan}>
-        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Change Plan</AlertDialogTitle>
-            <AlertDialogDescription className="text-foreground/70">
-              Select the plan you'd like to switch to.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-3 py-2">
-            {[
-              { plan: 'free' as PlanType, label: 'Free Plan', price: 'Free' },
-              { plan: 'monthly' as PlanType, label: 'Monthly', price: '$8.99/month' },
-              { plan: 'annual' as PlanType, label: 'Annually — Best Value', price: '$71.88/year ($5.99/month equivalent, 33% discount)' },
-            ].map(({ plan, label, price }) => (
-              <button
-                key={plan}
-                onClick={() => handleChangePlan(plan)}
-                className={`w-full flex items-center justify-between p-4 border rounded-lg transition-colors ${activePlan === plan ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}
-              >
-                <div className="text-left">
-                  <p className="font-medium">{label}</p>
-                  <p className="text-sm text-muted-foreground">{price}</p>
-                </div>
-                {activePlan === plan && <Badge variant="secondary">Current</Badge>}
-              </button>
-            ))}
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">Close</AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Cancel Subscription Dialog */}
       <AlertDialog open={showCancelSub} onOpenChange={setShowCancelSub}>

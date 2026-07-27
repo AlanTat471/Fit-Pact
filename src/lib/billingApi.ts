@@ -2,7 +2,7 @@ import { supabase } from "./supabaseClient";
 import { getSubscription } from "./supabaseSubscription";
 import { getUserPref } from "./supabaseUserPrefs";
 
-export type BillingAction = "setup" | "checkout" | "activate" | "cancel" | "verify";
+export type BillingAction = "setup" | "checkout" | "activate" | "cancel" | "verify" | "switch" | "resume";
 export type PaidPlanType = "monthly" | "annual";
 
 export async function callBillingApi(
@@ -104,13 +104,22 @@ export async function loadPremiumAccessState(userId: string): Promise<PremiumAcc
     getUserPref(userId, "activePlan"),
   ]);
 
-  const subActive =
-    sub?.status === "active" ||
-    sub?.status === "trialing" ||
-    sub?.status === "past_due";
+  // A cancelled-at-period-end subscription whose paid period has already passed
+  // is no longer active, even if the webhook that flips the status is delayed.
+  const periodExpired =
+    !!sub?.cancel_at_period_end &&
+    !!sub?.current_period_end &&
+    new Date(sub.current_period_end).getTime() < Date.now();
 
-  const premiumUnlocked =
-    unlockedPref !== null
+  const subActive =
+    !periodExpired &&
+    (sub?.status === "active" ||
+      sub?.status === "trialing" ||
+      sub?.status === "past_due");
+
+  const premiumUnlocked = periodExpired
+    ? false
+    : unlockedPref !== null
       ? unlockedPref === "true" || subActive
       : subActive || localStorage.getItem("weightLossPhaseUnlocked") === "true";
 

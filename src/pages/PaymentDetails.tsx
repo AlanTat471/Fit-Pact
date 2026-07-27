@@ -20,6 +20,7 @@ import { VisaIcon, MastercardIcon, AmexIcon, GooglePayIcon, ApplePayIcon } from 
 import { useAuth } from "@/contexts/AuthContext";
 import { getUserPref, setUserPref } from "@/lib/supabaseUserPrefs";
 import { callBillingApi, loadPremiumAccessState } from "@/lib/billingApi";
+import { getSubscription, SubscriptionRow } from "@/lib/supabaseSubscription";
 import { toast } from "@/hooks/use-toast";
 
 type PlanType = 'free' | 'monthly' | 'annual';
@@ -44,6 +45,13 @@ const PaymentDetails = () => {
   });
   const [premiumUnlocked, setPremiumUnlocked] = useState(false);
   const [paymentMethodSaved, setPaymentMethodSaved] = useState(false);
+  const [subscription, setSubscription] = useState<SubscriptionRow | null>(null);
+
+  const refreshSubscription = async () => {
+    if (!user?.id) return;
+    const sub = await getSubscription(user.id);
+    setSubscription(sub);
+  };
 
   useEffect(() => {
     if (!user?.id) return;
@@ -55,8 +63,26 @@ const PaymentDetails = () => {
       }
       setPremiumUnlocked(state.premiumUnlocked);
       setPaymentMethodSaved(state.paymentMethodSaved);
+      await refreshSubscription();
     })();
   }, [user?.id]);
+
+  // True when a real Stripe subscription is currently paid up (even if a
+  // cancellation is scheduled for the end of the period).
+  const hasActiveStripeSub =
+    !!subscription?.stripe_subscription_id &&
+    (subscription.status === "active" ||
+      subscription.status === "trialing" ||
+      subscription.status === "past_due");
+
+  const formatDMY = (d: Date) => d.toLocaleDateString("en-GB");
+  const periodEnd = subscription?.current_period_end ? new Date(subscription.current_period_end) : null;
+  /** Last day of paid access, inclusive (the day before Stripe's renewal date). */
+  const paidUntilDate = periodEnd ? formatDMY(new Date(periodEnd.getTime() - 24 * 60 * 60 * 1000)) : null;
+  /** The Stripe renewal date — the day the next charge (or lock-out) happens. */
+  const renewalDate = periodEnd ? formatDMY(periodEnd) : null;
+  const planDisplayName = (p: PlanType) => (p === "monthly" ? "Monthly" : p === "annual" ? "Annually" : "Free");
+  const planPriceLabel = (p: PlanType) => (p === "monthly" ? "$8.99" : p === "annual" ? "$71.88" : "$0");
 
   useEffect(() => {
     const setup = searchParams.get("setup");
@@ -91,11 +117,47 @@ const PaymentDetails = () => {
   const [savedCardName, setSavedCardName] = useState<string>(() => localStorage.getItem('numiSavedCardName') || "");
   const hasSavedCard = savedCardLast4.length === 4;
 
+  const [showSwitchToFree, setShowSwitchToFree] = useState(false);
+  const [showResumePlan, setShowResumePlan] = useState(false);
+  const [switchTargetPlan, setSwitchTargetPlan] = useState<PlanType | null>(null);
+
+  const setActivePlanEverywhere = async (plan: PlanType) => {
+    setActivePlan(plan);
+    localStorage.setItem("activePlan", plan);
+    if (user?.id) await setUserPref(user.id, "activePlan", plan);
+  };
+
   const handleSelectPlan = async (plan: PlanType) => {
+    // ── An active (paid-up) Stripe subscription exists: never send the user to
+    // the payment screen and never create a second subscription/charge.
+    if (hasActiveStripeSub && subscription) {
+      if (plan === "free") {
+        // Warn: access continues until the last paid day, then premium locks.
+        setShowSwitchToFree(true);
+        return;
+      }
+      if (plan === subscription.plan_type) {
+        if (subscription.cancel_at_period_end) {
+          // They cancelled earlier and want back in: resume, no charge.
+          setShowResumePlan(true);
+        } else {
+          // Already subscribed to this plan — repair the label if it was stale.
+          await setActivePlanEverywhere(plan);
+          toast({
+            title: "Already subscribed",
+            description: `The ${planDisplayName(plan)} plan is already active. No payment was taken.`,
+          });
+        }
+        return;
+      }
+      // Different paid plan: switch on the existing subscription (no charge today).
+      setSwitchTargetPlan(plan);
+      return;
+    }
+
+    // ── No active Stripe subscription below this point ──
     if (plan === "free") {
-      setActivePlan("free");
-      localStorage.setItem("activePlan", "free");
-      if (user?.id) await setUserPref(user.id, "activePlan", "free");
+      await setActivePlanEverywhere("free");
       return;
     }
 
@@ -104,6 +166,18 @@ const PaymentDetails = () => {
         title: "Sign in required",
         description: "Please sign in before starting a subscription.",
         variant: "destructive",
+      });
+      return;
+    }
+
+    // Card already saved during the free Acclimation window: changing the chosen
+    // plan just updates the pending plan — no need to visit Stripe again.
+    if (!fromAcclimationComplete && paymentMethodSaved) {
+      localStorage.setItem("pendingPlan", plan);
+      await setUserPref(user.id, "pendingPlan", plan);
+      toast({
+        title: "Plan updated",
+        description: `Your card is already saved. You will be charged for the ${planDisplayName(plan)} plan after you complete Acclimation Week 4.`,
       });
       return;
     }
@@ -136,8 +210,97 @@ const PaymentDetails = () => {
     }
   };
 
+  const confirmSwitchToFree = async () => {
+    setBillingLoading(true);
+    try {
+      const result = await callBillingApi(undefined, "cancel");
+      if (result.error) throw new Error(result.error);
+      const endDate = result.currentPeriodEnd
+        ? formatDMY(new Date(new Date(result.currentPeriodEnd).getTime() - 24 * 60 * 60 * 1000))
+        : paidUntilDate || "the end of your current billing period";
+      setShowSwitchToFree(false);
+      toast({
+        title: "Switch to Free scheduled",
+        description: `You keep full premium access until ${endDate} (inclusive). After that you move to the Free Plan and will not be charged again.`,
+      });
+      await refreshSubscription();
+    } catch (err) {
+      toast({
+        title: "Could not switch to Free",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const confirmResumePlan = async () => {
+    setBillingLoading(true);
+    try {
+      const result = await callBillingApi(undefined, "resume");
+      if (result.error) throw new Error(result.error);
+      const plan = (result.planType as PlanType) || subscription?.plan_type || "monthly";
+      await setActivePlanEverywhere(plan);
+      setShowResumePlan(false);
+      toast({
+        title: "Welcome back!",
+        description: `Your ${planDisplayName(plan)} plan continues. Next renewal ${result.currentPeriodEnd ? formatDMY(new Date(result.currentPeriodEnd)) : renewalDate}. You were not charged today.`,
+      });
+      await refreshSubscription();
+    } catch (err) {
+      toast({
+        title: "Could not resume subscription",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const confirmSwitchPlan = async () => {
+    if (!switchTargetPlan || switchTargetPlan === "free") return;
+    setBillingLoading(true);
+    try {
+      const result = await callBillingApi(switchTargetPlan as "monthly" | "annual", "switch");
+      if (result.error) throw new Error(result.error);
+      await setActivePlanEverywhere(switchTargetPlan);
+      localStorage.setItem("pendingPlan", switchTargetPlan);
+      if (user?.id) await setUserPref(user.id, "pendingPlan", switchTargetPlan);
+      const startDate = result.currentPeriodEnd ? formatDMY(new Date(result.currentPeriodEnd)) : renewalDate;
+      setSwitchTargetPlan(null);
+      toast({
+        title: "Plan switched",
+        description: `You keep your current paid access until ${paidUntilDate} (inclusive). The ${planDisplayName(switchTargetPlan)} plan starts on ${startDate} and ${planPriceLabel(switchTargetPlan)} will be charged on that date. Nothing was charged today.`,
+      });
+      await refreshSubscription();
+    } catch (err) {
+      toast({
+        title: "Could not switch plan",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  // Always uses Stripe's card-saving (setup) flow — never creates a charge or a
+  // second subscription, so it is safe for subscribed and unsubscribed users alike.
   const handleAddPaymentViaStripe = async () => {
-    const plan = (localStorage.getItem("pendingPlan") as PlanType) || "monthly";
+    if (!user?.id) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in before adding a payment method.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const plan =
+      (subscription?.plan_type && subscription.plan_type !== "free"
+        ? subscription.plan_type
+        : (localStorage.getItem("pendingPlan") as PlanType)) || "monthly";
     if (plan === "free") {
       toast({
         title: "Choose a plan first",
@@ -145,7 +308,21 @@ const PaymentDetails = () => {
       });
       return;
     }
-    await handleSelectPlan(plan);
+    setBillingLoading(true);
+    try {
+      const result = await callBillingApi(plan as "monthly" | "annual", "setup");
+      if (result.error) throw new Error(result.error);
+      if (!result.url) throw new Error("Checkout URL is missing from billing response.");
+      window.location.href = result.url;
+    } catch (err) {
+      toast({
+        title: "Could not open Stripe",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBillingLoading(false);
+    }
   };
 
   const handleCancelSubscription = async () => {
@@ -200,8 +377,13 @@ const PaymentDetails = () => {
     localStorage.removeItem('numiSavedCardName');
   };
 
-  const statusLabel = (plan: PlanType) =>
-    activePlan === plan ? 'your active subscription' : 'inactive subscription';
+  const statusLabel = (plan: PlanType) => {
+    if (activePlan !== plan) return 'inactive subscription';
+    if (hasActiveStripeSub && subscription?.cancel_at_period_end && subscription.plan_type === plan && paidUntilDate) {
+      return `your active subscription — ends ${paidUntilDate}`;
+    }
+    return 'your active subscription';
+  };
 
   const PaidPlanCard = ({ plan, name, price, billingLine, description, badge, subscribeLabel }: {
     plan: PlanType;
@@ -277,6 +459,19 @@ const PaymentDetails = () => {
 
         <div className="absolute left-4 right-4 bottom-6">
           {activePlan === plan && premiumUnlocked ? (
+            hasActiveStripeSub && subscription?.cancel_at_period_end && subscription.plan_type === plan ? (
+              <Button
+                onClick={() => setShowResumePlan(true)}
+                variant="default"
+                className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight"
+                disabled={billingLoading}
+              >
+                <span className="text-xs font-bold">Resume plan</span>
+                <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">
+                  Access ends {paidUntilDate} — tap to continue
+                </span>
+              </Button>
+            ) : (
             <Button
               onClick={handleAddPaymentViaStripe}
               variant="default"
@@ -285,6 +480,7 @@ const PaymentDetails = () => {
               <span className="text-xs font-bold">Active</span>
               <span className="text-[9px] opacity-90 text-center">Update Payment Method</span>
             </Button>
+            )
           ) : (
             <Button
               onClick={() => handleSelectPlan(plan)}
@@ -453,6 +649,95 @@ const PaymentDetails = () => {
             )}
             <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleSavePayment}>Save Card Details</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Switch to Free Plan Warning Dialog */}
+      <AlertDialog open={showSwitchToFree} onOpenChange={setShowSwitchToFree}>
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-foreground">
+              <MaterialIcon name="warning" size="sm" className="text-destructive" />
+              Switch to Free Plan?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-foreground/70 space-y-2">
+              <p>You are paid up until <span className="font-semibold text-foreground">{paidUntilDate || "the end of your current billing period"}</span> (inclusive). Once the paid premium is finished, you will lose access to premium features.</p>
+              <p>There are no pro-rata refunds — you keep full premium access for the period you have already paid.</p>
+              <p className="font-medium text-foreground">Are you sure you want to continue?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">No</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={billingLoading}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmSwitchToFree();
+              }}
+            >
+              {billingLoading ? "Processing…" : "Yes"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Resume Subscription Dialog (was cancelled, coming back within paid period) */}
+      <AlertDialog open={showResumePlan} onOpenChange={setShowResumePlan}>
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-foreground">
+              <MaterialIcon name="celebration" size="sm" className="text-primary" />
+              Welcome back!
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-foreground/70 space-y-2">
+              <p>Your {planDisplayName(subscription?.plan_type || 'monthly')} plan will simply continue — <span className="font-semibold text-foreground">you will not be charged today</span> and you will not lose any paid time.</p>
+              <p>Next renewal: <span className="font-semibold text-foreground">{renewalDate || "your normal renewal date"}</span>.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">No</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={billingLoading}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmResumePlan();
+              }}
+            >
+              {billingLoading ? "Processing…" : "Continue my plan"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Switch Plan (Monthly <-> Annually) Dialog */}
+      <AlertDialog open={switchTargetPlan !== null} onOpenChange={(open) => { if (!open) setSwitchTargetPlan(null); }}>
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-foreground">
+              <MaterialIcon name="swap_horiz" size="sm" className="text-primary" />
+              Switch to {planDisplayName(switchTargetPlan || 'monthly')}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-foreground/70 space-y-2">
+              <p>You are paid up until <span className="font-semibold text-foreground">{paidUntilDate || "the end of your current billing period"}</span> (inclusive) on your current {planDisplayName(subscription?.plan_type || 'monthly')} plan — you keep every day you have already paid for.</p>
+              <p>Your new {planDisplayName(switchTargetPlan || 'monthly')} plan starts on <span className="font-semibold text-foreground">{renewalDate || "the day after your paid period ends"}</span>, and <span className="font-semibold text-foreground">{planPriceLabel(switchTargetPlan || 'monthly')}</span> will be charged on that date.</p>
+              <p className="font-medium text-foreground">Nothing will be charged today. Continue?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">No</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={billingLoading}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmSwitchPlan();
+              }}
+            >
+              {billingLoading ? "Processing…" : "Yes, switch plan"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

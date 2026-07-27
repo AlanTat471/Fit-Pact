@@ -294,3 +294,44 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
 
 - **Supabase:** the **billing** Edge Function MUST be redeployed (`deploy-supabase-functions.bat`) or checkout returns will fail verification.
 - Vercel auto-deploys from git push. No Stripe dashboard changes needed.
+
+---
+
+## v16.4 — Plan switching, cancellation warnings, double-charge protection (Jul 2026)
+
+### 39. "Switch to Free Plan" ignored Stripe and enabled a double charge — FIXED (critical)
+
+- **Where:** `PaymentDetails.tsx`, `billing/index.ts`
+- **Previous issue:** Switching to Free only changed a local label. The Stripe subscription kept renewing, and because the app then thought the user was "free", the paid card showed the Subscribe button again — clicking it started a brand-new checkout (double charge).
+- **Fix:** With an active Stripe subscription, "Switch to Free Plan" now shows a warning popup: *"You are paid up until DD/MM/YYYY (inclusive). Once the paid premium is finished, you will lose access to premium features. Are you sure you want to continue?"* — **Yes** schedules the Stripe cancellation at period end (no pro-rata refunds; access to the last paid day inclusive; premium locks automatically afterwards via webhook). **No** changes nothing.
+
+### 40. Resubscribing within the paid period no longer re-charges — NEW "resume" action
+
+- **Where:** `billing/index.ts`, `PaymentDetails.tsx`, `billingApi.ts`
+- Paid → Free → back to the same paid plan: the plan card shows **"Resume plan — Access ends DD/MM/YYYY"**; a "Welcome back!" popup confirms the next renewal date and that nothing is charged today. The server just removes `cancel_at_period_end` — no payment screen, no new subscription.
+
+### 41. Monthly ↔ Annually switching without re-payment — NEW "switch" action
+
+- **Where:** `billing/index.ts`, `PaymentDetails.tsx`
+- Selecting the other paid plan while subscribed shows a popup with both dates: paid up until DD/MM/YYYY (inclusive) on the current plan; the new plan starts on the renewal date and its price ($8.99 or $71.88) is charged then. Confirming updates the price on the **existing** Stripe subscription with `proration_behavior: "none"` — no charge today, no checkout page. Annual→Monthly keeps the full paid year; Monthly→Annual charges $71.88 the day after the month's last inclusive day.
+
+### 42. Server-side double-subscription guard on activate/checkout
+
+- **Where:** `billing/index.ts`
+- If a live Stripe subscription already exists, "activate" resumes/reuses it and reports success without charging; "checkout" refuses to create a session and explains no new payment is needed. One account can never hold two subscriptions.
+
+### 43. Card updates use Stripe setup flow; pre-charge plan change simplified
+
+- **Where:** `PaymentDetails.tsx`
+- "Add payment method" / the edit pen / "Update Payment Method" now always open Stripe's card-saving (setup) flow, which never charges. During the free Acclimation window, changing the chosen plan when a card is already saved just updates the pending plan with a toast — no Stripe visit.
+
+### 44. Settings "Change Plan" centralised
+
+- **Where:** `Settings.tsx`
+- The old dialog only changed a label with no billing effect. "Change Plan" now opens the Payment Details page where the real switching logic lives. The dead dialog was removed.
+
+### 45. Deploy notes (v16.4)
+
+- **Supabase:** redeploy the **billing** Edge Function (required for switch/resume/guards).
+- **Stripe:** no dashboard changes; ensure the webhook for `customer.subscription.*` events remains configured so access locks automatically when a cancelled period ends.
+- Dates shown in popups use Stripe's real billing dates (monthly renews on the same calendar date next month; "paid up until" is the day before renewal, inclusive).
