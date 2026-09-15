@@ -37,6 +37,16 @@ These are the main changes from recent work sessions. Your **live site** (Vercel
 | **Recurring subscriptions** | Stripe automatically charges Monthly subscribers every month and Annual subscribers $71.88 every year until cancellation is scheduled. Completing another Numi cycle must **not create a duplicate subscription or an extra one-off charge**. |
 | **UI fixes** | Acclimation caption (no "Locked" word), Recommended Steps caption, Payment button text fit, **Annually** + Best Value badge. |
 | **Achievements** | **Coming Soon** — tab disabled. |
+
+### v16.6 — Annual repriced to $72; plan cards realigned (Aug 2026)
+| Area | What changed |
+|------|----------------|
+| **Annual price** | **$71.88/year → $72/year (AUD)**. Displays as **$6.00/month** with small line **Billed $72 yearly**. $72 ÷ 12 = $6.00 exactly; saving vs Monthly is $35.88/year (33%); still ~4 months free. |
+| **Quarterly plan** | Considered and **rejected** — a middle plan cannibalises Annual and reintroduces the choice overload removed in v15. |
+| **Annual badge** | Two lines: **BEST VALUE - 33% DISCOUNT** / **(4 MONTHS FREE)**. |
+| **Plan cards** | Shared `PlanCardHeader` for Free / Monthly / Annually with reserved slot heights; price moved out of the button into the header; all three buttons same width, height and baseline. |
+| **Settings + switch popup** | Now quote **$72/year** so the app never shows two different annual prices. |
+| **Stripe / Supabase** | New yearly price **A$72.00** created in Stripe; its ID replaces Supabase secret `STRIPE_PRICE_ANNUAL`. Billing function **code** unchanged. |
 | **Settings** | Privacy Controls + Notifications phased out; **Delete Account** enabled. |
 | **Supabase functions** | Updated **`billing`**, new **`delete-account`**. Batch file: `deploy-supabase-functions.bat`. |
 
@@ -67,7 +77,7 @@ These stay online — you only **log in** on the new PC:
 
 - Clicking **Let's Go!** the first time creates one Stripe subscription.
 - A **Monthly** Stripe subscription renews at **$8.99 every month**.
-- An **Annual** Stripe subscription renews at **$71.88 every year**.
+- An **Annual** Stripe subscription renews at **$72 every year** (was $71.88 before v16.6).
 - When the user completes another full Numi cycle, the app must reuse the existing subscription. It must not create a second subscription or make an additional one-off payment.
 - If the user selects **Cancel Subscription**, cancellation is scheduled for the end of the current paid period. Access remains until that date; Stripe then stops future renewals.
 
@@ -281,6 +291,38 @@ Log in on the new PC — **no code move required**:
 
 ---
 
+## ⚠️ Read this first — the rule that prevents a silent seven-week gap
+
+Between **27 July and 15 September 2026**, finished work sat on the development PC and never reached GitHub. The live site kept serving the July build, which looked exactly like the app had "regressed". **Nothing was ever lost** — it simply was never pushed.
+
+Two things caused it, and both are now guarded against:
+
+1. **OneDrive is not a backup of your work history.** OneDrive copies files. It knows nothing about git. Uncommitted work follows you to a new PC and stays uncommitted, so everything looks fine locally while GitHub falls further behind.
+2. **The old `git-push-update.bat` listed files by hand.** Anything not on the list was skipped without warning. It now uses `git add -A`, which stages everything, and prints the file list before committing and again after pushing.
+
+**The rule: at the end of every working session, double-click `git-push-update.bat`.**
+
+Quick way to check at any time — in Cursor's terminal:
+
+```cmd
+git status --short
+```
+
+- **No output** = everything is safely on GitHub.
+- **Any lines** = that work exists only on this PC. Run `git-push-update.bat`.
+
+And to confirm the live site actually matches your code:
+
+```cmd
+git log -1 --pretty="%h %ad %s" --date=short
+```
+
+Compare that commit against the newest deployment in the Vercel dashboard. If Vercel is older, your changes are not live.
+
+**Why it matters beyond tidiness:** during this gap, Stripe and Supabase had already been switched to the new A$72.00 annual price while the live site still showed `$71.88`. Anyone subscribing would have been shown one price and charged another. A backend change plus an unpushed frontend is a genuine billing risk, not just untidiness.
+
+---
+
 ## Part E — Deploy / update workflow on new PC
 
 | Task | What to run | Where |
@@ -363,8 +405,10 @@ Android Studio is already installed. Use the following process to continue testi
 - [ ] Acclimation Calories match My TDEE and cannot be edited on Dashboard.
 - [ ] Acclimation Weeks 1–4 save and restore after app restart.
 - [ ] Weight Loss and Maintenance remain locked before payment.
-- [ ] Monthly displays `$8.99/month`.
-- [ ] Annually displays `$71.88/year`, the $5.99/month equivalent, and 33% discount.
+- [ ] Monthly displays `$8.99 /month` with the small line `Billed $8.99 monthly`.
+- [ ] Annually displays `$6.00 /month` with the small line `Billed $72 yearly`.
+- [ ] Annually badge shows `BEST VALUE - 33% DISCOUNT` on line 1 and `(4 MONTHS FREE)` on line 2.
+- [ ] Free / Monthly / Annually boxes are the same height and their buttons line up.
 - [ ] Stripe test payment flow behaves as intended.
 - [ ] Week 4 Let's Go unlocks without creating duplicate subscriptions.
 - [ ] Cancel Subscription schedules cancellation at period end.
@@ -388,6 +432,11 @@ When emulator/phone testing passes:
 
 | Problem | Fix |
 |---------|-----|
+| **Live site shows old screens / prices** | Almost always unpushed work. Run `git status --short` — any output means it is not on GitHub. Run `git-push-update.bat`, wait 2–3 mins for Vercel, hard-refresh with Ctrl+Shift+R. |
+| **`Author identity unknown` / `*** Please tell me who you are`** | Git does not know who you are on this PC — a per-machine setting OneDrive does not carry across. Run once in Command Prompt: `git config --global user.name "AlanTat471"` then `git config --global user.email "alan.tat@hotmail.com"`. Staged files are not lost; re-run `git-push-update.bat`. |
+| **`npm` blocked: "running scripts is disabled"** | Cursor's terminal was PowerShell. It is now set to Command Prompt (prompt has no `PS`). If you land in PowerShell again, run once: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`. |
+| **Asked to verify this device again** | Expected on a new PC, a different browser, or after clearing browser data — device trust is stored in that browser's own `localStorage` (`wlbd_install_id`) and cannot travel between machines. Verify once; it then persists for that browser profile. Chrome, Edge and the Android app each need their own one-time verification. |
+| **Stripe checkout shows the wrong amount** | The app never hardcodes prices. Check the Supabase secret `STRIPE_PRICE_ANNUAL` holds the intended Stripe price ID, and that it is from the same Stripe mode (Test or Live) as `STRIPE_SECRET_KEY`. |
 | `git is not recognized` | Reinstall Git; restart Command Prompt; check PATH. |
 | `npm install` errors | Run from project folder; try `npm install` again; check Node LTS. |
 | App blank / no login | Check `.env.local` values; restart `npm run dev`. |
@@ -419,6 +468,8 @@ When emulator/phone testing passes:
 |------|-------|
 | Jul 2026 | Initial migration guide; v15/v16 summary; GitHub clone path; no keystore in repo yet |
 | Jul 2026 | Added exact GitHub URL, same-OneDrive transfer, recurring billing clarification, automatic setup verification, and detailed Android testing |
+| Aug 2026 | New PC setup completed (Cursor terminal switched to Command Prompt; PowerShell script policy set to RemoteSigned). Added v16.6 — annual repriced to $72/year with realigned plan cards; test checklist prices updated |
+| Sep 2026 | v16.7 — found and closed a seven-week deployment gap (work committed but never pushed since 27 Jul). `git-push-update.bat` now stages everything with `git add -A`. Added the "push at the end of every session" rule, device-trust explanation, expanded troubleshooting, and the Android `android/` project brought under version control |
 
 ---
 

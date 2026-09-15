@@ -205,13 +205,13 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
   const getPlanLabel = () => {
     if (hasPendingPlanOnly) {
       if (pendingPlan === 'annual') {
-        return { name: 'Annually (selected)', price: '$71.88/year — charged after Week 4' };
+        return { name: 'Annually (selected)', price: '$72/year — charged after Week 4' };
       }
       return { name: 'Monthly (selected)', price: '$8.99/month — charged after Week 4' };
     }
     switch (activePlan) {
       case 'monthly': return { name: 'Monthly Plan', price: '$8.99/month' };
-      case 'annual': return { name: 'Annual Plan', price: '$71.88/year ($5.99/month equivalent)' };
+      case 'annual': return { name: 'Annual Plan', price: '$72/year ($6.00/month equivalent)' };
       default: return { name: 'Free Plan', price: 'Free' };
     }
   };
@@ -527,7 +527,7 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
                   </p>
                   {hasPendingPlanOnly && (
                     <p className="text-xs text-primary mt-1">
-                      Selected plan: {pendingPlan === 'annual' ? 'Annually ($71.88/year)' : 'Monthly ($8.99/month)'} — you will only be charged after completing Acclimation Week 4.
+                      Selected plan: {pendingPlan === 'annual' ? 'Annually ($72/year)' : 'Monthly ($8.99/month)'} — you will only be charged after completing Acclimation Week 4.
                     </p>
                   )}
                 </div>

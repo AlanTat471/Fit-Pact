@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { getLegacyDeviceFingerprint } from "./deviceFingerprint";
 
 /** Legacy single key — no longer written; per-user keys preferred. */
 const TRUSTED_DEVICE_KEY_LEGACY = "wlbd_trusted_device";
@@ -27,9 +28,10 @@ function getLocalTrust(userId: string): string | null {
   }
 }
 
-export async function isDeviceTrusted(userId: string, fingerprint: string): Promise<boolean> {
-  const localMatch = getLocalTrust(userId) === fingerprint;
-
+async function hasTrustedFingerprintInDb(
+  userId: string,
+  fingerprint: string
+): Promise<boolean> {
   const { data, error } = await supabase
     .from("trusted_devices")
     .select("id")
@@ -37,21 +39,38 @@ export async function isDeviceTrusted(userId: string, fingerprint: string): Prom
     .eq("device_fingerprint", fingerprint)
     .maybeSingle();
 
-  if (!error && data) {
+  if (error) {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn("[trusted_devices] lookup failed:", error.message);
+    }
+    return false;
+  }
+  return !!data;
+}
+
+export async function isDeviceTrusted(userId: string, fingerprint: string): Promise<boolean> {
+  const legacyFingerprint = getLegacyDeviceFingerprint();
+  const localStored = getLocalTrust(userId);
+  const localMatch =
+    localStored === fingerprint ||
+    (legacyFingerprint !== fingerprint && localStored === legacyFingerprint);
+
+  if (await hasTrustedFingerprintInDb(userId, fingerprint)) {
     setLocalTrust(userId, fingerprint);
     return true;
   }
 
-  if (error) {
-    if (import.meta.env.DEV) {
-      // Common causes: RLS mis-config on `trusted_devices`, table missing, or network.
-      // eslint-disable-next-line no-console
-      console.warn("[trusted_devices] isDeviceTrusted failed — using local cache if any:", error.message);
-    }
-    return localMatch;
+  // v12 ships a new fingerprint formula. If this install was trusted under v1,
+  // recognize the legacy row and migrate to the v2 fingerprint — no OTP email.
+  if (
+    legacyFingerprint !== fingerprint &&
+    (await hasTrustedFingerprintInDb(userId, legacyFingerprint))
+  ) {
+    await addTrustedDevice(userId, fingerprint, "Migrated from legacy fingerprint");
+    return true;
   }
 
-  // No row in DB — still trust local match (e.g. DB insert failed earlier but device was verified).
   return localMatch;
 }
 

@@ -442,3 +442,26 @@ I will then action platform rollout sequence:
 - iOS/TestFlight readiness checklist,
 - release artifacts and store submission prep lists.
 
+---
+
+## Release archive — v14 (2.0) — Week 12 popup + maintenance fallbacks (May 2026)
+
+### What changed
+- **Frozen "Got it" fix:** Steps/calories targets popup and Week 12 summary no longer open at the same time. Order is: targets → Week 12 summary → Maintenance suggestion.
+- **Escape behavior:** Pressing Escape on the targets popup closes it and shows two Dashboard sections: **Maintenance Phase** (Start Maintenance Phase) and **Weight Loss Phase #N** (Start Weight Loss Phase #N).
+- **Skip maintenance:** Starting Weight Loss Phase #N archives the completed 12-week cycle to Archived Phases and begins fresh Acclimation using Week 12 end weight.
+
+### Deploy (GitHub → Vercel → Android)
+1. Run `git-push-update.bat` from project root.
+2. Wait for Vercel green deploy; hard-refresh https://fit-pact.vercel.app (Ctrl+Shift+R).
+3. Android: `npm run build` → `npx cap sync android` → signed AAB → Play Console Internal testing (versionCode **14**, versionName **2.0**).
+4. Supabase / Stripe: no schema or webhook changes in v14.
+
+### v14 test checklist
+- [ ] Complete any week with weight gain → targets popup → **Got it** closes popup.
+- [ ] Complete Week 12 with targets change → targets first, then Week 12 summary, then Maintenance prompt.
+- [ ] Escape on targets popup at Week 12 → two fallback sections visible on Dashboard.
+- [ ] **Start Maintenance Phase** opens full 4-week maintenance UI.
+- [ ] **Start Weight Loss Phase #2** archives cycle and resets Acclimation (starting weight = Week 12 end).
+- [ ] Cross-device: complete week on phone, verify on desktop (v11 persistence still works).
+

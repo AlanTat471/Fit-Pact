@@ -360,3 +360,139 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
   - Settings shows **"Monthly (selected)" / "Annually (selected)"** with charge-after-Week-4 pricing text, and enables **"Cancel Selected Plan"**.
   - Pending plan refreshes when returning to Settings (focus + storage sync).
 - **Unchanged:** After a real payment, v16.4 switch/cancel-at-period-end rules still apply.
+
+---
+
+## v16.6 — Annual plan repriced to $72 and plan cards restructured (Aug 2026)
+
+### 48. Annual price changed from $71.88/year to $72/year (AUD)
+
+- **Where:** `PaymentDetails.tsx`, `Settings.tsx`, Stripe Dashboard, Supabase secret `STRIPE_PRICE_ANNUAL`
+- **Reason:** `$71.88` was the arithmetic result of `$5.99 × 12` and read as a calculator leftover next to the clean `$8.99/month`. `$72` is a real-looking price and divides to an exact `$6.00/month`.
+- **Decision:** A Quarterly plan was considered and **rejected** — a middle plan cannibalises Annual (the plan that actually reduces churn) and reintroduces the choice overload that caused Weekly/Fortnightly to be removed in v15.
+- **Math (verified):**
+  - `$72 ÷ 12 = $6.00` exactly — the displayed monthly equivalent is accurate.
+  - Monthly for a year: `$8.99 × 12 = $107.88`.
+  - Saving: `$107.88 − $72 = $35.88` per year.
+  - Discount: `35.88 ÷ 107.88 = 33.26%` → **33%**.
+  - "4 months free": paying 8 monthly instalments is `$8.99 × 8 = $71.92`, i.e. `$72` within 8 cents.
+- **No existing annual subscribers** at the time of this change, so no migration or grandfathering was required. Any future subscriber on the old `$71.88` price would keep it until deliberately migrated.
+- **Code note:** No dollar amount is hardcoded in `billing/index.ts`. The charged amount comes solely from the Stripe Price ID held in the Supabase secret `STRIPE_PRICE_ANNUAL`, so the app labels and Stripe must be updated together.
+
+### 49. Annual badge split across two lines
+
+- **Where:** `PaymentDetails.tsx`
+- **Change:** Badge is now two stacked lines — **BEST VALUE - 33% DISCOUNT** on line 1 and **(4 MONTHS FREE)** on line 2 — instead of a single long badge that stretched the card.
+
+### 50. Plan cards restructured so Free / Monthly / Annually align
+
+- **Where:** `PaymentDetails.tsx`
+- **Previous issue:** Price lived inside the bottom button, the long annual copy repeated the price, and the Free card had its own bespoke header. Adding the two-line badge to that layout pushed the Annually card out of alignment with the other two.
+- **Fix:** New shared `PlanCardHeader` used by all three cards, with reserved heights so every row lines up:
+  - Title → badge slot (`min-h-[36px]`, empty on Free/Monthly) → status line (`min-h-[24px]`) → price block → description (`min-h-[76px]`).
+  - Price block: medium amount (`text-2xl`) plus unit, then a small billing line.
+  - Free `$0 / 14 days` · "No card required to start"; Monthly `$8.99 /month` · "Billed $8.99 monthly"; Annually `$6.00 /month` · "Billed $72 yearly".
+  - Bottom button no longer repeats the price: main text **Subscribe**, sub-line **Charged after Week 4** (or **Pay now via Stripe** when arriving from the Week 4 popup).
+  - All three bottom buttons now share `left-4 right-4`, `min-h-[56px] h-auto` so they are the same width, height and baseline.
+- **Annual description** reworded to stop duplicating the price: *"Get 4 months free compared to Monthly - you save $35.88 every year. Full access to all Numi features after your free Acclimation Phase."*
+
+### 51. Settings and switch-plan popup amounts kept in sync
+
+- **Where:** `Settings.tsx`, `PaymentDetails.tsx`
+- Settings billing now reads `$72/year — charged after Week 4`, `$72/year ($6.00/month equivalent)` and `Annually ($72/year)`. `planPriceLabel('annual')` returns `$72`, so the Monthly ↔ Annually switch popup quotes the same amount that Stripe will charge. No `$71.88` or `$5.99` string remains anywhere in `src/`.
+
+### 52. Verification performed (v16.6)
+
+- `npm run build` completed successfully (Vite 8, 1811 modules, no TypeScript errors).
+- ESLint reported no problems on `PaymentDetails.tsx` and `Settings.tsx`.
+- Regression check of earlier billing behaviour — all still intact and untouched by this change: card-saved-then-charge-after-Week-4 (setup flow), Week 4 `activate`, paid-period `switch` with no charge today, `resume` within a paid period, cancel-at-period-end, the pre-charge "cancel selected plan" path, and the server-side double-subscription guard.
+
+### 53. Deploy notes (v16.6)
+
+- **GitHub / Vercel:** frontend labels only — `git-push-update.bat` push triggers the Vercel rebuild.
+- **Stripe:** create a **new recurring yearly price of A$72.00** on the existing Numi product. Do not edit the old price (Stripe prices are immutable); archive `$71.88` after switching.
+- **Supabase:** replace secret `STRIPE_PRICE_ANNUAL` with the new `price_…` ID. The `billing` function code is unchanged, so a redeploy is only needed if the platform does not pick the secret up.
+- **Android:** run `build-and-android-sync.bat`, then set `versionName "2.4"` in `android/app/build.gradle` before generating a signed AAB for Play Internal testing. (Superseded by v16.7 item 54 — `versionCode` stays at **18** by decision.)
+
+---
+
+## v16.7 — Seven-week deployment gap found and closed (Sep 2026)
+
+### 54. Finished work never reached GitHub for 7 weeks — ROOT CAUSE FOUND (critical process defect)
+
+- **Symptom:** The live site kept showing old screens (annual plan still `$71.88`, login fixes absent) even though the code on the development PC was correct. It appeared the project had "regressed" and that files were missing.
+- **Diagnosis (15 Sep 2026):**
+  - Newest commit in the repository was `2e90365` (**v16.5, 27 July 2026**). Local `HEAD` and `origin/main` were the **same** commit, so the PC was not behind — GitHub was simply seven weeks stale.
+  - Every one of the 180 files tracked by GitHub was verified present on the PC. **No file was ever lost.** The work existed only as uncommitted changes.
+  - Vercel rebuilds only when a new commit lands on GitHub. No commit landed, so production continued serving the 27 July build.
+- **Why it stayed invisible:** the project was carried to the new PC through **OneDrive**, which copies files byte-for-byte but has no knowledge of git. Uncommitted work travelled across and remained uncommitted, so everything looked correct locally.
+- **Contributing defect:** `git-push-update.bat` staged files with a **hand-written list** of `git add <file>` lines. Any file not on that list was silently skipped. The v16.6 version of the script listed only 7 files while 17 had changed.
+- **Fix:** `git-push-update.bat` rewritten to use **`git add -A`**, which stages every modification, addition and deletion. Exclusions are now the responsibility of `.gitignore`, not of human memory. The script also prints `git status --short` before committing and again after pushing, so anything left behind is visible immediately. It fails loudly on a wrong folder, a failed commit, or a rejected push.
+- **Production risk during the gap (now resolved by deploying):** Stripe and Supabase had already been updated to the new A$72.00 price while the live site still ran July's frontend. The old page displayed `$71.88/year` but the billing function read the new price ID, so an annual subscriber would have been **shown $71.88 and charged $72**. Deploying v16.7 removes the mismatch.
+
+### 55. Work that had been stranded and is now deployed
+
+- `src/pages/PaymentDetails.tsx`, `src/pages/Settings.tsx` — the v16.6 `$72` pricing and card redesign.
+- `src/components/LoginForm.tsx` — 60-second cooldown before a verification code can be re-sent, live countdown on both send buttons, and the hint that an unexpired code from the last hour can still be used.
+- `src/lib/authEmailErrors.ts` — **new file**, never added to git. Converts Supabase's raw `over_email_send_rate_limit` error into plain English.
+- `src/lib/deviceFingerprint.ts`, `src/lib/supabaseTrustedDevices.ts` — legacy fingerprint recognition (see item 56).
+- `src/pages/CommunityHelp.tsx` — two-phase success popup (ring spins exactly three times, then freezes green).
+- `NUMI_MARKETING_CAMPAIGN_PLAYBOOK.md` (new), `WEB_ANDROID_IOS_LAUNCH_AND_STITCH_WORKFLOW.md`, `resources/icon.png`, `resources/splash.png`, `git-push-image.bat`.
+- The entire Capacitor **`android/`** project — 76 files that had never been under version control. Only `android/app/build.gradle` was tracked. Had this PC failed, the Play release project would have had to be rebuilt from scratch.
+
+### 56. "Why did I have to re-verify this PC as trusted?" — EXPLAINED, no code defect
+
+- **Where:** `src/lib/deviceFingerprint.ts`, `src/lib/supabaseTrustedDevices.ts`
+- **How trust works:** the fingerprint is a hash of `wlbd_install_id`, a random UUID written to `localStorage` the first time the app is opened in a given browser profile or app install. Nothing else feeds into it (v2 formula), so browser updates, language changes and timezone changes no longer evict trust — which was the v1 bug that forced an OTP roughly every four weeks.
+- **Reason the re-verification happened — two causes stacked:**
+  1. **New PC.** `wlbd_install_id` lives in the browser's own storage on the old machine. It is not in GitHub and not in OneDrive. A new PC therefore has no install ID, generates a fresh one, and produces a fingerprint the server has never seen. Re-verification is **correct and unavoidable** here — it is the security feature doing its job.
+  2. **Formula change v1 → v2.** Existing `trusted_devices` rows hold v1 hashes, so the first sign-in after the v2 change does not match.
+- **What the fix addresses:** `getLegacyDeviceFingerprint()` recomputes the old v1 hash and `isDeviceTrusted()` checks for it. If a v1 row is found, the device is trusted **without an email code** and silently upgraded to a v2 row via `addTrustedDevice(…, "Migrated from legacy fingerprint")`. This removes cause 2 entirely — on the **same** browser.
+- **What it cannot address:** cause 1. The legacy hash also incorporates `wlbd_install_id`, which is brand new on a new PC, so no legacy row can match either. Any genuinely new browser profile or app install must verify once.
+- **Critically, this fix had never been deployed** — it was part of the stranded work above. The live site still ran the pre-migration code, which had no legacy lookup at all, so every previously-trusted device was forced through one OTP. Deploying v16.7 is what actually applies the fix.
+- **Expected behaviour after deployment:** verify this PC once more, then trust persists for the life of this browser profile. Trust is per browser profile and per app install by design — Chrome, Edge and the Android app each require their own one-time verification.
+- **Checked and cleared:** the Dashboard **Clear All Data** action removes only an explicit allow-list of `dashboard*`, `tdee*` and journey keys. It does **not** touch `wlbd_install_id` or `wlbd_trust_<userId>`, so a fresh start does not silently untrust the device. The only `localStorage.clear()` in the codebase is inside Delete Account, where wiping everything is correct.
+
+### 57. Repository hygiene
+
+- Supabase CLI scratch files under `supabase/.temp/` were tracked and appeared as changes on every CLI run. Now untracked (`git rm --cached`) and added to `.gitignore`. The files remain on disk; the CLI regenerates them.
+- Two stray 0-byte files, `body` and `state` (created 28 Apr 2026 by a redirected command), deleted.
+- `android/` added to version control.
+
+### 58. Android version numbers corrected
+
+- **Where:** `android/app/build.gradle`
+- **Issue:** GitHub held `versionCode 14 / versionName "2.0"`, but the local file said `versionCode 18 / versionName "1.0"`. Running `npx cap add android` on the new PC regenerated the file with Capacitor defaults, so the user-visible version had gone **backwards** from 2.0 to 1.0.
+- **Fix:** `versionCode 18`, `versionName "2.4"` (version code retained at 18 by decision).
+- **Watch for:** if an AAB with `versionCode 18` was already uploaded to Play, the Console rejects the upload with "version code 18 has already been used". The remedy is a one-line change to `versionCode 19` and a rebuild.
+
+### 59. Stripe is configured in TEST mode only
+
+- The A$72.00 yearly price was created with the Stripe **Test mode** toggle on, so `STRIPE_PRICE_ANNUAL` in Supabase currently holds a **test** price ID. `STRIPE_SECRET_KEY` must therefore also be a test key (`sk_test_…`) — a live key paired with a test price ID fails with "No such price".
+- **Before real launch**, all four must be switched together in Live mode: create the A$72.00 yearly price in Live, put the live price ID in `STRIPE_PRICE_ANNUAL`, swap `STRIPE_SECRET_KEY` to `sk_live_…`, and create a Live webhook whose signing secret goes into `STRIPE_WEBHOOK_SECRET`. Test and Live IDs are never interchangeable.
+
+### 60. Pre-existing code-quality debt (recorded, not yet fixed)
+
+- `npm run lint` reports **65 problems (30 errors, 35 warnings)** across the project. None originate in the v16.6/v16.7 edits — `PaymentDetails.tsx` and `Settings.tsx` together report only 3, all in untouched code.
+- Concentrated in `Dashboard.tsx` (empty `catch {}` blocks, `let` that should be `const`, several `any` types), `Workouts.tsx` and `Settings.tsx` (React Hook dependency warnings), and one `require()` import in `tailwind.config.ts`.
+- These do not block builds or deployment — `npm run build` succeeds and `tsc --noEmit` reports **0 errors**, because Vite does not run ESLint during a build.
+- **Worth fixing before launch:** empty `catch` blocks swallow errors silently, which makes live incidents very hard to diagnose. Scheduled as separate work so it does not mix with the pricing audit trail.
+
+### 61. First v16.7 push failed — git identity not configured on the new PC
+
+- **Symptom:** `git-push-update.bat` staged 101 files correctly, then the commit aborted with `Author identity unknown` / `*** Please tell me who you are` and `fatal: unable to auto-detect email address (got 'alant@AlansPC.(none)')`.
+- **Cause:** `user.name` and `user.email` had never been set on the new PC. Git stamps the author into every commit and refuses to proceed rather than record an invalid address. Like the PowerShell execution policy, this is a per-machine Windows setting that does **not** transfer via OneDrive or a GitHub clone.
+- **Not a project fault:** no files were lost and the staged set survived intact. The batch file behaved correctly by stopping before the push.
+- **Fix:** identity recovered from the existing commit history (`AlanTat471 <alan.tat@hotmail.com>`, consistent across all five prior commits) and set globally so attribution on GitHub remains unbroken:
+  - `git config --global user.name "AlanTat471"`
+  - `git config --global user.email "alan.tat@hotmail.com"`
+- **Follow-up:** the batch file's failure message previously guessed "nothing new to commit", which was misleading here. It now names the identity error explicitly, prints the two fix commands, and states that staged files are retained. Added to the migration guide troubleshooting table.
+
+### 62. Verification performed (v16.7)
+
+- `tsc --noEmit`: **0 type errors**.
+- `npm run build`: **succeeded** (Vite 8, 1811 modules).
+- ESLint on the edited files: no new problems introduced.
+- Routing: 15 page components on disk, 15 routes declared in `App.tsx`, all matched.
+- Backend present and intact: Edge Functions `billing` and `delete-account`, 10 database migrations, `.env.local`, `capacitor.config.ts`.
+- Confirmed no dollar amount is hardcoded in `billing/index.ts`; the charged amount comes only from the Stripe Price ID in `STRIPE_PRICE_ANNUAL`.

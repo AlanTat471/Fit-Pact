@@ -25,8 +25,12 @@ import {
 import { markExplicitLoginThisDocument } from "@/lib/authSessionGate";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { clearLegacyBiometricKeys, getLastEmail, setLastEmail } from "@/lib/lastLoginEmail";
+import { formatAuthEmailError } from "@/lib/authEmailErrors";
 
 type SignInMode = "password" | "otp";
+
+/** Minimum wait between OTP send / resend — reduces accidental rate-limit hits. */
+const OTP_RESEND_COOLDOWN_SEC = 60;
 
 const LoginForm = () => {
   const [signInMode, setSignInMode] = useState<SignInMode>("password");
@@ -42,12 +46,23 @@ const LoginForm = () => {
   const [newDeviceOtpSent, setNewDeviceOtpSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailNotRegisteredError, setEmailNotRegisteredError] = useState("");
+  const [otpResendCooldown, setOtpResendCooldown] = useState(0);
 
   const fingerprint = getDeviceFingerprint();
 
   useEffect(() => {
     clearLegacyBiometricKeys();
   }, []);
+
+  useEffect(() => {
+    if (otpResendCooldown <= 0) return;
+    const timer = window.setInterval(() => {
+      setOtpResendCooldown((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [otpResendCooldown]);
+
+  const startOtpResendCooldown = () => setOtpResendCooldown(OTP_RESEND_COOLDOWN_SEC);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,6 +129,7 @@ const LoginForm = () => {
   };
 
   const handleSendNewDeviceOtp = async () => {
+    if (otpResendCooldown > 0) return;
     setIsSubmitting(true);
     try {
       const { error } = await supabase.auth.signInWithOtp({
@@ -122,10 +138,15 @@ const LoginForm = () => {
       });
       if (error) throw error;
       setNewDeviceOtpSent(true);
+      startOtpResendCooldown();
       toast({ title: "Code sent", description: "Check your email." });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Could not send code.";
-      toast({ title: "Failed to send code", description: msg, variant: "destructive" });
+      const raw = err instanceof Error ? err.message : "Could not send code.";
+      toast({
+        title: "Failed to send code",
+        description: formatAuthEmailError(raw),
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -182,10 +203,15 @@ const LoginForm = () => {
       });
       if (error) throw error;
       setOtpSent(true);
+      startOtpResendCooldown();
       toast({ title: "Code sent", description: "Check your email." });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Could not send code.";
-      toast({ title: "Failed to send code", description: msg, variant: "destructive" });
+      const raw = err instanceof Error ? err.message : "Could not send code.";
+      toast({
+        title: "Failed to send code",
+        description: formatAuthEmailError(raw),
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -272,9 +298,13 @@ const LoginForm = () => {
               <Button
                 className="w-full"
                 onClick={() => handleSendNewDeviceOtp()}
-                disabled={isSubmitting}
+                disabled={isSubmitting || otpResendCooldown > 0}
               >
-                {isSubmitting ? "Sending…" : "Send code to email"}
+                {isSubmitting
+                  ? "Sending…"
+                  : otpResendCooldown > 0
+                    ? `Wait ${otpResendCooldown}s before sending`
+                    : "Send code to email"}
               </Button>
             </div>
           ) : (
@@ -293,6 +323,9 @@ const LoginForm = () => {
               <Button type="submit" className="w-full" disabled={isSubmitting || newDeviceOtpCode.length !== 8}>
                 {isSubmitting ? "Verifying…" : "Verify"}
               </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                Already have a code from the last hour? Enter it above — you do not need to resend.
+              </p>
               <Button
                 type="button"
                 variant="outline"
@@ -301,9 +334,9 @@ const LoginForm = () => {
                   setNewDeviceOtpCode("");
                   handleSendNewDeviceOtp();
                 }}
-                disabled={isSubmitting}
+                disabled={isSubmitting || otpResendCooldown > 0}
               >
-                Resend Code
+                {otpResendCooldown > 0 ? `Resend in ${otpResendCooldown}s` : "Resend Code"}
               </Button>
               <Button
                 type="button"

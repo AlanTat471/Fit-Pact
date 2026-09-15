@@ -23,6 +23,11 @@ const CommunityHelp = () => {
   const { user } = useAuth();
   const [showSupportForm, setShowSupportForm] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  // Two-phase animation for the success popup: 'spinning' shows a rotating
+  // ring that completes exactly 3 turns (~1.5s), then we transition to
+  // 'success' which freezes the ring and turns the centre tick green so the
+  // user gets a clear "submitted" signal before the popup auto-dismisses.
+  const [confirmationPhase, setConfirmationPhase] = useState<'spinning' | 'success'>('spinning');
   const [submitLoading, setSubmitLoading] = useState(false);
   const [supportForm, setSupportForm] = useState({
     name: "",
@@ -31,17 +36,25 @@ const CommunityHelp = () => {
     email: "",
   });
   const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
-  const confirmationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirmationDismissRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirmationGreenRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-dismiss the success popup after 3 seconds (or earlier if the user
-  // clicks anywhere). Cleared on unmount to avoid leaks.
   useEffect(() => {
     if (!showConfirmation) return;
-    confirmationTimerRef.current = setTimeout(() => {
+    // Spin for 1500ms (3 full rotations at 500ms each), then flip the tick
+    // to green. After a further 1500ms hold, dismiss the popup so the user
+    // is returned to the (now-cleared) Contact Support card. Tapping anywhere
+    // dismisses earlier.
+    setConfirmationPhase('spinning');
+    confirmationGreenRef.current = setTimeout(() => {
+      setConfirmationPhase('success');
+    }, 1500);
+    confirmationDismissRef.current = setTimeout(() => {
       setShowConfirmation(false);
     }, 3000);
     return () => {
-      if (confirmationTimerRef.current) clearTimeout(confirmationTimerRef.current);
+      if (confirmationDismissRef.current) clearTimeout(confirmationDismissRef.current);
+      if (confirmationGreenRef.current) clearTimeout(confirmationGreenRef.current);
     };
   }, [showConfirmation]);
 
@@ -82,9 +95,10 @@ const CommunityHelp = () => {
       return;
     }
 
-    // Reset the form first so the success popup overlays a clean slate.
+    // Reset fields and keep the Contact Support dialog open so that when the
+    // thank-you overlay closes the user is still on the form with empty fields.
     setSupportForm({ name: "", subject: "", description: "", email: "" });
-    setShowSupportForm(false);
+    setFormErrors({});
     setShowConfirmation(true);
   };
 
@@ -282,10 +296,28 @@ const CommunityHelp = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3">
-              {/* Revolving tick: a rotating ring with a static check inside */}
+              {/* Phase 1 ('spinning'): rotating brown ring; the tick stays still
+                  in the middle. The ring stops after exactly 3 rotations
+                  (animation-iteration-count: 3 over 1500ms).
+                  Phase 2 ('success'): ring freezes as a fully-formed green
+                  circle and the tick is rendered in green. */}
               <div className="relative shrink-0 h-10 w-10">
-                <span className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" aria-hidden />
-                <span className="absolute inset-0 flex items-center justify-center text-primary">
+                {confirmationPhase === 'spinning' ? (
+                  <span
+                    className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary"
+                    style={{
+                      animation: 'spin 0.5s linear 3',
+                      animationFillMode: 'forwards',
+                    }}
+                    aria-hidden
+                  />
+                ) : (
+                  <span
+                    className="absolute inset-0 rounded-full border-2 border-green-500"
+                    aria-hidden
+                  />
+                )}
+                <span className={`absolute inset-0 flex items-center justify-center transition-colors duration-300 ${confirmationPhase === 'success' ? 'text-green-500' : 'text-primary'}`}>
                   <MaterialIcon name="check" size="md" />
                 </span>
               </div>

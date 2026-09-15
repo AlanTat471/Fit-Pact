@@ -41,12 +41,8 @@ function getOrCreateInstallId(): string {
   }
 }
 
-export function getDeviceFingerprint(): string {
-  // The install ID is already a unique random UUID per browser profile / app
-  // install. Hashing it through djb2 (matching the v1 helper) just gives us
-  // a compact base36 string with the same `wlbd_` prefix that the rest of
-  // the codebase already expects.
-  const str = getOrCreateInstallId();
+function hashFingerprintParts(parts: (string | number)[]): string {
+  const str = parts.join("|");
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
@@ -54,4 +50,30 @@ export function getDeviceFingerprint(): string {
     hash = hash & hash;
   }
   return `wlbd_${Math.abs(hash).toString(36)}`;
+}
+
+export function getDeviceFingerprint(): string {
+  // The install ID is already a unique random UUID per browser profile / app
+  // install. Hashing it through djb2 (matching the v1 helper) just gives us
+  // a compact base36 string with the same `wlbd_` prefix that the rest of
+  // the codebase already expects.
+  return hashFingerprintParts([getOrCreateInstallId()]);
+}
+
+/**
+ * v1 fingerprint (pre-v12): mixed userAgent and other fields. Used only so
+ * devices that were verified before v12 can be recognized without a new OTP
+ * when Supabase email rate limits block code delivery.
+ */
+export function getLegacyDeviceFingerprint(): string {
+  if (typeof navigator === "undefined") {
+    return hashFingerprintParts(["noid"]);
+  }
+  return hashFingerprintParts([
+    getOrCreateInstallId(),
+    navigator.userAgent,
+    navigator.language,
+    new Date().getTimezoneOffset(),
+    navigator.hardwareConcurrency || 0,
+  ]);
 }

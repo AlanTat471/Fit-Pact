@@ -87,7 +87,7 @@ const PaymentDetails = () => {
   /** The Stripe renewal date — the day the next charge (or lock-out) happens. */
   const renewalDate = periodEnd ? formatDMY(periodEnd) : null;
   const planDisplayName = (p: PlanType) => (p === "monthly" ? "Monthly" : p === "annual" ? "Annually" : "Free");
-  const planPriceLabel = (p: PlanType) => (p === "monthly" ? "$8.99" : p === "annual" ? "$71.88" : "$0");
+  const planPriceLabel = (p: PlanType) => (p === "monthly" ? "$8.99" : p === "annual" ? "$72" : "$0");
 
   useEffect(() => {
     const setup = searchParams.get("setup");
@@ -425,26 +425,68 @@ const PaymentDetails = () => {
     return 'your active subscription';
   };
 
-  const PaidPlanCard = ({ plan, name, price, billingLine, description, badge, subscribeLabel }: {
-    plan: PlanType;
+  /**
+   * Header shared by the Free, Monthly and Annually cards. Every slot has a
+   * reserved height so the three boxes stay aligned even though only Annually
+   * carries a badge and the status line length differs per plan.
+   */
+  const PlanCardHeader = ({ name, statusText, priceMain, priceUnit, billingLine, description, badgeLine1, badgeLine2 }: {
     name: string;
-    price: string;
+    statusText: string;
+    priceMain: string;
+    priceUnit: string;
     billingLine: string;
     description: string;
-    badge?: string;
-    subscribeLabel?: string;
+    badgeLine1?: string;
+    badgeLine2?: string;
   }) => (
-    <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${(activePlan === plan && premiumUnlocked) || (hasPendingSelection && pendingPlanChoice === plan) ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
-      <CardHeader className="pb-3 min-h-[150px]">
-        <CardTitle className="text-lg">{name}</CardTitle>
-        {badge && (
-          <Badge variant="secondary" className="text-[9px] w-fit mt-1 uppercase tracking-wide">
-            {badge}
+    <CardHeader className="pb-3">
+      <CardTitle className="text-lg">{name}</CardTitle>
+      <div className="min-h-[36px]">
+        {badgeLine1 && (
+          <Badge
+            variant="secondary"
+            className="flex-col items-center w-fit max-w-full px-2 py-0.5 text-[9px] leading-[1.3] uppercase tracking-wide text-center"
+          >
+            <span>{badgeLine1}</span>
+            {badgeLine2 && <span>{badgeLine2}</span>}
           </Badge>
         )}
-        <span className="text-[9px] tracking-wide text-on-surface-variant">({statusLabel(plan)})</span>
-        <p className="text-[11px] leading-[1.35] text-on-surface-variant mt-1.5 min-h-[90px]">{description}</p>
-      </CardHeader>
+      </div>
+      <span className="text-[9px] leading-[1.25] tracking-wide text-on-surface-variant min-h-[24px]">({statusText})</span>
+      <div>
+        <p className="flex items-baseline gap-1 leading-none">
+          <span className="text-2xl font-extrabold tracking-tight text-on-surface">{priceMain}</span>
+          <span className="text-[12px] font-semibold text-on-surface-variant">{priceUnit}</span>
+        </p>
+        <p className="text-[10px] leading-snug text-on-surface-variant mt-1.5">{billingLine}</p>
+      </div>
+      <p className="text-[11px] leading-[1.35] text-on-surface-variant min-h-[76px]">{description}</p>
+    </CardHeader>
+  );
+
+  const PaidPlanCard = ({ plan, name, priceMain, priceUnit, billingLine, description, badgeLine1, badgeLine2, subscribeLabel }: {
+    plan: PlanType;
+    name: string;
+    priceMain: string;
+    priceUnit: string;
+    billingLine: string;
+    description: string;
+    badgeLine1?: string;
+    badgeLine2?: string;
+    subscribeLabel: string;
+  }) => (
+    <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${(activePlan === plan && premiumUnlocked) || (hasPendingSelection && pendingPlanChoice === plan) ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
+      <PlanCardHeader
+        name={name}
+        statusText={statusLabel(plan)}
+        priceMain={priceMain}
+        priceUnit={priceUnit}
+        billingLine={billingLine}
+        description={description}
+        badgeLine1={badgeLine1}
+        badgeLine2={badgeLine2}
+      />
       <CardContent className="flex-1 flex flex-col pb-28">
         <div className="flex items-start gap-1.5 min-h-[68px]">
           <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
@@ -537,9 +579,9 @@ const PaymentDetails = () => {
                   </>
                 ) : (
                   <>
-                    <span className="text-[11px] font-bold leading-tight text-center">{price}</span>
+                    <span className="text-[12px] font-bold leading-tight text-center">Subscribe</span>
                     <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">
-                      {subscribeLabel || billingLine}
+                      {subscribeLabel}
                     </span>
                   </>
                 )}
@@ -580,14 +622,15 @@ const PaymentDetails = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto items-stretch">
         {/* Free Plan */}
         <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === 'free' && !hasPendingSelection && !hasActiveStripeSub ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
-          <CardHeader className="pb-3 min-h-[150px]">
-            <CardTitle className="text-lg">Free Plan</CardTitle>
-            <span className="text-[9px] tracking-wide text-on-surface-variant">({statusLabel('free')})</span>
-            <p className="text-[11px] leading-[1.35] text-on-surface-variant mt-1.5 min-h-[90px]">
-              There is nothing wrong with trying before buying! Get 14 days limited access to get a feel of the app before you subscribe!
-            </p>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col pb-24">
+          <PlanCardHeader
+            name="Free Plan"
+            statusText={statusLabel('free')}
+            priceMain="$0"
+            priceUnit="/ 14 days"
+            billingLine="No card required to start"
+            description="There is nothing wrong with trying before buying! Get 14 days limited access to get a feel of the app before you subscribe!"
+          />
+          <CardContent className="flex-1 flex flex-col pb-28">
             <div className="flex items-start gap-1.5 min-h-[68px]">
               <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
               <div>
@@ -609,19 +652,19 @@ const PaymentDetails = () => {
                 <p className="text-[10px] leading-snug text-muted-foreground">Free Trial will end after 14 days automatically</p>
               </div>
             </div>
-            <div className="absolute left-6 right-6 bottom-6">
+            <div className="absolute left-4 right-4 bottom-6">
               {hasActiveStripeSub ? (
-                <Button onClick={() => handleSelectPlan('free')} variant="default" className="w-full h-[52px] px-3 flex flex-col items-center justify-center gap-0.5 leading-tight" disabled={billingLoading}>
-                  <span className="text-xs font-bold">Switch to Free Plan</span>
+                <Button onClick={() => handleSelectPlan('free')} variant="default" className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight" disabled={billingLoading}>
+                  <span className="text-[12px] font-bold text-center">Switch to Free Plan</span>
                 </Button>
               ) : hasPendingSelection ? (
-                <Button onClick={() => handleSelectPlan('free')} variant="default" className="w-full h-[52px] px-3 flex flex-col items-center justify-center gap-0.5 leading-tight" disabled={billingLoading}>
-                  <span className="text-xs font-bold">Cancel selected plan</span>
-                  <span className="text-[9px] opacity-90 text-center leading-snug">Nothing charged yet</span>
+                <Button onClick={() => handleSelectPlan('free')} variant="default" className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight" disabled={billingLoading}>
+                  <span className="text-[12px] font-bold text-center">Cancel selected plan</span>
+                  <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">Nothing charged yet</span>
                 </Button>
               ) : (
-                <Button variant="default" className="w-full h-[52px] px-3 flex items-center justify-center leading-tight" disabled>
-                  <span className="text-xs font-bold">Active</span>
+                <Button variant="default" className="w-full min-h-[56px] h-auto py-2.5 px-2 flex items-center justify-center leading-tight" disabled>
+                  <span className="text-[12px] font-bold">Active</span>
                 </Button>
               )}
             </div>
@@ -631,20 +674,23 @@ const PaymentDetails = () => {
         <PaidPlanCard
           plan="monthly"
           name="Monthly"
-          price="$8.99 / month"
-          billingLine="Billed monthly. Cancel anytime."
-          subscribeLabel={fromAcclimationComplete ? "Subscribe now via Stripe" : "Subscribe - Charged after Week 4"}
+          priceMain="$8.99"
+          priceUnit="/month"
+          billingLine="Billed $8.99 monthly"
+          subscribeLabel={fromAcclimationComplete ? "Pay now via Stripe" : "Charged after Week 4"}
           description="Full access to all Numi features after your free Acclimation Phase. Less than a daily coffee to kickstart your journey!"
         />
 
         <PaidPlanCard
           plan="annual"
           name="Annually"
-          price="$71.88 / year"
-          billingLine="Billed annually. Cancel anytime."
-          subscribeLabel={fromAcclimationComplete ? "Subscribe now via Stripe" : "Subscribe - Charged after Week 4"}
-          description="Get 4 months free with annual billing at $71.88 (equivalent to $5.99/month) - saving of $36 compared to Monthly subscription!"
-          badge="Best Value - 33% discount!"
+          priceMain="$6.00"
+          priceUnit="/month"
+          billingLine="Billed $72 yearly"
+          subscribeLabel={fromAcclimationComplete ? "Pay now via Stripe" : "Charged after Week 4"}
+          description="Get 4 months free compared to Monthly - you save $35.88 every year. Full access to all Numi features after your free Acclimation Phase."
+          badgeLine1="Best Value - 33% discount"
+          badgeLine2="(4 months free)"
         />
       </div>
 
