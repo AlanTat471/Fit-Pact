@@ -9,15 +9,18 @@ cd /d "%~dp0"
 REM ------------------------------------------------------------------
 REM WHY THIS FILE CHANGED (v16.7)
 REM
-REM Previous versions listed each file by hand with "git add <file>".
-REM That is how 7 weeks of finished work (27 Jul - 15 Sep 2026) never
-REM reached GitHub: files that were not on the hand-written list were
-REM silently left behind, so Vercel kept rebuilding an old snapshot.
+REM 1. Earlier versions listed each file by hand with "git add <file>".
+REM    That is how 7 weeks of finished work (27 Jul - 15 Sep 2026) never
+REM    reached GitHub: files not on the hand-written list were silently
+REM    skipped, so Vercel kept rebuilding an old snapshot. Now uses
+REM    "git add -A" so nothing can be missed. Junk stays out via
+REM    .gitignore, not human memory.
 REM
-REM This version uses "git add -A", which stages EVERY change in the
-REM project - modified, new and deleted - so nothing can be missed
-REM again. Junk is kept out by .gitignore (node_modules, dist,
-REM supabase/.temp) rather than by remembering to omit it.
+REM 2. It used to abort whenever "git commit" returned an error - even
+REM    for the harmless "nothing to commit" case. That stranded an
+REM    already-made commit when a push was interrupted. It now only
+REM    treats a failed commit as fatal if there were staged changes,
+REM    and it always pushes any commit still waiting.
 REM ------------------------------------------------------------------
 
 echo [1/4] Checking this really is the Numi project folder...
@@ -32,12 +35,19 @@ if not exist package.json (
 echo [2/4] Staging ALL changes (modified, new and deleted)...
 git add -A
 
+REM "git diff --cached --quiet" exits 1 when something IS staged.
+git diff --cached --quiet
+if errorlevel 1 (set HAVE_STAGED=1) else (set HAVE_STAGED=0)
+
 echo.
-echo These files are about to be pushed:
+echo [3/4] Committing...
+
+if "%HAVE_STAGED%"=="0" goto :after_commit
+
+echo These files are about to be committed:
 git status --short
 echo.
 
-echo [3/4] Committing...
 git commit ^
   -m "v16.7: annual plan $72/year, plan card redesign, login and device-trust fixes, Android project added" ^
   -m "Pricing: annual is now A$72/year shown as $6.00/month with 'Billed $72 yearly'; Best Value badge wraps onto two lines; Free/Monthly/Annually share one card header so all three boxes align; Settings and the switch-plan popup quote $72. No Quarterly plan." ^
@@ -47,28 +57,51 @@ git commit ^
 
 if errorlevel 1 (
     echo.
-    echo ***** COMMIT DID NOT RUN. *****
-    echo Read the message above. Common causes:
-    echo   - "Author identity unknown" = git does not know who you are
-    echo     on this PC. Fix once with these two commands:
-    echo       git config --global user.name "AlanTat471"
-    echo       git config --global user.email "alan.tat@hotmail.com"
-    echo     then run this file again.
-    echo   - "nothing to commit" = everything is already saved. Fine.
-    echo   Anything else: report it back in Cursor.
+    echo ***** COMMIT FAILED - and there WERE changes to save. *****
+    echo Read the message above. Most likely:
+    echo   "Author identity unknown" = git does not know who you are.
+    echo   Fix once, then run this file again:
+    echo     git config --global user.name "AlanTat471"
+    echo     git config --global user.email "alan.tat@hotmail.com"
+    echo.
     echo   Your staged files are NOT lost - they stay staged.
     pause
     exit /b 1
 )
+echo Commit created.
+goto :after_commit
+
+:after_commit
+if "%HAVE_STAGED%"=="0" echo No new file changes to commit - checking for commits still waiting to be pushed...
+
+set AHEAD=0
+for /f %%i in ('git rev-list --count origin/main..HEAD') do set AHEAD=%%i
+
+if "%AHEAD%"=="0" (
+    echo.
+    echo ============================================================
+    echo   Nothing to do - GitHub already has all your work.
+    echo ============================================================
+    pause
+    exit /b 0
+)
 
 echo.
-echo [4/4] Pushing to GitHub...
+echo [4/4] Pushing %AHEAD% commit/s to GitHub...
+echo.
+echo   NOTE: if a GitHub sign-in window appears, COMPLETE IT.
+echo   Do not close it - the upload stops if you do.
+echo   You only need to do this once on this PC.
+echo.
 git push
 if errorlevel 1 (
     echo.
     echo ***** PUSH FAILED. *****
-    echo Most likely cause: GitHub has commits your PC does not.
-    echo Fix: run  git pull  then run this file again.
+    echo Your commit is SAFE on this PC - just not uploaded yet.
+    echo   - Closed the GitHub sign-in window? Run this file again
+    echo     and complete the sign-in.
+    echo   - "rejected / non-fast-forward"? Run:  git pull
+    echo     then run this file again.
     pause
     exit /b 1
 )

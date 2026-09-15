@@ -488,7 +488,18 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
   - `git config --global user.email "alan.tat@hotmail.com"`
 - **Follow-up:** the batch file's failure message previously guessed "nothing new to commit", which was misleading here. It now names the identity error explicitly, prints the two fix commands, and states that staged files are retained. Added to the migration guide troubleshooting table.
 
-### 62. Verification performed (v16.7)
+### 62. Push script aborted on a harmless "nothing to commit" — FIXED
+
+- **Symptom:** after the identity fix, `git-push-update.bat` created commit `d76190d` (101 files) correctly, but the GitHub sign-in window was closed before the upload finished, so the push did not complete. Re-running the script printed `nothing to commit, working tree clean` and then `***** COMMIT DID NOT RUN *****`, exiting **before** it reached the push step. The finished commit was stranded on the PC with no way for the script to send it.
+- **Root cause:** the script treated any non-zero exit from `git commit` as fatal. `git commit` exits non-zero both for real failures *and* for the entirely normal "there is nothing new to commit" case, so an interrupted push became unrecoverable through the script.
+- **Fix:**
+  - Before committing, `git diff --cached --quiet` determines whether anything is actually staged. A failed commit is only fatal when there **were** staged changes; otherwise the script reports "no new file changes" and carries on.
+  - The script then always checks `git rev-list --count origin/main..HEAD` and pushes any commit still waiting, regardless of whether this run created one. If the count is zero it reports that GitHub is already up to date and exits successfully.
+  - The push step now warns **before** it runs that a GitHub sign-in window may appear and must be completed, not closed.
+  - Push failure messaging distinguishes an abandoned sign-in from a rejected non-fast-forward push (which needs `git pull`), and states plainly that the commit is safe locally.
+- **Credentials:** Git Credential Manager was already enabled at the system level (`C:/Program Files/Git/etc/gitconfig`), so completing the GitHub sign-in once stores it for future pushes. No configuration change was required.
+
+### 63. Verification performed (v16.7)
 
 - `tsc --noEmit`: **0 type errors**.
 - `npm run build`: **succeeded** (Vite 8, 1811 modules).
