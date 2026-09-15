@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v16.7 - Annual $72 plan + 7 weeks of unpushed work
+echo   Numi v16.8 - Plan card gaps, Active/Inactive status, 4-week trial
 echo ============================================================
 echo.
 
@@ -49,7 +49,11 @@ git status --short
 echo.
 
 git commit ^
-  -m "v16.7: annual plan $72/year, plan card redesign, login and device-trust fixes, Android project added" ^
+  -m "v16.8: plan card gaps removed, unified Active/Inactive status, 4-week free trial with real end date" ^
+  -m "Plan cards: the Annually badge now sits beside the heading (smaller text) and the reserved empty badge slot is gone, so Free Plan and Monthly no longer have a blank gap under their headings." ^
+  -m "Status: all three cards show the same Active/(your current active plan) or Inactive/(plan not active) block under the heading, and exactly one card is ever Active. Buttons keep their distinct actions (Subscribe, Selected, Cancel selected plan, Resume plan, Update payment method, Switch to Free Plan) with consistent typography." ^
+  -m "Free trial: card now says 4 weeks instead of 14 days, matching the 28-day Acclimation Phase the code has always granted. Trial Period reads 'Your Free Trial will end on DD/MM/YY' from the journey's acclimation end date, falling back to '4 weeks after your journey start date' for users with no start date yet." ^
+  -m "v16.7 (included): annual plan $72/year, plan card redesign, login and device-trust fixes, Android project added" ^
   -m "Pricing: annual is now A$72/year shown as $6.00/month with 'Billed $72 yearly'; Best Value badge wraps onto two lines; Free/Monthly/Annually share one card header so all three boxes align; Settings and the switch-plan popup quote $72. No Quarterly plan." ^
   -m "Login: 60-second cooldown on sending verification codes with live countdown, plain-English Supabase email rate-limit messages (new src/lib/authEmailErrors.ts), and legacy device-fingerprint migration so devices trusted before v12 are recognised without a fresh OTP." ^
   -m "Community Help: success popup spins three times then freezes with a green tick." ^

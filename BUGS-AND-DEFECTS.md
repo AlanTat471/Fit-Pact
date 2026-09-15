@@ -507,3 +507,66 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
 - Routing: 15 page components on disk, 15 routes declared in `App.tsx`, all matched.
 - Backend present and intact: Edge Functions `billing` and `delete-account`, 10 database migrations, `.env.local`, `capacitor.config.ts`.
 - Confirmed no dollar amount is hardcoded in `billing/index.ts`; the charged amount comes only from the Stripe Price ID in `STRIPE_PRICE_ANNUAL`.
+
+---
+
+## v16.8 — Plan card gaps, unified Active/Inactive status, 4-week free trial (Sep 2026)
+
+### 64. Blank gap under the Free Plan and Monthly headings — FIXED
+
+- **Where:** `PaymentDetails.tsx` (`PlanCardHeader`)
+- **Issue:** v16.6 placed the badge in its own row **below** the heading inside a slot with a reserved height of `min-h-[36px]`. Annually filled it; Free and Monthly left it empty, producing a visible blank band between the heading and the text beneath it.
+- **Fix:** the badge now sits on the **same row** as the heading (`flex items-center gap-1.5 flex-wrap`) and the reserved slot is gone. Cards without a badge therefore have no empty space, and the status line sits directly under the heading on all three. `flex-wrap` is retained as a safety net so a very narrow card drops the badge below the heading instead of overflowing.
+- Also removed the `min-h-[24px]` reservation on the old status line, which contributed to the same gap.
+
+### 65. Annual badge shrunk to sit beside the heading
+
+- **Where:** `PaymentDetails.tsx`
+- Badge reduced from `text-[9px] px-2` to `text-[8px] px-1.5` with `leading-[1.2]`, keeping the two lines (**BEST VALUE - 33% DISCOUNT** / **(4 MONTHS FREE)**) introduced in v16.6.
+- At the `lg` breakpoint each card is ~283px wide (896px container, 3 columns, 24px gaps) giving ~235px of content width. "Annually" occupies ~76px, leaving ~153px; the longer badge line measures ~127px at 8px, so it fits beside the heading.
+
+### 66. Three buttons showed three different things — unified status, actions preserved
+
+- **Where:** `PaymentDetails.tsx`
+- **Reported problem:** the three plan cards each showed a different button ("Active", "Selected ✓", "Subscribe", "Cancel selected plan"), which read as inconsistent and made it unclear which plan the user was actually on.
+- **Rejected approach:** replacing each button's text with a plain `Active` / `Inactive` label. That would have removed the **only** control for subscribing, cancelling a pre-charge selection, switching plans and resuming a cancelled plan — reintroducing items **45** and **47**, both previously logged as fixed defects. Flagged to the user before implementing; the alternative below was chosen.
+- **Implemented instead — status and action separated:**
+  - Every card now carries an identical status block directly under the heading: **Active** with *(your current active plan)*, or **Inactive** with *(plan not active)*. The active one is tinted `text-primary`; the others use `text-on-surface-variant`.
+  - The old free-text status strings (`your active subscription`, `inactive subscription`, `your selected plan — charged after Week 4`, `current access (plan selected below)`) and the `statusLabel()` helper are removed.
+  - The button below remains the **action**, now with consistent typography across all cards (`text-[12px] font-bold` main line, `text-[10px]` sub-line, `min-h-[56px]`): `Subscribe`, `Selected ✓`, `Cancel selected plan`, `Resume plan`, `Update payment method`, `Switch to Free Plan`.
+- **Exactly one card is ever Active**, guaranteed by construction:
+  ```ts
+  const paidPlanIsActive = premiumUnlocked && (activePlan === "monthly" || activePlan === "annual");
+  const isPlanActive = (plan) => plan === "free" ? !paidPlanIsActive : activePlan === plan && premiumUnlocked;
+  ```
+  Free is therefore Active precisely when no paid plan is unlocked. A plan *selected* before Week 4 is correctly **Inactive** — nothing has been charged — while its button still reads "Selected ✓" and the info banner explains the pending state.
+- **Button text changes:** the active paid card's button was "Active / Update Payment Method" (duplicating the new status block); it now reads **"Update payment method / Change the card we charge"**. The Free card's disabled "Active" button now reads **"Current plan / No payment required"**. "Switch to Free Plan" gained the sub-line "Keeps access until your paid period ends".
+- **Information preserved:** the cancellation end date formerly shown in the status line (`your active subscription — ends DD/MM/YYYY`) still appears on the Resume button ("Access ends DD/MM/YYYY — tap to continue").
+
+### 67. Free Plan said "14 days" when the product gives 4 weeks — FIXED
+
+- **Where:** `PaymentDetails.tsx`
+- **Issue:** the Free Plan card advertised a 14-day trial in four places. **Nothing in the code enforces 14 days.** The journey anchor is Day 1 of the Acclimation Phase, acclimation runs `anchor + 27 days` (28 days = 4 weeks), Weight Loss Week 1 starts at `anchor + 28 days`, and the paywall triggers at the end of Week 4. Users have always had 4 weeks.
+- **Why it mattered:** stating a shorter trial than the one actually given is misleading to customers and inconsistent with the Dashboard, the Week 4 popup and both paid cards, which all speak in weeks.
+- **Fix:** `$0 / 4 weeks`, "Free trial for 4 weeks", and a description built around 4 weeks. Wording uses "4 weeks" rather than "28 days" to match the rest of the app and to read as a more generous offer.
+
+### 68. Trial Period now shows the user's real end date
+
+- **Where:** `PaymentDetails.tsx`
+- **Was:** the static "Free Trial will end after 14 days automatically".
+- **Now:** **"Your Free Trial will end on DD/MM/YY"**, using the actual journey date rather than a recalculated guess. Reads `dashboardAcclimationPhaseEndDate` (written from the Supabase journey's `acclimation_phase_end_date` by `UserDataContext`); if only the start date is present it derives `start + 27 days`.
+- **Fallback:** a brand-new user has no journey start date, so no date exists to print. The line then reads **"Your Free Trial will end 4 weeks after your journey start date"** and switches to the real date automatically once the start date is set.
+- Date formatting is DD/MM/YY as requested, distinct from the DD/MM/YYYY used by `formatDMY` for Stripe billing dates.
+
+### 69. Known wording inaccuracy left untouched (needs a decision)
+
+- When a user **already has an active Stripe subscription** and taps the other paid plan, that button still reads "Subscribe / Charged after Week 4". The action is actually a **plan switch**, charged at the next renewal date (item 41), not at Week 4. The confirmation popup states the correct date, so no incorrect charge can occur.
+- Pre-existing since v16.4 and **not introduced by v16.8**. Left unchanged because the user asked for no changes beyond the listed items. Suggested wording for that case: "Switch plan / Starts at your next renewal".
+
+### 70. Verification performed (v16.8)
+
+- `npm run build`: **succeeded** (Vite 8).
+- ESLint on `PaymentDetails.tsx`: **0 errors**, 1 pre-existing `react-hooks/exhaustive-deps` warning at line 73 in untouched code.
+- Confirmed no `14 day` string and no `statusLabel` reference remains in the file.
+- State matrix traced end to end — Free/Monthly/Annually status and button for: new user; card saved with a plan selected pre-Week 4; paid plan active; paid plan with cancellation scheduled; premium lapsed after the paid period expired. Exactly one card reports Active in every case.
+- **Not changed, as instructed:** the card highlight (`border-primary shadow-glow`) still follows the *selected* plan rather than the *active* plan, so a glowing card can read "Inactive" while its button reads "Selected ✓". Raised for a future decision.

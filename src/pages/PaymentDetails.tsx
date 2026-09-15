@@ -411,28 +411,53 @@ const PaymentDetails = () => {
     !!pendingPlanChoice &&
     (pendingPlanChoice === "monthly" || pendingPlanChoice === "annual");
 
-  const statusLabel = (plan: PlanType) => {
-    if (hasPendingSelection && plan === pendingPlanChoice) {
-      return 'your selected plan — charged after Week 4';
-    }
-    if (hasPendingSelection && plan === 'free') {
-      return 'current access (plan selected below)';
-    }
-    if (activePlan !== plan) return 'inactive subscription';
-    if (hasActiveStripeSub && subscription?.cancel_at_period_end && subscription.plan_type === plan && paidUntilDate) {
-      return `your active subscription — ends ${paidUntilDate}`;
-    }
-    return 'your active subscription';
-  };
+  /** A paid plan is only live once Stripe has actually unlocked premium. */
+  const paidPlanIsActive =
+    premiumUnlocked && (activePlan === "monthly" || activePlan === "annual");
 
   /**
-   * Header shared by the Free, Monthly and Annually cards. Every slot has a
-   * reserved height so the three boxes stay aligned even though only Annually
-   * carries a badge and the status line length differs per plan.
+   * Exactly one card is "Active" at any time. Until a paid plan is unlocked
+   * the user is on Free — selecting a plan before Week 4 does not make it
+   * active, because nothing has been charged yet.
    */
-  const PlanCardHeader = ({ name, statusText, priceMain, priceUnit, billingLine, description, badgeLine1, badgeLine2 }: {
+  const isPlanActive = (plan: PlanType) =>
+    plan === "free" ? !paidPlanIsActive : activePlan === plan && premiumUnlocked;
+
+  /**
+   * Last day of the free 4-week Acclimation window. The Dashboard/journey
+   * owns these dates; we read the value it stores rather than recalculating
+   * the phase here. Null until the user sets their journey start date.
+   */
+  const freeTrialEndLabel = (() => {
+    const isoPattern = /^\d{4}-\d{2}-\d{2}$/;
+    const toDmy = (iso: string) => {
+      const [y, m, d] = iso.split("-");
+      return `${d}/${m}/${y.slice(2)}`;
+    };
+    try {
+      const end = localStorage.getItem("dashboardAcclimationPhaseEndDate");
+      if (end && isoPattern.test(end)) return toDmy(end);
+      const start = localStorage.getItem("dashboardAcclimationPhaseStartDate");
+      if (start && isoPattern.test(start)) {
+        const [y, m, d] = start.split("-").map(Number);
+        const dt = new Date(y, m - 1, d);
+        // 4 weeks inclusive: day 1 + 27 days = day 28.
+        dt.setDate(dt.getDate() + 27);
+        return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${String(dt.getFullYear()).slice(2)}`;
+      }
+    } catch {
+      /* private mode / quota */
+    }
+    return null;
+  })();
+
+  /**
+   * Header shared by the Free, Monthly and Annually cards, so all three read
+   * identically: heading (+ badge), Active/Inactive status, price, blurb.
+   */
+  const PlanCardHeader = ({ name, active, priceMain, priceUnit, billingLine, description, badgeLine1, badgeLine2 }: {
     name: string;
-    statusText: string;
+    active: boolean;
     priceMain: string;
     priceUnit: string;
     billingLine: string;
@@ -441,19 +466,32 @@ const PaymentDetails = () => {
     badgeLine2?: string;
   }) => (
     <CardHeader className="pb-3">
-      <CardTitle className="text-lg">{name}</CardTitle>
-      <div className="min-h-[36px]">
+      {/* Badge sits on the same row as the heading. Cards without a badge
+          therefore have no reserved empty slot pushing their text down.
+          flex-wrap is a safety net: on very narrow cards the badge drops
+          below the heading instead of overflowing. */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <CardTitle className="text-lg">{name}</CardTitle>
         {badgeLine1 && (
           <Badge
             variant="secondary"
-            className="flex-col items-center w-fit max-w-full px-2 py-0.5 text-[9px] leading-[1.3] uppercase tracking-wide text-center"
+            className="flex-col items-center shrink-0 px-1.5 py-0.5 text-[8px] leading-[1.2] uppercase tracking-wide text-center"
           >
             <span>{badgeLine1}</span>
             {badgeLine2 && <span>{badgeLine2}</span>}
           </Badge>
         )}
       </div>
-      <span className="text-[9px] leading-[1.25] tracking-wide text-on-surface-variant min-h-[24px]">({statusText})</span>
+      {/* Same status treatment on every card so the user can tell at a glance
+          which plan they are actually on. The action lives in the button. */}
+      <div>
+        <p className={`text-[12px] font-bold leading-tight ${active ? "text-primary" : "text-on-surface-variant"}`}>
+          {active ? "Active" : "Inactive"}
+        </p>
+        <p className="text-[10px] leading-snug text-on-surface-variant">
+          {active ? "(your current active plan)" : "(plan not active)"}
+        </p>
+      </div>
       <div>
         <p className="flex items-baseline gap-1 leading-none">
           <span className="text-2xl font-extrabold tracking-tight text-on-surface">{priceMain}</span>
@@ -479,7 +517,7 @@ const PaymentDetails = () => {
     <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${(activePlan === plan && premiumUnlocked) || (hasPendingSelection && pendingPlanChoice === plan) ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
       <PlanCardHeader
         name={name}
-        statusText={statusLabel(plan)}
+        active={isPlanActive(plan)}
         priceMain={priceMain}
         priceUnit={priceUnit}
         billingLine={billingLine}
@@ -548,7 +586,7 @@ const PaymentDetails = () => {
                 className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight"
                 disabled={billingLoading}
               >
-                <span className="text-xs font-bold">Resume plan</span>
+                <span className="text-[12px] font-bold leading-tight text-center">Resume plan</span>
                 <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">
                   Access ends {paidUntilDate} — tap to continue
                 </span>
@@ -559,8 +597,10 @@ const PaymentDetails = () => {
               variant="default"
               className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight"
             >
-              <span className="text-xs font-bold">Active</span>
-              <span className="text-[9px] opacity-90 text-center">Update Payment Method</span>
+              <span className="text-[12px] font-bold leading-tight text-center">Update payment method</span>
+              <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">
+                Change the card we charge
+              </span>
             </Button>
             )
           ) : (
@@ -572,7 +612,7 @@ const PaymentDetails = () => {
             >
                 {!hasActiveStripeSub && pendingPlanChoice === plan && paymentMethodSaved ? (
                   <>
-                    <span className="text-[11px] font-bold leading-tight text-center">Selected ✓</span>
+                    <span className="text-[12px] font-bold leading-tight text-center">Selected ✓</span>
                     <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">
                       Charged after Week 4 — tap another plan to switch
                     </span>
@@ -624,17 +664,17 @@ const PaymentDetails = () => {
         <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === 'free' && !hasPendingSelection && !hasActiveStripeSub ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
           <PlanCardHeader
             name="Free Plan"
-            statusText={statusLabel('free')}
+            active={isPlanActive('free')}
             priceMain="$0"
-            priceUnit="/ 14 days"
+            priceUnit="/ 4 weeks"
             billingLine="No card required to start"
-            description="There is nothing wrong with trying before buying! Get 14 days limited access to get a feel of the app before you subscribe!"
+            description="There is nothing wrong with trying before buying! Get 4 weeks limited access to get a feel of the app before you subscribe!"
           />
           <CardContent className="flex-1 flex flex-col pb-28">
             <div className="flex items-start gap-1.5 min-h-[68px]">
               <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
               <div>
-                <p className="font-medium text-[12px]">Free trial for 14 days</p>
+                <p className="font-medium text-[12px]">Free trial for 4 weeks</p>
                 <p className="text-[10px] leading-snug text-muted-foreground">Limited access to pro features</p>
               </div>
             </div>
@@ -649,22 +689,28 @@ const PaymentDetails = () => {
               <MaterialIcon name="check_circle" size="sm" className="text-primary mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium text-[12px]">Trial Period</p>
-                <p className="text-[10px] leading-snug text-muted-foreground">Free Trial will end after 14 days automatically</p>
+                <p className="text-[10px] leading-snug text-muted-foreground">
+                  {freeTrialEndLabel
+                    ? `Your Free Trial will end on ${freeTrialEndLabel}`
+                    : "Your Free Trial will end 4 weeks after your journey start date"}
+                </p>
               </div>
             </div>
             <div className="absolute left-4 right-4 bottom-6">
               {hasActiveStripeSub ? (
                 <Button onClick={() => handleSelectPlan('free')} variant="default" className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight" disabled={billingLoading}>
-                  <span className="text-[12px] font-bold text-center">Switch to Free Plan</span>
+                  <span className="text-[12px] font-bold leading-tight text-center">Switch to Free Plan</span>
+                  <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">Keeps access until your paid period ends</span>
                 </Button>
               ) : hasPendingSelection ? (
                 <Button onClick={() => handleSelectPlan('free')} variant="default" className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight" disabled={billingLoading}>
-                  <span className="text-[12px] font-bold text-center">Cancel selected plan</span>
+                  <span className="text-[12px] font-bold leading-tight text-center">Cancel selected plan</span>
                   <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">Nothing charged yet</span>
                 </Button>
               ) : (
-                <Button variant="default" className="w-full min-h-[56px] h-auto py-2.5 px-2 flex items-center justify-center leading-tight" disabled>
-                  <span className="text-[12px] font-bold">Active</span>
+                <Button variant="default" className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight" disabled>
+                  <span className="text-[12px] font-bold leading-tight text-center">Current plan</span>
+                  <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">No payment required</span>
                 </Button>
               )}
             </div>

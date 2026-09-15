@@ -407,7 +407,12 @@ Android Studio is already installed. Use the following process to continue testi
 - [ ] Weight Loss and Maintenance remain locked before payment.
 - [ ] Monthly displays `$8.99 /month` with the small line `Billed $8.99 monthly`.
 - [ ] Annually displays `$6.00 /month` with the small line `Billed $72 yearly`.
-- [ ] Annually badge shows `BEST VALUE - 33% DISCOUNT` on line 1 and `(4 MONTHS FREE)` on line 2.
+- [ ] Annually badge sits **beside** the "Annually" heading, `BEST VALUE - 33% DISCOUNT` on line 1 and `(4 MONTHS FREE)` on line 2.
+- [ ] No blank gap under the "Free Plan" or "Monthly" headings.
+- [ ] Every card shows either `Active` + `(your current active plan)` or `Inactive` + `(plan not active)` — and only **one** card says Active.
+- [ ] Free Plan shows `$0 / 4 weeks` and "Free trial for 4 weeks" (never 14 days).
+- [ ] Trial Period reads `Your Free Trial will end on DD/MM/YY`, matching 4 weeks from the journey start date. A user with no journey start date sees "…will end 4 weeks after your journey start date".
+- [ ] Buttons still work: Subscribe, Selected ✓, Cancel selected plan, Resume plan, Update payment method, Switch to Free Plan.
 - [ ] Free / Monthly / Annually boxes are the same height and their buttons line up.
 - [ ] Stripe test payment flow behaves as intended.
 - [ ] Week 4 Let's Go unlocks without creating duplicate subscriptions.
