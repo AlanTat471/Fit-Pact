@@ -408,10 +408,12 @@ Android Studio is already installed. Use the following process to continue testi
 - [ ] Monthly displays `$8.99 /month` with the small line `Billed $8.99 monthly`.
 - [ ] Annual Plan displays `$6.00 /month` with the small line `Billed $72 yearly`.
 - [ ] Headings read **Free Plan**, **Monthly Plan**, **Annual Plan**.
-- [ ] The `BEST VALUE` / `(4 MONTHS FREE)` badge sits **on the same line** as the "Annual Plan" heading, not below it.
+- [ ] The `BEST VALUE` / `(4 MONTHS FREE)` badge sits on the **status** row (next to Active/Inactive), not on the heading row, so Annual’s status lines up with Free and Monthly.
 - [ ] No blank gap under any heading.
-- [ ] Exactly **one** word sits under each heading: `Active`, `Selected`, or `Inactive` — and only one card says Active.
-- [ ] Buttons match the status: `Selected ✓` + *(your current active plan)* on the active plan, `Select Plan` + *(plan not active)* on the others.
+- [ ] Exactly **one** card says `Active`. The other two say `Inactive`. Never `Selected` under a heading.
+- [ ] If Monthly or Annual is chosen before Week 4, **that** card says Active and Free says Inactive.
+- [ ] Buttons: Active card = `Selected ✓` + *(your current active plan)*. Inactive paid cards = `Select Plan` + *(plan not active)*. Free while a paid plan is chosen = `Select Plan` + *(cancels your current plan)*.
+- [ ] First tap from Free onto Monthly or Annual shows the Paid Plan popup before anything is saved.
 - [ ] Free Plan shows `$0 / 4 weeks` and "Free trial for 4 weeks" (never 14 days).
 - [ ] Trial Period reads `Your Free Trial will end on DD/MM/YY`, matching 4 weeks from the journey start date. A user with no journey start date sees "…will end 4 weeks after your journey start date".
 - [ ] The three headings, tick lists and brown buttons all line up horizontally across the three cards.

@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v16.9 - Wrong-plan bug fix + three-state plan cards
+echo   Numi v16.10 - One Active plan, Free Select Plan, paid-plan popup
 echo ============================================================
 echo.
 
@@ -49,7 +49,11 @@ git status --short
 echo.
 
 git commit ^
-  -m "v16.9: fix Billing announcing the wrong plan; three-state plan cards" ^
+  -m "v16.10: only one Active plan; Free button and Annual badge aligned; paid-plan popup" ^
+  -m "A chosen Monthly or Annual plan is now Active even before Week 4 is charged, so Free no longer stays Active beside it. Headings are only Active or Inactive." ^
+  -m "Free button reads Select Plan (cancels your current plan) instead of Cancel selected plan. Best Value badge sits on the status row so Annual Inactive lines up with the other cards." ^
+  -m "First switch from Free to a paid plan shows a popup explaining the 4-week Acclimation charge and unlock of Weight Loss and Maintenance phases." ^
+  -m "v16.9 (included): fix Billing announcing the wrong plan; three-state plan cards" ^
   -m "BUG FIX: markPremiumUnlocked never cleared pendingPlan, so after a plan activated the Billing page kept reading a spent note and announced the wrong plan (Monthly) while Profile correctly showed Annual. Now cleared on activation, hasPendingSelection also requires that no paid plan is live, and PaymentDetails self-heals accounts already holding the bad combination." ^
   -m "Plan cards: single status word under each heading (Active / Selected / Inactive) with the bracketed explanation moved onto the button. Inactive shows 'Select Plan (plan not active)'; the live plan shows 'Selected (your current active plan)'. Resume Plan and Cancel selected plan keep their own wording because they are the only controls for those actions." ^
   -m "Headings renamed to Monthly Plan and Annual Plan; Best Value badge shortened so it fits on the heading line; heading row and description slot pinned to fixed heights so all three cards align." ^

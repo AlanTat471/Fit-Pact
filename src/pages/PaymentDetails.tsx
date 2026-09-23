@@ -131,6 +131,8 @@ const PaymentDetails = () => {
   const [showResumePlan, setShowResumePlan] = useState(false);
   const [switchTargetPlan, setSwitchTargetPlan] = useState<PlanType | null>(null);
   const [showCancelPendingPlan, setShowCancelPendingPlan] = useState(false);
+  const [showPaidPlanConfirm, setShowPaidPlanConfirm] = useState(false);
+  const [paidPlanToConfirm, setPaidPlanToConfirm] = useState<PlanType | null>(null);
 
   const setActivePlanEverywhere = async (plan: PlanType) => {
     setActivePlan(plan);
@@ -412,14 +414,6 @@ const PaymentDetails = () => {
   const paidPlanIsActive =
     premiumUnlocked && (activePlan === "monthly" || activePlan === "annual");
 
-  /**
-   * Exactly one card is "Active" at any time. Until a paid plan is unlocked
-   * the user is on Free — selecting a plan before Week 4 does not make it
-   * active, because nothing has been charged yet.
-   */
-  const isPlanActive = (plan: PlanType) =>
-    plan === "free" ? !paidPlanIsActive : activePlan === plan && premiumUnlocked;
-
   // Pre-Week-4: a Monthly/Annual choice with a saved card, nothing charged yet.
   // A plan that is already live rules this out. Without that guard a stale
   // pendingPlan left over from an earlier choice made this page announce
@@ -432,18 +426,48 @@ const PaymentDetails = () => {
     (pendingPlanChoice === "monthly" || pendingPlanChoice === "annual");
 
   /**
-   * active   = being paid for right now.
-   * selected = chosen during the free weeks, nothing charged yet.
-   * inactive = neither.
+   * Exactly one card is Active. The chosen paid plan wins even before Week 4
+   * is charged, so Free cannot stay Active beside a selected Monthly/Annual.
    */
-  type PlanStatus = "active" | "selected" | "inactive";
-  const planStatus = (plan: PlanType): PlanStatus => {
-    if (isPlanActive(plan)) return "active";
-    if (hasPendingSelection && pendingPlanChoice === plan) return "selected";
-    return "inactive";
+  const isPlanActive = (plan: PlanType) => {
+    if (paidPlanIsActive) return plan === activePlan;
+    if (hasPendingSelection) return plan === pendingPlanChoice;
+    return plan === "free";
   };
-  const statusWord = (s: PlanStatus) =>
-    s === "active" ? "Active" : s === "selected" ? "Selected" : "Inactive";
+
+  type PlanStatus = "active" | "inactive";
+  const planStatus = (plan: PlanType): PlanStatus =>
+    isPlanActive(plan) ? "active" : "inactive";
+  const statusWord = (s: PlanStatus) => (s === "active" ? "Active" : "Inactive");
+  const planCardName = (p: PlanType) =>
+    p === "monthly" ? "Monthly Plan" : p === "annual" ? "Annual Plan" : "Free Plan";
+
+  /**
+   * First tap from Free onto Monthly/Annual explains the charge timing.
+   * Switching Monthly <-> Annual skips this — that is already a paid choice.
+   */
+  const requestSelectPlan = (plan: PlanType) => {
+    if (
+      (plan === "monthly" || plan === "annual") &&
+      !hasActiveStripeSub &&
+      !paidPlanIsActive &&
+      !hasPendingSelection
+    ) {
+      setPaidPlanToConfirm(plan);
+      setShowPaidPlanConfirm(true);
+      return;
+    }
+    void handleSelectPlan(plan);
+  };
+
+  const confirmPaidPlanSelection = () => {
+    const plan = paidPlanToConfirm;
+    setShowPaidPlanConfirm(false);
+    setPaidPlanToConfirm(null);
+    if (plan === "monthly" || plan === "annual") {
+      void handleSelectPlan(plan);
+    }
+  };
 
   // Self-heal: a live paid plan sitting next to a *different* pending plan is
   // spent data from before that plan activated. Clearing it repairs accounts
@@ -499,13 +523,14 @@ const PaymentDetails = () => {
     badgeLine2?: string;
   }) => (
     <CardHeader className="pb-3">
-      {/* Heading and badge share one row. The fixed height keeps the three
-          headings level even though only Annual carries a two-line badge.
-          "Annual Plan" plus the badge needs ~195px of the ~233px a card has at
-          the 3-column breakpoint, so it fits; flex-wrap is only a safety net
-          against overflow if a font ever renders wider than expected. */}
-      <div className="flex items-center gap-1.5 flex-wrap min-h-[28px]">
-        <CardTitle className="text-lg">{name}</CardTitle>
+      {/* Same stack on every card: heading, then Active/Inactive. The badge
+          sits on the status row so Annual's status word lines up with Free
+          and Monthly instead of dropping below the bubble. */}
+      <CardTitle className="text-lg leading-7 min-h-7">{name}</CardTitle>
+      <div className="flex items-start gap-1.5 min-h-7">
+        <p className={`text-[12px] font-bold leading-7 ${status === "inactive" ? "text-on-surface-variant" : "text-primary"}`}>
+          {statusWord(status)}
+        </p>
         {badgeLine1 && (
           <Badge
             variant="secondary"
@@ -516,10 +541,6 @@ const PaymentDetails = () => {
           </Badge>
         )}
       </div>
-      {/* One word only. The explanation in brackets lives under the button. */}
-      <p className={`text-[12px] font-bold leading-tight ${status === "inactive" ? "text-on-surface-variant" : "text-primary"}`}>
-        {statusWord(status)}
-      </p>
       <div>
         <p className="flex items-baseline gap-1 leading-none">
           <span className="text-2xl font-extrabold tracking-tight text-on-surface">{priceMain}</span>
@@ -625,17 +646,12 @@ const PaymentDetails = () => {
                 <ButtonLabel main="Resume Plan" sub={`(access ends ${paidUntilShort ?? paidUntilDate} or select a different plan)`} />
               </Button>
             ) : (
-              // Nothing to do here — the card is changed via the pen icon above.
               <Button variant="default" className={planButtonClass} disabled>
                 <ButtonLabel main="Selected ✓" sub="(your current active plan)" />
               </Button>
             )
-          ) : planStatus(plan) === 'selected' ? (
-            <Button variant="default" className={planButtonClass} disabled>
-              <ButtonLabel main="Selected ✓" sub="(starts after Week 4)" />
-            </Button>
           ) : (
-            <Button onClick={() => handleSelectPlan(plan)} variant="default" className={planButtonClass} disabled={billingLoading}>
+            <Button onClick={() => requestSelectPlan(plan)} variant="default" className={planButtonClass} disabled={billingLoading}>
               <ButtonLabel main="Select Plan" sub="(plan not active)" />
             </Button>
           )}
@@ -662,10 +678,10 @@ const PaymentDetails = () => {
       {hasPendingSelection && !fromAcclimationComplete && (
         <div className="max-w-4xl mx-auto rounded-xl border border-primary/40 bg-primary/5 px-4 py-3 text-sm text-on-surface space-y-1">
           <p>
-            <span className="font-semibold">{planDisplayName(pendingPlanChoice!)}</span> is selected. You have not been charged yet — the charge happens after Acclimation Week 4 when you click Subscribe.
+            <span className="font-semibold">{planCardName(pendingPlanChoice!)}</span> is selected. You have not been charged yet — the charge happens after Acclimation Week 4.
           </p>
           <p className="text-on-surface-variant text-[12px]">
-            You can switch Monthly/Annually anytime, or tap &quot;Cancel selected plan&quot; on the Free card (or Cancel in Settings) to clear this selection with no charge.
+            You can switch Monthly Plan / Annual Plan anytime, or tap Select Plan on the Free card (or Cancel in Settings) to clear this selection with no charge.
           </p>
         </div>
       )}
@@ -673,7 +689,7 @@ const PaymentDetails = () => {
       {/* Plans Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto items-stretch">
         {/* Free Plan */}
-        <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${planStatus('free') !== 'inactive' && !hasPendingSelection ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
+        <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${planStatus('free') !== 'inactive' ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
           <PlanCardHeader
             name="Free Plan"
             status={planStatus('free')}
@@ -710,10 +726,8 @@ const PaymentDetails = () => {
             </div>
             <div className="absolute left-4 right-4 bottom-6">
               {hasPendingSelection ? (
-                // Only in-page way to clear a pre-Week-4 choice, so it keeps
-                // its own wording rather than becoming "Select Plan".
                 <Button onClick={() => handleSelectPlan('free')} variant="default" className={planButtonClass} disabled={billingLoading}>
-                  <ButtonLabel main="Cancel selected plan" sub="(nothing charged yet)" />
+                  <ButtonLabel main="Select Plan" sub="(cancels your current plan)" />
                 </Button>
               ) : planStatus('free') === 'active' ? (
                 <Button variant="default" className={planButtonClass} disabled>
@@ -817,6 +831,44 @@ const PaymentDetails = () => {
             )}
             <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleSavePayment}>Save Card Details</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Free → paid: explain charge timing before Stripe / saving the choice */}
+      <AlertDialog
+        open={showPaidPlanConfirm}
+        onOpenChange={(open) => {
+          setShowPaidPlanConfirm(open);
+          if (!open) setPaidPlanToConfirm(null);
+        }}
+      >
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-foreground">
+              <MaterialIcon name="info" size="sm" className="text-primary" />
+              You have selected a Paid Plan
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-foreground/70 space-y-2">
+              <p>
+                You have selected a &apos;Paid Plan&apos;. You will be charged after 4 weeks of Acclimation and on the frequency you have selected.
+              </p>
+              <p>
+                After Acclimation Phase, you will have access to &apos;Weight Loss Phase&apos; and &apos;Maintenance Phase&apos; and premium features to help you on your weight loss journey.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={(event) => {
+                event.preventDefault();
+                confirmPaidPlanSelection();
+              }}
+            >
+              Continue
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -639,3 +639,51 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
 
 - A user whose paid period has **expired** while a `pendingPlan` note survives will see that plan as "Selected" with a disabled button. They can still choose either other plan, and the Dashboard Week-4 prompt is the real re-subscribe route, so no one is stranded. The self-heal in item 71 deliberately only runs when a paid plan is **live**. Raise if you want the lapsed case cleaned up too.
 - The wording noted in item 69 (an existing subscriber tapping the other paid plan is doing a *switch*, not a Week-4 subscribe) is now moot on the button itself, since it reads "Select Plan"; the confirmation dialog still states the correct switch date.
+
+### 78. Sign-in lockout after v16.7 — NOT A CODE DEFECT, expected once per device
+
+- **Reported during v16.9 testing:** "I am no longer able to sign in and an error appears and disappears instantly." **Resolved without any code change** — sign-in succeeded on a later attempt, consistent with a Supabase email rate limit expiring.
+- **Not caused by v16.9.** That release changed only `PaymentDetails.tsx` and `Dashboard.tsx`, neither of which is loaded on the sign-in screen. The login stack (`LoginForm.tsx`, `deviceFingerprint.ts`, `supabaseTrustedDevices.ts`, `authEmailErrors.ts`) was last changed in **v16.7** (commit `d76190d`), which had sat undeployed for seven weeks and went live in the session before this one.
+- **Mechanism.** The v1 fingerprint mixed in `navigator.userAgent`; v2 uses only the `wlbd_install_id` random UUID in `localStorage`. Every previously-trusted device therefore fails to match **once** and must verify by emailed code. `isDeviceTrusted()` does carry a legacy-hash fallback (`supabaseTrustedDevices.ts` line ~66) and it is correctly wired up — but it also derives from `wlbd_install_id`, so it cannot help a **browser profile that has never held that key**, such as a new PC or a cleared browser.
+- **Compounding factor.** Supabase's free tier allows roughly 4 auth emails per hour. Repeated sign-in attempts exhaust that quota and return a send failure, which is exactly the case `authEmailErrors.ts` was written for in v16.7.
+- **Why the error was unreadable.** `src/hooks/use-toast.ts` sets `TOAST_LIMIT = 1`, so any second notification instantly replaces the first. Long-standing project default, unchanged. Worth revisiting if login errors need to be diagnosed again.
+- **⚠️ Support impact to expect:** every existing user will be asked for a verification code **once** the first time they open the app after v16.7 reaches them, then be trusted permanently on that browser/app install. This is intended behaviour, not a bug.
+- **Unblock recipe if it recurs and no email arrives:** wait ~60 minutes for the rate limit to clear and request a single code; or add a row to `trusted_devices` manually (`user_id` + `device_fingerprint`), reading the fingerprint from the browser console with the djb2 hash of `localStorage.wlbd_install_id` prefixed `wlbd_`.
+
+---
+
+## v16.10 — One Active plan only; Free button and Annual badge alignment (Sep 2026)
+
+### 79. Free said Active while Monthly said Selected — FIXED (wording, not data)
+
+- **Where:** `PaymentDetails.tsx` (`isPlanActive` / `planStatus`)
+- **Reported:** with Monthly chosen and not yet charged, Free still read **Active** and Monthly read **Selected**. The user saw two “current” plans.
+- **Cause:** v16.9 reserved **Active** for a live paid Stripe plan and used a third **Selected** heading for a pre-Week-4 choice. Free stayed Active whenever premium was not unlocked.
+- **Fix:** exactly one heading is **Active**. If a paid plan is live, that plan is Active. If a Monthly/Annual choice is saved before Week 4, **that** plan is Active. Otherwise Free is Active. The **Selected** heading word is removed. Buttons still use `Selected ✓` on the Active card only.
+- Switching Monthly ↔ Annual, and Annual ↔ Monthly, uses the same rule: the newly chosen card becomes Active and the other two become Inactive.
+
+### 80. “Cancel selected plan” replaced with the same Select Plan button family
+
+- **Where:** Free card button
+- **Was:** `Cancel selected plan` / *(nothing charged yet)*
+- **Now:** `Select Plan` / *(cancels your current plan)* when a paid plan is chosen. Tap still opens the existing “Cancel your selected plan?” confirmation — nothing is wiped without that second step.
+- Banner text updated so it no longer tells users to tap a button that no longer exists, and no longer says “click Subscribe”.
+
+### 81. Annual Inactive sat below the Best Value badge — FIXED
+
+- **Where:** `PlanCardHeader`
+- **Cause:** the badge shared the **heading** row, so Annual’s heading was two lines tall and **Inactive** dropped below Free/Monthly’s status word.
+- **Fix:** every card now uses the same stack — heading, then status. The Best Value badge sits on the **status** row, to the right of Active/Inactive, so the status word is above the badge and aligned across all three cards.
+
+### 82. Popup when leaving Free for a paid plan
+
+- **Where:** `PaymentDetails.tsx` (`requestSelectPlan` / `showPaidPlanConfirm`)
+- First tap from Free onto Monthly or Annual (no paid plan live, no pending choice yet) opens: *You have selected a Paid Plan. You will be charged after 4 weeks of Acclimation and on the frequency you have selected. After Acclimation Phase, you will have access to Weight Loss Phase and Maintenance Phase and premium features to help you on your weight loss journey.*
+- Continue runs the existing save-card / Stripe path. Cancel leaves Free Active.
+- Switching Monthly ↔ Annual does **not** show this popup again — that user already chose a paid plan.
+
+### 83. Verification performed (v16.10)
+
+- `npm run build`: **succeeded**.
+- Lints on `PaymentDetails.tsx`: **0 errors**.
+- Login / Dashboard / Settings code was not edited.
