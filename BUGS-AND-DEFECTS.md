@@ -569,4 +569,73 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
 - ESLint on `PaymentDetails.tsx`: **0 errors**, 1 pre-existing `react-hooks/exhaustive-deps` warning at line 73 in untouched code.
 - Confirmed no `14 day` string and no `statusLabel` reference remains in the file.
 - State matrix traced end to end — Free/Monthly/Annually status and button for: new user; card saved with a plan selected pre-Week 4; paid plan active; paid plan with cancellation scheduled; premium lapsed after the paid period expired. Exactly one card reports Active in every case.
-- **Not changed, as instructed:** the card highlight (`border-primary shadow-glow`) still follows the *selected* plan rather than the *active* plan, so a glowing card can read "Inactive" while its button reads "Selected ✓". Raised for a future decision.
+- **Not changed, as instructed:** the card highlight (`border-primary shadow-glow`) still follows the *selected* plan rather than the *active* plan, so a glowing card can read "Inactive" while its button reads "Selected ✓". Raised for a future decision. **Resolved in v16.9 (item 71).**
+
+---
+
+## v16.9 — Billing page announced the wrong plan; three-state plan cards (Sep 2026)
+
+### 71. Billing said "Monthly is selected" while Profile said "Annual Plan" — FIXED (data bug)
+
+- **Where:** `src/pages/Dashboard.tsx` (`markPremiumUnlocked`) and `src/pages/PaymentDetails.tsx` (`hasPendingSelection`)
+- **Reported:** the banner on Subscription & Billing read *"Monthly is selected"* while Profile → Billing correctly read *"Annual Plan — Active"*, and the cards showed Annually as Active with Monthly as "Selected ✓" at the same time.
+- **Root cause — two independent faults:**
+  1. **Stale data.** The app stores two separate values: `activePlan` (the plan actually being paid for) and `pendingPlan` (a plan chosen during the free Acclimation weeks, not yet charged). `markPremiumUnlocked()` set `activePlan` and the premium flags but **never cleared `pendingPlan`**. Both Week-4 activation call sites (Dashboard lines ~890 and ~939) route through that helper, so every user who activated a plan kept a spent `pendingPlan` note forever.
+  2. **Missing guard.** `hasPendingSelection` gated only on `!hasActiveStripeSub`. An account unlocked through the `weightLossPhaseUnlocked` preference — a test account, or a live one whose Stripe webhook row has not landed yet — has `hasActiveStripeSub === false`, so the stale note satisfied every condition and the "is selected" banner fired.
+- Aggravated by `handleSelectPlan`: with a card already saved and no Stripe subscription row, tapping the other paid plan writes `pendingPlan` and leaves `activePlan` untouched, which is exactly how `activePlan=annual` + `pendingPlan=monthly` arose.
+- **Why Settings was right:** `Settings.tsx` guards its equivalent with `activePlan === 'free'` (`hasPendingPlanOnly`, line ~200), so it ignored the stale note. Settings needed no change.
+- **Fix, three parts:**
+  1. `markPremiumUnlocked()` now clears `pendingPlan` from `localStorage`, component state and the Supabase user pref when a plan goes live. Prevents recurrence.
+  2. `hasPendingSelection` gained a leading `!paidPlanIsActive` term. A live paid plan can no longer be contradicted by a pending note. This required moving `paidPlanIsActive` / `isPlanActive` **above** `hasPendingSelection`, since the latter now depends on them (declaration-order rule).
+  3. A self-heal `useEffect` in `PaymentDetails` clears the note when it finds a live paid plan beside a *different* pending plan. Without this, accounts already holding the bad combination — including the reporter's — would stay broken after deploy. It deliberately skips the case where `pendingPlan === activePlan`, which `confirmSwitchPlan` writes on purpose for a scheduled plan switch.
+
+### 72. Plan cards rebuilt around three explicit states
+
+- **Where:** `PaymentDetails.tsx`
+- **Reported:** "it is too confusing on which plan is selected" — the status word, the bracketed explanation and the button were each saying something different.
+- **New model.** A single `planStatus(plan)` returns one of:
+  | Status | Meaning | Under the heading | Button |
+  |---|---|---|---|
+  | `active` | Being paid for right now | **Active** | `Selected ✓` / *(your current active plan)* |
+  | `selected` | Chosen in the free weeks, nothing charged | **Selected** | `Selected ✓` / *(starts after Week 4)* |
+  | `inactive` | Neither | **Inactive** | `Select Plan` / *(plan not active)* |
+- The bracketed explanation moved **out of the header and onto the button**, as requested; only the single status word now sits under the heading.
+- A third state was added on top of the requested Active/Inactive pair because the pre-Week-4 case is real: a user with a saved card and a chosen plan has **not been charged**. Labelling that "Active" would claim money had been taken. Confirmed with the user before implementing.
+- `ButtonLabel` and a shared `planButtonClass` replace six hand-written button bodies, guaranteeing identical typography and height across all three cards.
+- **Buttons that keep their own wording, and why:**
+  - **`Resume Plan` / *(access ends DD/MM/YY or select a different plan)*** — the only control anywhere in the app that undoes a scheduled cancellation. Confirmed: `Settings.tsx` has no resume path (grep for `resume` returns nothing). Wording supplied by the user.
+  - **`Cancel selected plan` / *(nothing charged yet)*** on the Free card — the only in-page way to clear a pre-Week-4 choice, and the banner above explicitly tells users to tap it by name. Applying the same precedent as Resume.
+- **`Update payment method` button safely removed.** The pen icon beside "Card saved via Stripe" inside every paid card already calls the identical `handleAddPaymentViaStripe`, so the Stripe card-update path is untouched.
+- **`Switch to Free Plan` button safely removed.** With a paid plan live, the Free card is `inactive`, so it shows `Select Plan`; tapping it runs the same `handleSelectPlan('free')` and raises the same "Switch to Free Plan?" warning dialog.
+- **`subscribeLabel` prop deleted.** It only varied the sub-line between "Charged after Week 4" and "Pay now via Stripe" during the Week-4 paywall flow. The blue banner at the top of that flow already states payment is due, and Stripe Checkout shows the price before any charge, so no mis-charge risk.
+
+### 73. Headings renamed and the Best Value badge fitted beside the heading
+
+- `Monthly` → **Monthly Plan**; `Annually` → **Annual Plan**.
+- Badge shortened from `BEST VALUE - 33% DISCOUNT` / `(4 MONTHS FREE)` to **`BEST VALUE`** / **`(4 MONTHS FREE)`** so it sits on the heading's line. Measurement: at the 3-column breakpoint the container is capped at `max-w-4xl` (896px), giving `(896 − 48) / 3 ≈ 283px` per card and ≈233px of content inside `p-6`. "Annual Plan" at `text-lg` ≈ 100px, plus a 6px gap, plus the badge at ≈89px = ≈195px — a ~38px margin. The previous badge needed ≈142px on its own and therefore wrapped, which is what the screenshot showed.
+- The "33% discount" claim is not lost: the card body still reads "you save $35.88 every year", and Settings quotes "$72/year ($6.00/month equivalent)".
+- `flex-wrap` is retained purely as an overflow guard; at every breakpoint where 3 columns apply the badge fits on the line.
+- `planDisplayName()` was **not** renamed. It feeds sentences like "The {name} plan is already active", which would become "the Monthly Plan plan". Card headings and Settings both read "Monthly Plan" / "Annual Plan" regardless.
+
+### 74. Cards aligned across all three columns
+
+- **Cause of the misalignment in the screenshot:** the Annually header was one line taller because the badge had wrapped, and the Annual description runs one line longer than the other two.
+- **Fixes:** the heading row is pinned to `min-h-[28px]` (the two-line badge measures ≈25px, the heading 18px, so all three rows are now exactly 28px); the description slot grew from `min-h-[76px]` to `min-h-[90px]`, enough for six lines at the narrowest card width. Every other header element is fixed height, so the tick lists and the buttons now start at the same offset on all three cards.
+- Buttons were already bottom-aligned via `absolute bottom-6` on `min-h-[540px]` cards and remain so.
+
+### 75. Highlight now follows status, not the old ad-hoc condition
+
+- The `border-primary shadow-glow` treatment is now driven by `planStatus(plan) !== 'inactive'`, replacing three different hand-written conditions. This closes the v16.8 note in item 70: a glowing card can no longer read "Inactive".
+
+### 76. Verification performed (v16.9)
+
+- `npm run build`: **succeeded**.
+- ESLint `PaymentDetails.tsx`: **0 errors**, 1 pre-existing warning (line 73, untouched code).
+- ESLint `Dashboard.tsx`: 5 errors / 9 warnings — **identical count before and after the edit**, verified by stashing the change and re-running. All pre-existing (`no-empty` at lines 1271/1296/1383, plus dependency-array warnings).
+- Confirmed no dead references remain to `subscribeLabel`, `statusLabel`, or the removed button strings. The surviving "Update Payment Method" and "Switch to Free Plan" strings are **dialog titles** and are still reached.
+- Full state matrix traced: brand-new user; card saved with a plan chosen pre-Week-4; the reporter's annual-live-plus-stale-monthly state; real Stripe subscription with a cancellation scheduled; premium lapsed after period end. Exactly one card reports Active in every case, and every dialog is still reachable.
+
+### 77. Known edge case left untouched
+
+- A user whose paid period has **expired** while a `pendingPlan` note survives will see that plan as "Selected" with a disabled button. They can still choose either other plan, and the Dashboard Week-4 prompt is the real re-subscribe route, so no one is stranded. The self-heal in item 71 deliberately only runs when a paid plan is **live**. Raise if you want the lapsed case cleaned up too.
+- The wording noted in item 69 (an existing subscriber tapping the other paid plan is doing a *switch*, not a Week-4 subscribe) is now moot on the button itself, since it reads "Select Plan"; the confirmation dialog still states the correct switch date.

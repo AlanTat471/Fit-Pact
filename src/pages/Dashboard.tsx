@@ -850,10 +850,16 @@ const Dashboard = () => {
     localStorage.setItem("weightLossPhaseUnlocked", "true");
     localStorage.setItem("hasEverSubscribed", "true");
     setHasEverSubscribed(true);
+    // The plan is live now, so the pre-Week-4 "pending plan" note is spent.
+    // Leaving it behind made Billing announce the wrong plan while Settings
+    // showed the right one.
+    localStorage.removeItem("pendingPlan");
+    setPendingPlan(null);
     if (user?.id) {
       await setUserPref(user.id, "weightLossPhaseUnlocked", "true");
       await setUserPref(user.id, "hasEverSubscribed", "true");
       if (plan) await setUserPref(user.id, "activePlan", plan);
+      await setUserPref(user.id, "pendingPlan", "");
     }
   };
 

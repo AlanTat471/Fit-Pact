@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v16.8 - Plan card gaps, Active/Inactive status, 4-week trial
+echo   Numi v16.9 - Wrong-plan bug fix + three-state plan cards
 echo ============================================================
 echo.
 
@@ -49,7 +49,11 @@ git status --short
 echo.
 
 git commit ^
-  -m "v16.8: plan card gaps removed, unified Active/Inactive status, 4-week free trial with real end date" ^
+  -m "v16.9: fix Billing announcing the wrong plan; three-state plan cards" ^
+  -m "BUG FIX: markPremiumUnlocked never cleared pendingPlan, so after a plan activated the Billing page kept reading a spent note and announced the wrong plan (Monthly) while Profile correctly showed Annual. Now cleared on activation, hasPendingSelection also requires that no paid plan is live, and PaymentDetails self-heals accounts already holding the bad combination." ^
+  -m "Plan cards: single status word under each heading (Active / Selected / Inactive) with the bracketed explanation moved onto the button. Inactive shows 'Select Plan (plan not active)'; the live plan shows 'Selected (your current active plan)'. Resume Plan and Cancel selected plan keep their own wording because they are the only controls for those actions." ^
+  -m "Headings renamed to Monthly Plan and Annual Plan; Best Value badge shortened so it fits on the heading line; heading row and description slot pinned to fixed heights so all three cards align." ^
+  -m "v16.8 (included): plan card gaps removed, unified Active/Inactive status, 4-week free trial with real end date" ^
   -m "Plan cards: the Annually badge now sits beside the heading (smaller text) and the reserved empty badge slot is gone, so Free Plan and Monthly no longer have a blank gap under their headings." ^
   -m "Status: all three cards show the same Active/(your current active plan) or Inactive/(plan not active) block under the heading, and exactly one card is ever Active. Buttons keep their distinct actions (Subscribe, Selected, Cancel selected plan, Resume plan, Update payment method, Switch to Free Plan) with consistent typography." ^
   -m "Free trial: card now says 4 weeks instead of 14 days, matching the 28-day Acclimation Phase the code has always granted. Trial Period reads 'Your Free Trial will end on DD/MM/YY' from the journey's acclimation end date, falling back to '4 weeks after your journey start date' for users with no start date yet." ^

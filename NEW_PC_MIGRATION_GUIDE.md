@@ -406,14 +406,18 @@ Android Studio is already installed. Use the following process to continue testi
 - [ ] Acclimation Weeks 1–4 save and restore after app restart.
 - [ ] Weight Loss and Maintenance remain locked before payment.
 - [ ] Monthly displays `$8.99 /month` with the small line `Billed $8.99 monthly`.
-- [ ] Annually displays `$6.00 /month` with the small line `Billed $72 yearly`.
-- [ ] Annually badge sits **beside** the "Annually" heading, `BEST VALUE - 33% DISCOUNT` on line 1 and `(4 MONTHS FREE)` on line 2.
-- [ ] No blank gap under the "Free Plan" or "Monthly" headings.
-- [ ] Every card shows either `Active` + `(your current active plan)` or `Inactive` + `(plan not active)` — and only **one** card says Active.
+- [ ] Annual Plan displays `$6.00 /month` with the small line `Billed $72 yearly`.
+- [ ] Headings read **Free Plan**, **Monthly Plan**, **Annual Plan**.
+- [ ] The `BEST VALUE` / `(4 MONTHS FREE)` badge sits **on the same line** as the "Annual Plan" heading, not below it.
+- [ ] No blank gap under any heading.
+- [ ] Exactly **one** word sits under each heading: `Active`, `Selected`, or `Inactive` — and only one card says Active.
+- [ ] Buttons match the status: `Selected ✓` + *(your current active plan)* on the active plan, `Select Plan` + *(plan not active)* on the others.
 - [ ] Free Plan shows `$0 / 4 weeks` and "Free trial for 4 weeks" (never 14 days).
 - [ ] Trial Period reads `Your Free Trial will end on DD/MM/YY`, matching 4 weeks from the journey start date. A user with no journey start date sees "…will end 4 weeks after your journey start date".
-- [ ] Buttons still work: Subscribe, Selected ✓, Cancel selected plan, Resume plan, Update payment method, Switch to Free Plan.
-- [ ] Free / Monthly / Annually boxes are the same height and their buttons line up.
+- [ ] The three headings, tick lists and brown buttons all line up horizontally across the three cards.
+- [ ] **The blue "… is selected" banner must NOT appear when a plan is already live.** If it does, the v16.9 stale-`pendingPlan` fix has not deployed.
+- [ ] Subscription & Billing and Profile → Billing name the **same** plan.
+- [ ] Dialogs still reachable: tap `Select Plan` on Free while subscribed → "Switch to Free Plan?" warning; tap the pen beside "Card saved via Stripe" → Stripe card update.
 - [ ] Stripe test payment flow behaves as intended.
 - [ ] Week 4 Let's Go unlocks without creating duplicate subscriptions.
 - [ ] Cancel Subscription schedules cancellation at period end.

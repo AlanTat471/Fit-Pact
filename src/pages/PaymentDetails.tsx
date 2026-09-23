@@ -81,9 +81,13 @@ const PaymentDetails = () => {
       subscription.status === "past_due");
 
   const formatDMY = (d: Date) => d.toLocaleDateString("en-GB");
+  /** DD/MM/YY — used where space is tight, e.g. inside a button sub-line. */
+  const formatDMYShort = (d: Date) =>
+    `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getFullYear()).slice(2)}`;
   const periodEnd = subscription?.current_period_end ? new Date(subscription.current_period_end) : null;
   /** Last day of paid access, inclusive (the day before Stripe's renewal date). */
   const paidUntilDate = periodEnd ? formatDMY(new Date(periodEnd.getTime() - 24 * 60 * 60 * 1000)) : null;
+  const paidUntilShort = periodEnd ? formatDMYShort(new Date(periodEnd.getTime() - 24 * 60 * 60 * 1000)) : null;
   /** The Stripe renewal date — the day the next charge (or lock-out) happens. */
   const renewalDate = periodEnd ? formatDMY(periodEnd) : null;
   const planDisplayName = (p: PlanType) => (p === "monthly" ? "Monthly" : p === "annual" ? "Annually" : "Free");
@@ -404,13 +408,6 @@ const PaymentDetails = () => {
     localStorage.removeItem('numiSavedCardName');
   };
 
-  // Pre-Week-4: a Monthly/Annual choice with a saved card, nothing charged yet.
-  const hasPendingSelection =
-    !hasActiveStripeSub &&
-    paymentMethodSaved &&
-    !!pendingPlanChoice &&
-    (pendingPlanChoice === "monthly" || pendingPlanChoice === "annual");
-
   /** A paid plan is only live once Stripe has actually unlocked premium. */
   const paidPlanIsActive =
     premiumUnlocked && (activePlan === "monthly" || activePlan === "annual");
@@ -422,6 +419,42 @@ const PaymentDetails = () => {
    */
   const isPlanActive = (plan: PlanType) =>
     plan === "free" ? !paidPlanIsActive : activePlan === plan && premiumUnlocked;
+
+  // Pre-Week-4: a Monthly/Annual choice with a saved card, nothing charged yet.
+  // A plan that is already live rules this out. Without that guard a stale
+  // pendingPlan left over from an earlier choice made this page announce
+  // "Monthly is selected" while the live plan — and Settings — said Annual.
+  const hasPendingSelection =
+    !paidPlanIsActive &&
+    !hasActiveStripeSub &&
+    paymentMethodSaved &&
+    !!pendingPlanChoice &&
+    (pendingPlanChoice === "monthly" || pendingPlanChoice === "annual");
+
+  /**
+   * active   = being paid for right now.
+   * selected = chosen during the free weeks, nothing charged yet.
+   * inactive = neither.
+   */
+  type PlanStatus = "active" | "selected" | "inactive";
+  const planStatus = (plan: PlanType): PlanStatus => {
+    if (isPlanActive(plan)) return "active";
+    if (hasPendingSelection && pendingPlanChoice === plan) return "selected";
+    return "inactive";
+  };
+  const statusWord = (s: PlanStatus) =>
+    s === "active" ? "Active" : s === "selected" ? "Selected" : "Inactive";
+
+  // Self-heal: a live paid plan sitting next to a *different* pending plan is
+  // spent data from before that plan activated. Clearing it repairs accounts
+  // that already hold the bad combination, without the user doing anything.
+  useEffect(() => {
+    if (!paidPlanIsActive || !pendingPlanChoice || pendingPlanChoice === activePlan) return;
+    localStorage.removeItem("pendingPlan");
+    setPendingPlanChoice(null);
+    if (user?.id) void setUserPref(user.id, "pendingPlan", "");
+    window.dispatchEvent(new Event("storage"));
+  }, [paidPlanIsActive, pendingPlanChoice, activePlan, user?.id]);
 
   /**
    * Last day of the free 4-week Acclimation window. The Dashboard/journey
@@ -455,9 +488,9 @@ const PaymentDetails = () => {
    * Header shared by the Free, Monthly and Annually cards, so all three read
    * identically: heading (+ badge), Active/Inactive status, price, blurb.
    */
-  const PlanCardHeader = ({ name, active, priceMain, priceUnit, billingLine, description, badgeLine1, badgeLine2 }: {
+  const PlanCardHeader = ({ name, status, priceMain, priceUnit, billingLine, description, badgeLine1, badgeLine2 }: {
     name: string;
-    active: boolean;
+    status: PlanStatus;
     priceMain: string;
     priceUnit: string;
     billingLine: string;
@@ -466,11 +499,12 @@ const PaymentDetails = () => {
     badgeLine2?: string;
   }) => (
     <CardHeader className="pb-3">
-      {/* Badge sits on the same row as the heading. Cards without a badge
-          therefore have no reserved empty slot pushing their text down.
-          flex-wrap is a safety net: on very narrow cards the badge drops
-          below the heading instead of overflowing. */}
-      <div className="flex items-center gap-1.5 flex-wrap">
+      {/* Heading and badge share one row. The fixed height keeps the three
+          headings level even though only Annual carries a two-line badge.
+          "Annual Plan" plus the badge needs ~195px of the ~233px a card has at
+          the 3-column breakpoint, so it fits; flex-wrap is only a safety net
+          against overflow if a font ever renders wider than expected. */}
+      <div className="flex items-center gap-1.5 flex-wrap min-h-[28px]">
         <CardTitle className="text-lg">{name}</CardTitle>
         {badgeLine1 && (
           <Badge
@@ -482,16 +516,10 @@ const PaymentDetails = () => {
           </Badge>
         )}
       </div>
-      {/* Same status treatment on every card so the user can tell at a glance
-          which plan they are actually on. The action lives in the button. */}
-      <div>
-        <p className={`text-[12px] font-bold leading-tight ${active ? "text-primary" : "text-on-surface-variant"}`}>
-          {active ? "Active" : "Inactive"}
-        </p>
-        <p className="text-[10px] leading-snug text-on-surface-variant">
-          {active ? "(your current active plan)" : "(plan not active)"}
-        </p>
-      </div>
+      {/* One word only. The explanation in brackets lives under the button. */}
+      <p className={`text-[12px] font-bold leading-tight ${status === "inactive" ? "text-on-surface-variant" : "text-primary"}`}>
+        {statusWord(status)}
+      </p>
       <div>
         <p className="flex items-baseline gap-1 leading-none">
           <span className="text-2xl font-extrabold tracking-tight text-on-surface">{priceMain}</span>
@@ -499,11 +527,24 @@ const PaymentDetails = () => {
         </p>
         <p className="text-[10px] leading-snug text-on-surface-variant mt-1.5">{billingLine}</p>
       </div>
-      <p className="text-[11px] leading-[1.35] text-on-surface-variant min-h-[76px]">{description}</p>
+      {/* Tall enough for the longest description at the narrowest card width,
+          so the tick list below starts at the same height on all three. */}
+      <p className="text-[11px] leading-[1.35] text-on-surface-variant min-h-[90px]">{description}</p>
     </CardHeader>
   );
 
-  const PaidPlanCard = ({ plan, name, priceMain, priceUnit, billingLine, description, badgeLine1, badgeLine2, subscribeLabel }: {
+  /** Two-line button label, identical on every card so the three line up. */
+  const ButtonLabel = ({ main, sub }: { main: string; sub: string }) => (
+    <>
+      <span className="text-[12px] font-bold leading-tight text-center">{main}</span>
+      <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">{sub}</span>
+    </>
+  );
+
+  const planButtonClass =
+    "w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight";
+
+  const PaidPlanCard = ({ plan, name, priceMain, priceUnit, billingLine, description, badgeLine1, badgeLine2 }: {
     plan: PlanType;
     name: string;
     priceMain: string;
@@ -512,12 +553,11 @@ const PaymentDetails = () => {
     description: string;
     badgeLine1?: string;
     badgeLine2?: string;
-    subscribeLabel: string;
   }) => (
-    <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${(activePlan === plan && premiumUnlocked) || (hasPendingSelection && pendingPlanChoice === plan) ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
+    <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${planStatus(plan) !== 'inactive' ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
       <PlanCardHeader
         name={name}
-        active={isPlanActive(plan)}
+        status={planStatus(plan)}
         priceMain={priceMain}
         priceUnit={priceUnit}
         billingLine={billingLine}
@@ -578,53 +618,25 @@ const PaymentDetails = () => {
         </div>
 
         <div className="absolute left-4 right-4 bottom-6">
-          {activePlan === plan && premiumUnlocked ? (
+          {planStatus(plan) === 'active' ? (
             hasActiveStripeSub && subscription?.cancel_at_period_end && subscription.plan_type === plan ? (
-              <Button
-                onClick={() => setShowResumePlan(true)}
-                variant="default"
-                className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight"
-                disabled={billingLoading}
-              >
-                <span className="text-[12px] font-bold leading-tight text-center">Resume plan</span>
-                <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">
-                  Access ends {paidUntilDate} — tap to continue
-                </span>
+              // Only place in the app that can undo a scheduled cancellation.
+              <Button onClick={() => setShowResumePlan(true)} variant="default" className={planButtonClass} disabled={billingLoading}>
+                <ButtonLabel main="Resume Plan" sub={`(access ends ${paidUntilShort ?? paidUntilDate} or select a different plan)`} />
               </Button>
             ) : (
-            <Button
-              onClick={handleAddPaymentViaStripe}
-              variant="default"
-              className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight"
-            >
-              <span className="text-[12px] font-bold leading-tight text-center">Update payment method</span>
-              <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">
-                Change the card we charge
-              </span>
-            </Button>
+              // Nothing to do here — the card is changed via the pen icon above.
+              <Button variant="default" className={planButtonClass} disabled>
+                <ButtonLabel main="Selected ✓" sub="(your current active plan)" />
+              </Button>
             )
+          ) : planStatus(plan) === 'selected' ? (
+            <Button variant="default" className={planButtonClass} disabled>
+              <ButtonLabel main="Selected ✓" sub="(starts after Week 4)" />
+            </Button>
           ) : (
-            <Button
-              onClick={() => handleSelectPlan(plan)}
-              variant="default"
-              className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight"
-              disabled={billingLoading}
-            >
-                {!hasActiveStripeSub && pendingPlanChoice === plan && paymentMethodSaved ? (
-                  <>
-                    <span className="text-[12px] font-bold leading-tight text-center">Selected ✓</span>
-                    <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">
-                      Charged after Week 4 — tap another plan to switch
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-[12px] font-bold leading-tight text-center">Subscribe</span>
-                    <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">
-                      {subscribeLabel}
-                    </span>
-                  </>
-                )}
+            <Button onClick={() => handleSelectPlan(plan)} variant="default" className={planButtonClass} disabled={billingLoading}>
+              <ButtonLabel main="Select Plan" sub="(plan not active)" />
             </Button>
           )}
         </div>
@@ -661,10 +673,10 @@ const PaymentDetails = () => {
       {/* Plans Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto items-stretch">
         {/* Free Plan */}
-        <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${activePlan === 'free' && !hasPendingSelection && !hasActiveStripeSub ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
+        <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${planStatus('free') !== 'inactive' && !hasPendingSelection ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
           <PlanCardHeader
             name="Free Plan"
-            active={isPlanActive('free')}
+            status={planStatus('free')}
             priceMain="$0"
             priceUnit="/ 4 weeks"
             billingLine="No card required to start"
@@ -697,20 +709,19 @@ const PaymentDetails = () => {
               </div>
             </div>
             <div className="absolute left-4 right-4 bottom-6">
-              {hasActiveStripeSub ? (
-                <Button onClick={() => handleSelectPlan('free')} variant="default" className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight" disabled={billingLoading}>
-                  <span className="text-[12px] font-bold leading-tight text-center">Switch to Free Plan</span>
-                  <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">Keeps access until your paid period ends</span>
+              {hasPendingSelection ? (
+                // Only in-page way to clear a pre-Week-4 choice, so it keeps
+                // its own wording rather than becoming "Select Plan".
+                <Button onClick={() => handleSelectPlan('free')} variant="default" className={planButtonClass} disabled={billingLoading}>
+                  <ButtonLabel main="Cancel selected plan" sub="(nothing charged yet)" />
                 </Button>
-              ) : hasPendingSelection ? (
-                <Button onClick={() => handleSelectPlan('free')} variant="default" className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight" disabled={billingLoading}>
-                  <span className="text-[12px] font-bold leading-tight text-center">Cancel selected plan</span>
-                  <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">Nothing charged yet</span>
+              ) : planStatus('free') === 'active' ? (
+                <Button variant="default" className={planButtonClass} disabled>
+                  <ButtonLabel main="Selected ✓" sub="(your current active plan)" />
                 </Button>
               ) : (
-                <Button variant="default" className="w-full min-h-[56px] h-auto py-2.5 px-2 flex flex-col items-center justify-center gap-0.5 leading-tight" disabled>
-                  <span className="text-[12px] font-bold leading-tight text-center">Current plan</span>
-                  <span className="text-[10px] opacity-90 text-center leading-snug max-w-full whitespace-normal">No payment required</span>
+                <Button onClick={() => handleSelectPlan('free')} variant="default" className={planButtonClass} disabled={billingLoading}>
+                  <ButtonLabel main="Select Plan" sub="(plan not active)" />
                 </Button>
               )}
             </div>
@@ -719,23 +730,21 @@ const PaymentDetails = () => {
 
         <PaidPlanCard
           plan="monthly"
-          name="Monthly"
+          name="Monthly Plan"
           priceMain="$8.99"
           priceUnit="/month"
           billingLine="Billed $8.99 monthly"
-          subscribeLabel={fromAcclimationComplete ? "Pay now via Stripe" : "Charged after Week 4"}
           description="Full access to all Numi features after your free Acclimation Phase. Less than a daily coffee to kickstart your journey!"
         />
 
         <PaidPlanCard
           plan="annual"
-          name="Annually"
+          name="Annual Plan"
           priceMain="$6.00"
           priceUnit="/month"
           billingLine="Billed $72 yearly"
-          subscribeLabel={fromAcclimationComplete ? "Pay now via Stripe" : "Charged after Week 4"}
           description="Get 4 months free compared to Monthly - you save $35.88 every year. Full access to all Numi features after your free Acclimation Phase."
-          badgeLine1="Best Value - 33% discount"
+          badgeLine1="Best Value"
           badgeLine2="(4 months free)"
         />
       </div>
