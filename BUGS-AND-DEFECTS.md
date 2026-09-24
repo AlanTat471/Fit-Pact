@@ -688,3 +688,21 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
 - `npm run build`: **succeeded**.
 - Lints on `PaymentDetails.tsx`: **0 errors**.
 - Login / Dashboard / Settings code was not edited.
+
+### 84. Reserved badge slot put a gap between Inactive and the price — FIXED (root cause of the repeating layout bug)
+
+- **Where:** `PlanCardHeader` in `PaymentDetails.tsx`
+- **Reported (screenshot):** Free and Monthly had a blank band between **Inactive** and **$0 / $8.99**. Annual had Active, then empty space, then the Best Value bubble sitting in that space, then **$6.00**.
+- **Why this keeps happening (process, not a new mystery):** each layout pass optimised for the *last* complaint and reintroduced the one before it.
+  1. v16.6 reserved a badge row under every heading so boxes were the same height → blank gap under Free/Monthly headings.
+  2. v16.8 removed that row and put the badge on the heading line → Annual heading grew and Active/Inactive no longer lined up.
+  3. v16.9/16.10 tried to put status above the badge by reserving a **badge slot on all three cards** (`min-h-7` empty wrapper) and also left `CardHeader`’s default `space-y-1.5` on. Free/Monthly therefore rendered an empty 28px row plus extra header gaps — exactly the screenshot.
+- **The false trade-off:** “either leave a gap on Free/Monthly, or let Annual’s price sit one badge lower.” Those are not equal. Buttons are already pinned to the bottom of a fixed-height card, so Annual being one badge taller does **not** misalign the buttons. The empty slot was unnecessary.
+- **Fix:** render the badge **only if it exists**, immediately under Active/Inactive. No empty wrapper. `CardHeader` spacing forced to `space-y-0 gap-0`. Status sits tight under the heading; price sits tight under status on Free/Monthly; on Annual the badge sits tight under Active, then the price.
+- **Guardrail:** `.cursor/rules/plan-card-layout.mdc` now forbids reserved empty badge rows so this oscillation cannot be “fixed” the same way again.
+
+### 85. Best Value moved onto the Annual heading line (requested, no reserved slot)
+
+- Headings stay `text-[14px]` and `whitespace-nowrap`. Best Value badge reduced to `text-[7px]`.
+- **v16.10 alignment (user-directed):** do not lift Annual’s Inactive. Give **every** card the same `min-h-[22px]` heading row so Free/Monthly Active/Inactive drop to Annual’s line. Best Value is a **one-line pill** again (`BEST VALUE (4 MONTHS FREE)`, `flex-row rounded-full`) — `flex-col` was what turned it into a tall circle. Badge sits top-right of that shared heading row.
+- Badge is a sibling on that heading row only when present. Status still sits immediately under the heading row. No empty `min-h` slot was added on Free/Monthly.

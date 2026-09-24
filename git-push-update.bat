@@ -49,7 +49,8 @@ git status --short
 echo.
 
 git commit ^
-  -m "v16.10: only one Active plan; Free button and Annual badge aligned; paid-plan popup" ^
+  -m "v16.10: remove reserved badge gap; one Active plan; paid-plan popup" ^
+  -m "Plan card header no longer reserves an empty badge row on Free/Monthly. Annual Best Value badge sits on the same line as the Annual Plan heading; all three headings use the same 15px size. Status stays directly under the heading with no empty gap before the price." ^
   -m "A chosen Monthly or Annual plan is now Active even before Week 4 is charged, so Free no longer stays Active beside it. Headings are only Active or Inactive." ^
   -m "Free button reads Select Plan (cancels your current plan) instead of Cancel selected plan. Best Value badge sits under Active/Inactive so Annual's status word lines up with Free and Monthly." ^
   -m "First switch from Free to a paid plan shows a popup explaining the 4-week Acclimation charge and unlock of Weight Loss and Maintenance phases." ^

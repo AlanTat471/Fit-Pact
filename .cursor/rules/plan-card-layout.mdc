@@ -1,0 +1,36 @@
+---
+description: Plan card layout contract — do not reintroduce reserved empty slots
+alwaysApply: true
+---
+
+# Subscription plan cards (`PaymentDetails.tsx`)
+
+These three cards have been broken by the same class of mistake across v16.6–v16.10. Do not “fix alignment” by inventing empty reserved rows.
+
+## Required stack (every card)
+
+1. Every card uses the same heading row: `relative min-h-[22px]` and title `leading-[22px]`. That is how Free/Monthly Active/Inactive are lowered to match Annual — do not try to “fix Annual only.”
+2. Best Value is a **one-line pill** (`flex-row`, `rounded-full`, `whitespace-nowrap`): `BEST VALUE (4 MONTHS FREE)`. **Never** `flex-col` — that turns the bubble into a tall circle.
+3. Badge sits `absolute -top-5 left-1/2 -translate-x-1/2` — centred on the Annual card, slightly below the top edge so the card border stays visible. Text is `BEST VALUE (4 MONTHS FREE)`. Do not change heading-row `min-h-[22px]`, status `mt-1`, or price `mt-2` when moving the badge.
+4. Status word: `Active` / `Inactive` at `text-[12px]` immediately under that heading row.
+3. Price, then billing line, then description
+4. Tick list
+5. Brown button pinned to the bottom (`absolute bottom-6`)
+
+## Hard bans
+
+- Do **not** add `min-h-*` (or an empty wrapper) for a badge that only Annual has. That empty box is the blank gap between Inactive and the price on Free and Monthly.
+- Do **not** put the badge under Active/Inactive or on the same row as Active/Inactive.
+- Do **not** turn `CardHeader`’s default `space-y-1.5` back on for this header. Keep `space-y-0 gap-0` and add only the small `mt-*` already in the file.
+- Do **not** change only one heading size. Free / Monthly / Annual headings stay identical.
+- Do **not** change button wording, Active/Inactive rules, or the Free-to-paid popup unless the user asks.
+
+## Alignment that is allowed
+
+- Status words sit immediately under the heading row on every card. Annual’s heading row may be a few pixels taller because of the two-line badge; do **not** pad Free/Monthly to match.
+- Brown buttons line up because they are absolutely positioned.
+- Annual may be slightly taller than Free/Monthly. That is correct.
+
+## Before editing this header
+
+Re-read this rule and `BUGS-AND-DEFECTS.md` items 64–81 / 84–85. If a change would reintroduce a reserved empty slot, do not make it.

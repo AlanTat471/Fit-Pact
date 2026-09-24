@@ -522,35 +522,34 @@ const PaymentDetails = () => {
     badgeLine1?: string;
     badgeLine2?: string;
   }) => (
-    <CardHeader className="pb-3">
-      {/* Same stack on every card so Active/Inactive sit on one shared line:
-          1) heading  2) status word  3) badge slot (Annual only fills it).
-          The reserved badge slot keeps prices and buttons level. */}
-      <CardTitle className="text-lg leading-7 min-h-7">{name}</CardTitle>
-      <p className={`text-[12px] font-bold leading-7 min-h-7 ${status === "inactive" ? "text-on-surface-variant" : "text-primary"}`}>
-        {statusWord(status)}
-      </p>
-      <div className="min-h-7">
+    <CardHeader className="pb-3 space-y-0 gap-0">
+      {/* Same heading-row height on all three cards so Active/Inactive
+          start on one line. Annual's one-line pill sits in this row,
+          top-right; it does not use flex-col (that made a tall circle). */}
+      <div className="relative min-h-[22px] pr-1">
+        <h3 className="text-[14px] font-semibold leading-[22px] tracking-tight whitespace-nowrap">
+          {name}
+        </h3>
         {badgeLine1 && (
           <Badge
             variant="secondary"
-            className="flex-col items-center w-fit px-1.5 py-0.5 text-[8px] leading-[1.2] uppercase tracking-wide text-center"
+            className="absolute -top-5 left-1/2 -translate-x-1/2 inline-flex flex-row items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[7px] leading-none uppercase tracking-wide"
           >
-            <span>{badgeLine1}</span>
-            {badgeLine2 && <span>{badgeLine2}</span>}
+            {[badgeLine1, badgeLine2].filter(Boolean).join(" ")}
           </Badge>
         )}
       </div>
-      <div>
+      <p className={`text-[12px] font-bold leading-tight mt-1 ${status === "inactive" ? "text-on-surface-variant" : "text-primary"}`}>
+        {statusWord(status)}
+      </p>
+      <div className="mt-2">
         <p className="flex items-baseline gap-1 leading-none">
           <span className="text-2xl font-extrabold tracking-tight text-on-surface">{priceMain}</span>
           <span className="text-[12px] font-semibold text-on-surface-variant">{priceUnit}</span>
         </p>
-        <p className="text-[10px] leading-snug text-on-surface-variant mt-1.5">{billingLine}</p>
+        <p className="text-[10px] leading-snug text-on-surface-variant mt-1">{billingLine}</p>
       </div>
-      {/* Tall enough for the longest description at the narrowest card width,
-          so the tick list below starts at the same height on all three. */}
-      <p className="text-[11px] leading-[1.35] text-on-surface-variant min-h-[90px]">{description}</p>
+      <p className="text-[11px] leading-[1.35] text-on-surface-variant mt-2 min-h-[90px]">{description}</p>
     </CardHeader>
   );
 

@@ -408,7 +408,9 @@ Android Studio is already installed. Use the following process to continue testi
 - [ ] Monthly displays `$8.99 /month` with the small line `Billed $8.99 monthly`.
 - [ ] Annual Plan displays `$6.00 /month` with the small line `Billed $72 yearly`.
 - [ ] Headings read **Free Plan**, **Monthly Plan**, **Annual Plan**.
-- [ ] On Annual Plan the stack is heading, then Active/Inactive, then the `BEST VALUE` / `(4 MONTHS FREE)` bubble **under** the status word — not beside it. Free and Monthly have the same heading + status line so the three status words line up.
+- [ ] On every card: heading, then Active/Inactive, then the price with **no blank band** between Inactive and the price.
+- [ ] On Annual: `BEST VALUE` / `(4 MONTHS FREE)` sits **on the same line** as **Annual Plan** (the words “Annual Plan” must not wrap). Badge is to the right with a small gap from the card edge. All three headings are `14px`. Active/Inactive is `12px`.
+- [ ] Active/Inactive still sits directly under the heading, with **no** blank band before the price.
 - [ ] No blank gap under any heading.
 - [ ] Exactly **one** card says `Active`. The other two say `Inactive`. Never `Selected` under a heading.
 - [ ] If Monthly or Annual is chosen before Week 4, **that** card says Active and Free says Inactive.

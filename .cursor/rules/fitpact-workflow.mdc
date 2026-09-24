@@ -21,6 +21,7 @@ alwaysApply: true
 ## Quality
 
 - **Do not repeat past mistakes.** Before making a change, check that the same issue hasn't already been fixed or that the fix doesn't reintroduce an earlier bug.
+- **Plan cards:** never reserve an empty badge/status row to “keep boxes level”. See `.cursor/rules/plan-card-layout.mdc`. Empty `min-h` slots are what keep putting a gap between Inactive and the price.
 - **Do not skip steps.** Complete every part of a task before moving on.
 - **Test the "clear all data" and "fresh start" flow** whenever journey or TDEE data logic is modified.
 - When editing multiple files, verify cross-file dependencies (e.g., if Dashboard reads a value that TDEE writes, confirm both sides match).
