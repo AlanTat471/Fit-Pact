@@ -51,7 +51,7 @@ echo.
 git commit ^
   -m "v16.10: only one Active plan; Free button and Annual badge aligned; paid-plan popup" ^
   -m "A chosen Monthly or Annual plan is now Active even before Week 4 is charged, so Free no longer stays Active beside it. Headings are only Active or Inactive." ^
-  -m "Free button reads Select Plan (cancels your current plan) instead of Cancel selected plan. Best Value badge sits on the status row so Annual Inactive lines up with the other cards." ^
+  -m "Free button reads Select Plan (cancels your current plan) instead of Cancel selected plan. Best Value badge sits under Active/Inactive so Annual's status word lines up with Free and Monthly." ^
   -m "First switch from Free to a paid plan shows a popup explaining the 4-week Acclimation charge and unlock of Weight Loss and Maintenance phases." ^
   -m "v16.9 (included): fix Billing announcing the wrong plan; three-state plan cards" ^
   -m "BUG FIX: markPremiumUnlocked never cleared pendingPlan, so after a plan activated the Billing page kept reading a spent note and announced the wrong plan (Monthly) while Profile correctly showed Annual. Now cleared on activation, hasPendingSelection also requires that no paid plan is live, and PaymentDetails self-heals accounts already holding the bad combination." ^

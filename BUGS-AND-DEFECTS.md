@@ -673,7 +673,8 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
 
 - **Where:** `PlanCardHeader`
 - **Cause:** the badge shared the **heading** row, so Annual’s heading was two lines tall and **Inactive** dropped below Free/Monthly’s status word.
-- **Fix:** every card now uses the same stack — heading, then status. The Best Value badge sits on the **status** row, to the right of Active/Inactive, so the status word is above the badge and aligned across all three cards.
+- **First attempt (wrong):** I put the badge on the **same row as Active/Inactive** so the status word would not drop. That put “Active” *next to* the bubble. The user asked for Active/Inactive **above** the bubble, matching Free/Monthly (heading → status → rest).
+- **Fix:** every card uses the same stack — heading, then Active/Inactive, then a reserved badge slot. Only Annual fills the slot. The status words therefore line up, and the bubble sits **under** Active/Inactive.
 
 ### 82. Popup when leaving Free for a paid plan
 

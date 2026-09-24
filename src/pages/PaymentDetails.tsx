@@ -523,18 +523,18 @@ const PaymentDetails = () => {
     badgeLine2?: string;
   }) => (
     <CardHeader className="pb-3">
-      {/* Same stack on every card: heading, then Active/Inactive. The badge
-          sits on the status row so Annual's status word lines up with Free
-          and Monthly instead of dropping below the bubble. */}
+      {/* Same stack on every card so Active/Inactive sit on one shared line:
+          1) heading  2) status word  3) badge slot (Annual only fills it).
+          The reserved badge slot keeps prices and buttons level. */}
       <CardTitle className="text-lg leading-7 min-h-7">{name}</CardTitle>
-      <div className="flex items-start gap-1.5 min-h-7">
-        <p className={`text-[12px] font-bold leading-7 ${status === "inactive" ? "text-on-surface-variant" : "text-primary"}`}>
-          {statusWord(status)}
-        </p>
+      <p className={`text-[12px] font-bold leading-7 min-h-7 ${status === "inactive" ? "text-on-surface-variant" : "text-primary"}`}>
+        {statusWord(status)}
+      </p>
+      <div className="min-h-7">
         {badgeLine1 && (
           <Badge
             variant="secondary"
-            className="flex-col items-center shrink-0 px-1.5 py-0.5 text-[8px] leading-[1.2] uppercase tracking-wide text-center"
+            className="flex-col items-center w-fit px-1.5 py-0.5 text-[8px] leading-[1.2] uppercase tracking-wide text-center"
           >
             <span>{badgeLine1}</span>
             {badgeLine2 && <span>{badgeLine2}</span>}
