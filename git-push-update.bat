@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v16.11 - Launch fixes: dropdown, idle, devices, macros, profile, goals, dashboard, privacy
+echo   Numi v16.12 - Full terms at sign-in, goal Save prompt, underweight on click-away
 echo ============================================================
 echo.
 
@@ -158,7 +158,7 @@ echo        npx supabase functions deploy billing
 echo      You must already be logged in: npx supabase login
 echo.
 echo   5. ANDROID — see the launch note in BUGS-AND-DEFECTS.md.
-echo      Current app version: versionCode 20, versionName 2.6
+echo      Current app version: versionCode 22, versionName 2.7
 echo      If Play says that version code is already used, add 1 to
 echo      versionCode in android/app/build.gradle and rebuild.
 echo        Double-click build-and-android-sync.bat

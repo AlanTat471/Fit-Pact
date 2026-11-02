@@ -22,7 +22,9 @@ import {
   isDeviceTrusted,
   addTrustedDevice,
 } from "@/lib/supabaseTrustedDevices";
-import { markExplicitLoginThisDocument } from "@/lib/authSessionGate";
+import { markExplicitLoginThisDocument, clearExplicitLoginThisDocument } from "@/lib/authSessionGate";
+import { getUserPref, setUserPref } from "@/lib/supabaseUserPrefs";
+import { TermsAcceptDialog, TERMS_ACCEPTED_KEY } from "@/components/TermsAcceptDialog";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { clearLegacyBiometricKeys, getLastEmail, setLastEmail } from "@/lib/lastLoginEmail";
 import { formatAuthEmailError } from "@/lib/authEmailErrors";
@@ -47,6 +49,8 @@ const LoginForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailNotRegisteredError, setEmailNotRegisteredError] = useState("");
   const [otpResendCooldown, setOtpResendCooldown] = useState(0);
+  const [showTerms, setShowTerms] = useState(false);
+  const [signedInUserId, setSignedInUserId] = useState<string | null>(null);
 
   const fingerprint = getDeviceFingerprint();
 
@@ -63,6 +67,36 @@ const LoginForm = () => {
   }, [otpResendCooldown]);
 
   const startOtpResendCooldown = () => setOtpResendCooldown(OTP_RESEND_COOLDOWN_SEC);
+
+  const continueAfterSignIn = async (userId: string) => {
+    markExplicitLoginThisDocument();
+    sessionStorage.removeItem("authFlowPending");
+    const alreadyAccepted = localStorage.getItem(TERMS_ACCEPTED_KEY) === "1"
+      || (await getUserPref(userId, "termsAcceptedFull")) === "1";
+    if (alreadyAccepted) {
+      localStorage.setItem(TERMS_ACCEPTED_KEY, "1");
+      window.location.replace(window.location.origin + "/dashboard");
+      return;
+    }
+    setSignedInUserId(userId);
+    setShowTerms(true);
+  };
+
+  const handleAcceptTerms = async () => {
+    if (signedInUserId) {
+      localStorage.setItem(TERMS_ACCEPTED_KEY, "1");
+      await setUserPref(signedInUserId, "termsAcceptedFull", "1");
+    }
+    window.location.replace(window.location.origin + "/tdee-calculator");
+  };
+
+  const handleDeclineTerms = async () => {
+    setShowTerms(false);
+    setSignedInUserId(null);
+    clearExplicitLoginThisDocument();
+    sessionStorage.removeItem("authFlowPending");
+    await supabase.auth.signOut({ scope: "local" });
+  };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,7 +140,7 @@ const LoginForm = () => {
           }
           markExplicitLoginThisDocument();
           sessionStorage.removeItem("authFlowPending");
-          window.location.replace(window.location.origin + "/dashboard");
+          await continueAfterSignIn(data.session.user.id);
           return;
         }
         await supabase.auth.signOut({ scope: "local" });
@@ -174,9 +208,7 @@ const LoginForm = () => {
         setLastEmail(newDeviceEmail.trim());
         setShowNewDeviceOtp(false);
         setNewDeviceOtpCode("");
-        markExplicitLoginThisDocument();
-        sessionStorage.removeItem("authFlowPending");
-        window.location.replace(window.location.origin + "/dashboard");
+        await continueAfterSignIn(data.user.id);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Invalid code.";
@@ -238,9 +270,7 @@ const LoginForm = () => {
           });
         }
         setLastEmail(email.trim());
-        markExplicitLoginThisDocument();
-        sessionStorage.removeItem("authFlowPending");
-        window.location.replace(window.location.origin + "/dashboard");
+        await continueAfterSignIn(data.user.id);
       }
     } catch (err: unknown) {
       sessionStorage.removeItem("authFlowPending");
@@ -279,6 +309,16 @@ const LoginForm = () => {
       });
     }
   };
+
+  if (showTerms) {
+    return (
+      <TermsAcceptDialog
+        open
+        onAccept={() => { void handleAcceptTerms(); }}
+        onDeclineConfirmed={() => { void handleDeclineTerms(); }}
+      />
+    );
+  }
 
   if (showNewDeviceOtp) {
     return (

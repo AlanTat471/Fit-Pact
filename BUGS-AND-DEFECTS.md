@@ -784,3 +784,34 @@ Confirmed with Alan before coding: idle stays 5 minutes from the last tap (switc
 - Two-phone login, a real Stripe invoice, and the Play build cannot be proven from this PC alone. Alan needs to test those on the phones after deploy.
 - Plan cards were not changed.
 
+## v16.12 — Terms at sign-in, goal Save prompt, underweight on click-away (2 Nov 2026)
+
+### 97. Full disclaimer shows at sign-in, not on the Dashboard — FIXED
+
+- **Where:** `LoginForm.tsx`, `TermsAcceptDialog.tsx`, `AppLayout.tsx`. Removed the extra copies on Profile and My TDEE.
+- **Cause:** the short 3-point box was opened by the app shell whenever Dashboard loaded.
+- **Fix:** After a successful sign-in, if this account has not accepted the full terms, the login page shows the same full Privacy and Disclaimer text, with **Accept** and **Decline**.
+  - **Accept** saves the choice and opens My TDEE. It does not show again on later sign-ins.
+  - **Decline** asks: “You have clicked 'Decline' and chosen not to accept the Terms & Conditions, are you sure you want to decline?”
+  - **Yes** signs out and returns to the login page. The disclaimer shows again the next time they sign in.
+  - **No** returns to the full wording so they can press Accept.
+- The old short “I agree” choice is not reused. Everyone sees the full wording once.
+
+### 98. Goal box kept typed text, and footer Save did not ask — FIXED
+
+- **Where:** `Profile.tsx`
+- **Cause:** opening a day did not clear the Add New Goal fields, so the last text came back. The footer **Save** also saved or closed without the requested question.
+- **Fix:** **Save goal** / **Add Goal** still saves straight away. Footer **Save**, when those fields have text, asks: “You have entered details for a new goal, do you want to save changes?” **Yes** saves it into the list. **No** closes the box and clears the fields. Opening the day again starts with empty fields.
+
+### 99. Underweight warning fired while typing — FIXED
+
+- **Where:** `Workouts.tsx` (My TDEE)
+- **Cause:** the warning ran as soon as the calculated category became Underweight, which happens on each keystroke.
+- **Fix:** it runs when the user clicks or tabs away from Current Body Weight, and only if that finished number is underweight. The same warning still blocks “Go to your Dashboard” while the weight is underweight.
+
+### 100. Android number for this release
+
+- `android/app/build.gradle`: versionCode **22**, versionName **2.7**.
+- If Play says 22 is already used, add 1 to versionCode and rebuild.
+
+

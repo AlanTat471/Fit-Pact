@@ -39,8 +39,7 @@ import { BackButton } from "@/components/BackButton";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { upsertProfile } from "@/lib/supabaseProfile";
-import { getUserPref, setUserPref } from "@/lib/supabaseUserPrefs";
-import { TermsAcceptDialog, TERMS_ACCEPTED_KEY } from "@/components/TermsAcceptDialog";
+import { getUserPref } from "@/lib/supabaseUserPrefs";
 
 // Achievement icons and their data for display on Profile page
 const achievementsList = [
@@ -136,11 +135,10 @@ const Profile = () => {
   const [showGoalsPopup, setShowGoalsPopup] = useState(false);
   const [editingDay, setEditingDay] = useState<string | null>(null);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
-  const [showTerms, setShowTerms] = useState(false);
+  const [showSaveGoalPrompt, setShowSaveGoalPrompt] = useState(false);
   const [newGoalText, setNewGoalText] = useState("");
   const [newGoalTarget, setNewGoalTarget] = useState("");
   const [newGoalUnit, setNewGoalUnit] = useState<string>("Qty");
-  const [showUnsavedPrompt, setShowUnsavedPrompt] = useState(false);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('profileExpandedDays');
     if (saved) {
@@ -159,33 +157,52 @@ const Profile = () => {
 
   const hasUnsavedNewGoal = () => newGoalText.trim().length > 0 || newGoalTarget.trim().length > 0;
 
+  const ignoreUnsavedCloseRef = useRef(false);
+
+  const openDayForNewGoal = (day: string) => {
+    setEditingGoalId(null);
+    setNewGoalText("");
+    setNewGoalTarget("");
+    setNewGoalUnit("Qty");
+    setShowSaveGoalPrompt(false);
+    setEditingDay(day);
+  };
+
   const closeDayDialog = () => {
+    ignoreUnsavedCloseRef.current = true;
     setEditingDay(null);
     setEditingGoalId(null);
     setNewGoalText("");
     setNewGoalTarget("");
     setNewGoalUnit("Qty");
-    setShowUnsavedPrompt(false);
+    setShowSaveGoalPrompt(false);
   };
 
   const handleDayDialogOpenChange = (open: boolean) => {
     if (!open) {
-      if (hasUnsavedNewGoal()) {
-        setShowUnsavedPrompt(true);
+      if (!ignoreUnsavedCloseRef.current && hasUnsavedNewGoal()) {
+        setShowSaveGoalPrompt(true);
         return;
       }
-      closeDayDialog();
+      ignoreUnsavedCloseRef.current = false;
+      if (editingDay) closeDayDialog();
     }
   };
 
-  const handleConfirmSaveUnsaved = () => {
+  const handleSaveNewGoalYes = () => {
     if (editingDay && newGoalText.trim()) {
       handleAddDayGoal(editingDay);
+    } else {
+      setEditingGoalId(null);
+      setNewGoalText("");
+      setNewGoalTarget("");
+      setNewGoalUnit("Qty");
     }
-    closeDayDialog();
+    setShowSaveGoalPrompt(false);
   };
 
-  const handleDiscardUnsaved = () => {
+  const handleSaveNewGoalNo = () => {
+    setShowSaveGoalPrompt(false);
     closeDayDialog();
   };
   
@@ -887,7 +904,7 @@ const Profile = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setEditingDay(day)}
+                      onClick={() => openDayForNewGoal(day)}
                       className="text-left cursor-pointer hover:underline"
                     >
                       <h4 className="font-bold text-sm text-on-surface">{day}</h4>
@@ -993,13 +1010,7 @@ const Profile = () => {
 
       {/* Navigation Buttons */}
       <div className="flex flex-wrap gap-4 justify-center pt-4">
-        <Button variant="default" onClick={() => {
-          if (localStorage.getItem(TERMS_ACCEPTED_KEY) === "1") {
-            navigate('/dashboard');
-            return;
-          }
-          setShowTerms(true);
-        }} className="gap-2">
+        <Button variant="default" onClick={() => navigate('/dashboard')} className="gap-2">
           <MaterialIcon name="trending_up" size="sm" />
           Go to my Dashboard
         </Button>
@@ -1085,8 +1096,8 @@ const Profile = () => {
                 variant="outline"
                 className="w-full justify-between"
                 onClick={() => {
-                  setEditingDay(day);
                   setShowGoalsPopup(false);
+                  openDayForNewGoal(day);
                 }}
               >
                 <span>{day}</span>
@@ -1112,17 +1123,6 @@ const Profile = () => {
             </DialogDescription>
           </DialogHeader>
 
-          {showUnsavedPrompt && (
-            <div className="rounded-xl border-2 border-primary bg-primary/10 p-4 space-y-3">
-              <p className="text-sm font-medium text-foreground">
-                You have an unsaved goal. Do you want to save changes?
-              </p>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" size="sm" onClick={handleDiscardUnsaved}>No, discard</Button>
-                <Button variant="default" size="sm" onClick={handleConfirmSaveUnsaved}>Yes, save</Button>
-              </div>
-            </div>
-          )}
           <div className="py-4 space-y-4 max-h-[400px] overflow-y-auto">
             {editingDay && (dayGoals[editingDay] || []).map((goal) => {
               const current = goal.current || 0;
@@ -1243,21 +1243,36 @@ const Profile = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="default" onClick={handleConfirmSaveUnsaved}>Save</Button>
+            <Button
+              variant="default"
+              onClick={() => {
+                if (hasUnsavedNewGoal()) {
+                  setShowSaveGoalPrompt(true);
+                  return;
+                }
+                closeDayDialog();
+              }}
+            >
+              Save
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <TermsAcceptDialog
-        open={showTerms}
-        onNotNow={() => setShowTerms(false)}
-        onAgree={() => {
-          localStorage.setItem(TERMS_ACCEPTED_KEY, "1");
-          if (user?.id) void setUserPref(user.id, "termsAccepted", "1");
-          setShowTerms(false);
-          navigate("/dashboard");
-        }}
-      />
+      <AlertDialog open={showSaveGoalPrompt} onOpenChange={setShowSaveGoalPrompt}>
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">Save this goal?</AlertDialogTitle>
+            <AlertDialogDescription className="text-foreground/70">
+              You have entered details for a new goal, do you want to save changes?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleSaveNewGoalNo}>No</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSaveNewGoalYes}>Yes</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

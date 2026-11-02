@@ -1,10 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { BottomNav } from "@/components/BottomNav";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
-import { useLocation, useNavigate } from "react-router-dom";
-import { TermsAcceptDialog, TERMS_ACCEPTED_KEY } from "@/components/TermsAcceptDialog";
-import { setUserPref } from "@/lib/supabaseUserPrefs";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { MOTIV_QUOTE_SESSION_KEY } from "@/lib/motivationalQuotes";
@@ -28,9 +26,7 @@ const IDLE_FLAG_KEY = "numiIdleSignOut";
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { session, loading, user } = useAuth();
-  const [showTerms, setShowTerms] = useState(false);
+  const { session, loading } = useAuth();
   const hasRedirectedRef = useRef(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -119,19 +115,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
     };
   }, [session]);
 
-  useEffect(() => {
-    if (!session) return;
-    if (location.pathname !== "/dashboard") {
-      setShowTerms(false);
-      return;
-    }
-    try {
-      setShowTerms(localStorage.getItem(TERMS_ACCEPTED_KEY) !== "1");
-    } catch {
-      setShowTerms(true);
-    }
-  }, [session, location.pathname]);
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -170,18 +153,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </main>
 
       <BottomNav />
-      <TermsAcceptDialog
-        open={showTerms}
-        onNotNow={() => {
-          setShowTerms(false);
-          navigate("/tdee-calculator");
-        }}
-        onAgree={() => {
-          try { localStorage.setItem(TERMS_ACCEPTED_KEY, "1"); } catch { /* ignore */ }
-          if (user?.id) void setUserPref(user.id, "termsAccepted", "1");
-          setShowTerms(false);
-        }}
-      />
     </div>
   );
 }

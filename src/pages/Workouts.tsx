@@ -23,8 +23,6 @@ import { useUserData } from "@/contexts/UserDataContext";
 import { resolveJourneyAnchorFromRow } from "@/lib/journeyAnchor";
 import { useAuth } from "@/contexts/AuthContext";
 import { upsertProfile } from "@/lib/supabaseProfile";
-import { setUserPref } from "@/lib/supabaseUserPrefs";
-import { TermsAcceptDialog, TERMS_ACCEPTED_KEY } from "@/components/TermsAcceptDialog";
 
 const TDEE = () => {
   const navigate = useNavigate();
@@ -33,7 +31,6 @@ const TDEE = () => {
 
   // Safety timeout: if loading exceeds 5s, force-show the form to avoid infinite spinner
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rawLoading = authLoading || (!!user && userDataLoading);
   const isLoading = rawLoading && !loadingTimedOut;
@@ -446,15 +443,7 @@ const TDEE = () => {
     };
   }, [saveTdee]);
 
-  const prevClassRef = useRef(calculatedValues.yourClassification);
-  useEffect(() => {
-    if (calculatedValues.yourClassification === "Underweight" && prevClassRef.current !== "Underweight") {
-      setShowUnderweightDialog(true);
-    }
-    prevClassRef.current = calculatedValues.yourClassification;
-  }, [calculatedValues.yourClassification]);
-
-  // Handle field change with warning popup (only shows once, then user has already acknowledged)
+  // Underweight warning is shown when the user leaves the weight field, not while they are still typing.
   const handleFieldChangeWithWarning = (field: string, value: string) => {
     const alreadyAcknowledged = localStorage.getItem('tdeeChangeWarningAcknowledged') === 'true';
     // Check if original values exist and value is actually different
@@ -508,6 +497,16 @@ const TDEE = () => {
       } catch (e) {
         console.error('Error updating user profile:', e);
       }
+    }
+  };
+
+  const handleWeightBlur = () => {
+    const weightNum = parseFloat(formData.weight);
+    const heightNum = parseFloat(formData.height);
+    if (!weightNum || !heightNum || weightNum <= 0 || heightNum <= 0) return;
+    const bmi = calculateBMI(weightNum, heightNum);
+    if (getClassificationCategory(bmi) === "Underweight") {
+      setShowUnderweightDialog(true);
     }
   };
 
@@ -759,6 +758,7 @@ const TDEE = () => {
                 step="0.1"
                 value={formData.weight}
                 onChange={(e) => handleInputChange("weight", e.target.value)}
+                onBlur={handleWeightBlur}
                 placeholder="Enter your weight in kg"
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
@@ -1108,11 +1108,7 @@ const TDEE = () => {
             if (!existingLocal && !hasServerAnchor) {
               localStorage.setItem("showReadyToStartPopup", "true");
             }
-            if (localStorage.getItem(TERMS_ACCEPTED_KEY) === "1") {
-              navigate('/dashboard');
-              return;
-            }
-            setShowTerms(true);
+            navigate('/dashboard');
           }}
         >
           Go to your Dashboard
@@ -1136,17 +1132,6 @@ const TDEE = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <TermsAcceptDialog
-        open={showTerms}
-        onNotNow={() => setShowTerms(false)}
-        onAgree={() => {
-          localStorage.setItem(TERMS_ACCEPTED_KEY, "1");
-          if (user?.id) void setUserPref(user.id, "termsAccepted", "1");
-          setShowTerms(false);
-          navigate("/dashboard");
-        }}
-      />
     </div>
   );
 };

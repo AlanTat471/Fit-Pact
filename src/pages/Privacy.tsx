@@ -1,13 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const Privacy = () => {
+export function DisclaimerContent() {
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Privacy and Disclaimer</h1>
-        <p className="text-muted-foreground">Last updated: 15 October 2026</p>
-      </div>
-
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>1. Introduction</CardTitle>
@@ -238,6 +233,18 @@ const Privacy = () => {
           </p>
         </CardContent>
       </Card>
+    </div>
+  );
+};
+
+const Privacy = () => {
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold mb-2">Privacy and Disclaimer</h1>
+        <p className="text-muted-foreground">Last updated: 2 November 2026</p>
+      </div>
+      <DisclaimerContent />
     </div>
   );
 };
