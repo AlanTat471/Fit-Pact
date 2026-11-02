@@ -24,9 +24,8 @@ import { VisaIcon, MastercardIcon, AmexIcon, GooglePayIcon, ApplePayIcon } from 
 import { useAuth } from "@/contexts/AuthContext";
 import { getUserPref, setUserPref } from "@/lib/supabaseUserPrefs";
 import { upsertProfile } from "@/lib/supabaseProfile";
-import { useUserData } from "@/contexts/UserDataContext";
 import { toast } from "@/hooks/use-toast";
-import { callBillingApi, deleteUserAccount } from "@/lib/billingApi";
+import { callBillingApi } from "@/lib/billingApi";
 import { supabase } from "@/lib/supabaseClient";
 
 type PlanType = 'free' | 'monthly' | 'annual';
@@ -42,15 +41,16 @@ interface PaymentMethod {
 export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
-  const { saveTdee } = useUserData();
+  const { user, profile, refreshProfile } = useAuth();
   const tabParam = searchParams.get('tab');
   const defaultTab = tabParam === 'payments' ? 'payments' : tabParam === 'privacy' ? 'privacy' : 'account';
   const checkoutParam = searchParams.get('checkout');
 
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
-  const [showDeleteAccountSuccess, setShowDeleteAccountSuccess] = useState(false);
+  const [showDeleteAccountFinal, setShowDeleteAccountFinal] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [billingInvoices, setBillingInvoices] = useState<Array<{ id: string; date: string | null; description: string; amount: string; currency: string; status: string | null }>>([]);
+  const [billingHistoryNote, setBillingHistoryNote] = useState("Charges appear here after Stripe takes a payment.");
 
   // Privacy state
   const [privacy, setPrivacy] = useState({
@@ -99,8 +99,7 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [height, setHeight] = useState("");
-  const [weight, setWeight] = useState("");
+  const [mobile, setMobile] = useState("");
 
   const settingsHydratedForUserRef = useRef<string | null>(null);
   useEffect(() => {
@@ -114,15 +113,13 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
       setFirstName(profile.first_name || "");
       setLastName(profile.last_name || "");
       setEmail(profile.email || "");
-      setHeight(profile.height || "");
-      setWeight(profile.current_weight || "");
+      setMobile(profile.mobile || "");
     } else {
       const stored = JSON.parse(localStorage.getItem('userProfile') || '{}');
       setFirstName(stored.firstName || "");
       setLastName(stored.lastName || "");
       setEmail(stored.email || "");
-      setHeight(stored.height || "");
-      setWeight(stored.currentWeight || stored.weight || "");
+      setMobile(stored.mobile || "");
     }
   }, [profile, user?.id]);
 
@@ -189,6 +186,32 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
       window.removeEventListener('focus', syncPlans);
     };
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      let result: Awaited<ReturnType<typeof callBillingApi>>;
+      try {
+        result = await callBillingApi(undefined, "invoices");
+      } catch {
+        if (!cancelled) {
+          setBillingHistoryNote("Billing history could not be loaded. After the next deploy, paid invoices from Stripe will show in this table.");
+        }
+        return;
+      }
+      if (cancelled) return;
+      if (result.error) {
+        setBillingHistoryNote("Billing history could not be loaded. After the next deploy, paid invoices from Stripe will show in this table.");
+        return;
+      }
+      setBillingInvoices(result.invoices || []);
+      setBillingHistoryNote(result.invoices && result.invoices.length > 0
+        ? "These are the payments Stripe has recorded for this account."
+        : "No payments have been taken yet. Once Stripe charges the card, the invoice will show here.");
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   const savePaymentMethods = async (methods: PaymentMethod[]) => {
     setPaymentMethods(methods);
@@ -262,20 +285,68 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
         first_name: firstName,
         last_name: lastName,
         email,
-        height,
-        current_weight: weight,
+        mobile,
       });
       if (result.error) {
         toast({ title: "Save failed", description: "Could not update your profile. Please try again.", variant: "destructive" });
         return;
       }
+      await refreshProfile();
       toast({ title: "Profile saved", description: "Your changes have been saved." });
-      if (weight) saveTdee({ current_weight: weight });
     }
     const existing = JSON.parse(localStorage.getItem('userProfile') || '{}');
-    const updated = { ...existing, firstName, lastName, email, height, weight, currentWeight: weight };
+    const updated = { ...existing, firstName, lastName, email, mobile };
     localStorage.setItem('userProfile', JSON.stringify(updated));
     window.dispatchEvent(new Event('storage'));
+  };
+
+  const handleWipeAccountData = async () => {
+    if (!user?.id) return;
+    setDeletingAccount(true);
+    try {
+      try {
+        await callBillingApi(undefined, "clear-billing");
+      } catch {
+        // Billing clear is best-effort. Local progress is still wiped below.
+      }
+      await supabase.from("journeys").delete().eq("user_id", user.id);
+      await supabase.from("tdee_values").delete().eq("user_id", user.id);
+      await supabase.from("custom_macros").delete().eq("user_id", user.id);
+      await supabase.from("user_preferences").delete().eq("user_id", user.id);
+      await upsertProfile(user.id, {
+        profile_description: "",
+        my_why: "",
+        my_goals: [],
+        my_day_goals: {
+          Monday: [],
+          Tuesday: [],
+          Wednesday: [],
+          Thursday: [],
+          Friday: [],
+          Saturday: [],
+          Sunday: [],
+        } as never,
+        profile_photo: "",
+        mobile: "",
+        height: "",
+        current_weight: "",
+      });
+      const keys = Object.keys(localStorage);
+      for (const key of keys) {
+        if (key.startsWith("sb-")) continue;
+        localStorage.removeItem(key);
+      }
+      setShowDeleteAccountFinal(false);
+      window.location.assign("/tdee-calculator");
+    } catch (err) {
+      toast({
+        title: "Could not delete your data",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingAccount(false);
+    }
   };
 
   const handleEditCard = (card: PaymentMethod) => {
@@ -415,15 +486,9 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
                 <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="height">Height (cm)</Label>
-                  <Input id="height" value={height} onChange={e => setHeight(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="weight">Weight (kg)</Label>
-                  <Input id="weight" value={weight} onChange={e => setWeight(e.target.value)} />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="mobile">Mobile</Label>
+                <Input id="mobile" type="tel" value={mobile} onChange={e => setMobile(e.target.value)} placeholder="04xx xxx xxx" />
               </div>
 
               <Button variant="default" onClick={handleSaveProfile}>Save Changes</Button>
@@ -649,11 +714,20 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td colSpan={4} className="text-center p-6 text-muted-foreground">
-                        No transactions yet
-                      </td>
-                    </tr>
+                    {billingInvoices.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="text-center p-6 text-muted-foreground">
+                          {billingHistoryNote}
+                        </td>
+                      </tr>
+                    ) : billingInvoices.map((invoice) => (
+                      <tr key={invoice.id} className="border-b last:border-0">
+                        <td className="p-3">{invoice.date ? new Date(invoice.date).toLocaleDateString() : "—"}</td>
+                        <td className="p-3">{invoice.description}</td>
+                        <td className="p-3">{invoice.currency} {invoice.amount}</td>
+                        <td className="p-3 capitalize">{invoice.status || "—"}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -794,60 +868,44 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive">Delete Account</AlertDialogTitle>
             <AlertDialogDescription className="text-foreground/70 space-y-2">
-              <p>You have clicked &apos;Delete Account&apos;. This will delete everything in the app and close your account. You will not be able to retrieve any archived, previous data, or account details.</p>
-              <p>Do you want to continue?</p>
+              <p>You have clicked &apos;Delete Account&apos;. This will delete all the data, progress and tracking to date. You will not be able to retrieve any data once deleted. Are you sure you want to proceed?</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>No</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deletingAccount}
-              onClick={async (e) => {
+              onClick={(e) => {
                 e.preventDefault();
-                setDeletingAccount(true);
-                try {
-                  await deleteUserAccount();
-                  localStorage.clear();
-                  sessionStorage.clear();
-                  setShowDeleteAccountConfirm(false);
-                  setShowDeleteAccountSuccess(true);
-                } catch (err) {
-                  toast({
-                    title: "Could not delete account",
-                    description: err instanceof Error ? err.message : "Please try again or contact support.",
-                    variant: "destructive",
-                  });
-                } finally {
-                  setDeletingAccount(false);
-                }
+                setShowDeleteAccountConfirm(false);
+                setShowDeleteAccountFinal(true);
               }}
             >
-              {deletingAccount ? "Deleting…" : "Yes"}
+              Yes
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete Account Success */}
-      <AlertDialog open={showDeleteAccountSuccess} onOpenChange={setShowDeleteAccountSuccess}>
+      <AlertDialog open={showDeleteAccountFinal} onOpenChange={setShowDeleteAccountFinal}>
         <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Account deleted</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your account has been deleted. Click Ok to sign out.
+            <AlertDialogTitle className="text-destructive">Delete Account</AlertDialogTitle>
+            <AlertDialogDescription className="text-foreground/70">
+              You will delete all data, do you wish to continue?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingAccount}>No</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={async () => {
-                setShowDeleteAccountSuccess(false);
-                await supabase.auth.signOut();
-                navigate("/");
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deletingAccount}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleWipeAccountData();
               }}
             >
-              Ok
+              {deletingAccount ? "Deleting…" : "Yes"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

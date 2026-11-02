@@ -129,7 +129,13 @@ const MacroBreakdown = () => {
     carbs: "",
     fats: ""
   });
-  const [belowRecommendedType, setBelowRecommendedType] = useState<'protein' | 'fats' | 'both'>('both');
+  const [belowRecommendedLabel, setBelowRecommendedLabel] = useState("Protein");
+  const [sliderDraft, setSliderDraft] = useState<{ protein: number; carbs: number; fats: number } | null>(null);
+  const [showSliderAutoAdjust, setShowSliderAutoAdjust] = useState(false);
+  const [sliderAutoMessage, setSliderAutoMessage] = useState("");
+  const [showSliderBelow, setShowSliderBelow] = useState(false);
+  const [sliderBelowNames, setSliderBelowNames] = useState("");
+  const [pendingSliderGrams, setPendingSliderGrams] = useState<{ protein: number; carbs: number; fats: number } | null>(null);
 
   type MacroGramsShape = { protein: number; carbs: number; fats: number };
   const [pendingMacrosToCommit, setPendingMacrosToCommit] = useState<MacroGramsShape | null>(null);
@@ -218,40 +224,71 @@ const MacroBreakdown = () => {
     setShowCustomMacroPopup(true);
   };
 
+  const joinMacroNames = (names: string[]) => {
+    if (names.length <= 1) return names[0] || "";
+    if (names.length === 2) return `${names[0]} and ${names[1]}`;
+    return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  };
+
   const handleMacroSliderChange = (macro: 'protein' | 'carbs' | 'fats', nextValue: number) => {
     const totalCalories = parseInt(dailyCalories) || 0;
     if (totalCalories <= 0) return;
 
-    const current = {
-      protein: macros.protein.percentage,
-      carbs: macros.carbs.percentage,
-      fats: macros.fats.percentage,
-    };
-    const clamped = Math.max(0, Math.min(100, Math.round(nextValue)));
+    setSliderDraft((prev) => {
+      const current = prev ?? {
+        protein: macros.protein.percentage,
+        carbs: macros.carbs.percentage,
+        fats: macros.fats.percentage,
+      };
+      const clamped = Math.max(0, Math.min(100, Math.round(nextValue)));
+      const others = (['protein', 'carbs', 'fats'] as const).filter((m) => m !== macro);
+      const remaining = 100 - clamped;
+      const sumOthers = current[others[0]] + current[others[1]];
 
-    const others = (['protein', 'carbs', 'fats'] as const).filter((m) => m !== macro);
-    const remaining = 100 - clamped;
-    const sumOthers = current[others[0]] + current[others[1]];
+      let otherOne = 0;
+      let otherTwo = 0;
+      if (sumOthers <= 0) {
+        otherOne = Math.floor(remaining / 2);
+        otherTwo = remaining - otherOne;
+      } else {
+        otherOne = Math.round((remaining * current[others[0]]) / sumOthers);
+        otherTwo = remaining - otherOne;
+      }
 
-    let otherOne = 0;
-    let otherTwo = 0;
-    if (sumOthers <= 0) {
-      otherOne = Math.floor(remaining / 2);
-      otherTwo = remaining - otherOne;
-    } else {
-      otherOne = Math.round((remaining * current[others[0]]) / sumOthers);
-      otherTwo = remaining - otherOne;
+      const next = { ...current };
+      next[macro] = clamped;
+      next[others[0]] = otherOne;
+      next[others[1]] = otherTwo;
+      return next;
+    });
+  };
+
+  const handleSaveSlider = () => {
+    if (!sliderDraft) return;
+    const totalCalories = parseInt(dailyCalories) || 0;
+    if (totalCalories <= 0) return;
+    const grams = calculateMacroGrams(totalCalories, sliderDraft.protein, sliderDraft.carbs, sliderDraft.fats);
+    const underMinimum = sliderDraft.protein < 15 || sliderDraft.carbs < 15 || sliderDraft.fats < 15;
+    if (underMinimum) {
+      setSliderAutoMessage(
+        `You have selected ${sliderDraft.protein}% Protein, ${sliderDraft.carbs}% Carbohydrates and ${sliderDraft.fats}% Fats. This is not ideal as you should try to adhere to the daily recommended macronutrients to optimize and maximise health benefits. The app will now re-adjust to the daily recommended percentages.`
+      );
+      setShowSliderAutoAdjust(true);
+      return;
     }
-
-    const next = { ...current } as { protein: number; carbs: number; fats: number };
-    next[macro] = clamped;
-    next[others[0]] = otherOne;
-    next[others[1]] = otherTwo;
-
-    const grams = calculateMacroGrams(totalCalories, next.protein, next.carbs, next.fats);
-    setMacroGrams(grams);
-    localStorage.setItem('customMacroGrams', JSON.stringify(grams));
-    saveMacros(grams);
+    const low = [
+      sliderDraft.protein < defaultPercentages.protein ? "Protein" : "",
+      sliderDraft.carbs < defaultPercentages.carbs ? "Carbohydrates" : "",
+      sliderDraft.fats < defaultPercentages.fats ? "Fats" : "",
+    ].filter(Boolean);
+    if (low.length > 0) {
+      setSliderBelowNames(joinMacroNames(low));
+      setPendingSliderGrams(grams);
+      setShowSliderBelow(true);
+      return;
+    }
+    commitMacros(grams);
+    setSliderDraft(null);
   };
 
   const handleCustomInputChange = (field: 'protein' | 'carbs' | 'fats', value: string) => {
@@ -288,6 +325,7 @@ const MacroBreakdown = () => {
   // Reset to recommended macros based on activity level
   const handleResetToRecommended = () => {
     const calories = parseInt(dailyCalories) || 0;
+    setSliderDraft(null);
     if (calories > 0) {
       const defaults = calculateMacroGrams(calories, defaultPercentages.protein, defaultPercentages.carbs, defaultPercentages.fats);
       setMacroGrams(defaults);
@@ -475,18 +513,13 @@ const MacroBreakdown = () => {
         return;
       }
 
-      // Check which macros are below recommended
-      const proteinBelow = proteinPercent < defaultPercentages.protein;
-      const fatBelow = fatPercent < defaultPercentages.fats;
-
-      if (proteinBelow || fatBelow) {
-        if (proteinBelow && fatBelow) {
-          setBelowRecommendedType('both');
-        } else if (proteinBelow) {
-          setBelowRecommendedType('protein');
-        } else {
-          setBelowRecommendedType('fats');
-        }
+      const lowNames = [
+        proteinPercent < defaultPercentages.protein ? "Protein" : "",
+        finalCarbPercent < defaultPercentages.carbs ? "Carbohydrates" : "",
+        fatPercent < defaultPercentages.fats ? "Fats" : "",
+      ].filter(Boolean);
+      if (lowNames.length > 0) {
+        setBelowRecommendedLabel(joinMacroNames(lowNames));
         setPendingBelowRecommendedCommit(adjusted);
         setShowBelowRecommendedPopup(true);
         return;
@@ -530,18 +563,15 @@ const MacroBreakdown = () => {
     // Check which macros are below recommended
     const proteinPercent = totalCalories > 0 ? Math.round(((protein * 4) / totalCalories) * 100) : 0;
     const fatPercent = totalCalories > 0 ? Math.round(((fats * 9) / totalCalories) * 100) : 0;
+    const carbPercent = totalCalories > 0 ? Math.round(((adjusted.carbs * 4) / totalCalories) * 100) : 0;
 
-    const proteinBelow = proteinPercent < defaultPercentages.protein;
-    const fatBelow = fatPercent < defaultPercentages.fats;
-
-    if (proteinBelow || fatBelow) {
-      if (proteinBelow && fatBelow) {
-        setBelowRecommendedType('both');
-      } else if (proteinBelow) {
-        setBelowRecommendedType('protein');
-      } else {
-        setBelowRecommendedType('fats');
-      }
+    const lowNames = [
+      proteinPercent < defaultPercentages.protein ? "Protein" : "",
+      carbPercent < defaultPercentages.carbs ? "Carbohydrates" : "",
+      fatPercent < defaultPercentages.fats ? "Fats" : "",
+    ].filter(Boolean);
+    if (lowNames.length > 0) {
+      setBelowRecommendedLabel(joinMacroNames(lowNames));
       setPendingBelowRecommendedCommit(adjusted);
       setShowBelowRecommendedPopup(true);
       return;
@@ -566,6 +596,16 @@ const MacroBreakdown = () => {
       </div>
     </TooltipProvider>
   );
+
+  const sliderPercents = sliderDraft ?? {
+    protein: macros.protein.percentage,
+    carbs: macros.carbs.percentage,
+    fats: macros.fats.percentage,
+  };
+  const sliderCalorieTotal = parseInt(dailyCalories) || 0;
+  const sliderGrams = sliderDraft
+    ? calculateMacroGrams(sliderCalorieTotal, sliderDraft.protein, sliderDraft.carbs, sliderDraft.fats)
+    : { protein: macros.protein.grams, carbs: macros.carbs.grams, fats: macros.fats.grams };
 
   return (
     <div className="space-y-6 max-w-md mx-auto">
@@ -686,18 +726,18 @@ const MacroBreakdown = () => {
         <div className="mb-10">
           <div className="flex justify-between items-center mb-4">
             <label className="font-bold text-on-surface-variant">Protein focus</label>
-            <span className="text-primary font-extrabold text-xl">{macros.protein.percentage}%</span>
+            <span className="text-primary font-extrabold text-xl">{sliderPercents.protein}%</span>
           </div>
           <Slider
-            value={[macros.protein.percentage]}
+            value={[sliderPercents.protein]}
             min={0}
             max={100}
             step={1}
             onValueChange={(v) => handleMacroSliderChange('protein', v[0] ?? 0)}
           />
           <div className="flex justify-between text-sm text-on-surface-variant mt-2">
-            <span>{macros.protein.grams.toLocaleString()}g</span>
-            <span>{macros.protein.calories.toLocaleString()} cal</span>
+            <span>{sliderGrams.protein.toLocaleString()}g</span>
+            <span>{(sliderGrams.protein * 4).toLocaleString()} cal</span>
           </div>
         </div>
 
@@ -705,18 +745,18 @@ const MacroBreakdown = () => {
         <div className="mb-10">
           <div className="flex justify-between items-center mb-4">
             <label className="font-bold text-on-surface-variant">Carbohydrates</label>
-            <span className="text-secondary font-extrabold text-xl">{macros.carbs.percentage}%</span>
+            <span className="text-secondary font-extrabold text-xl">{sliderPercents.carbs}%</span>
           </div>
           <Slider
-            value={[macros.carbs.percentage]}
+            value={[sliderPercents.carbs]}
             min={0}
             max={100}
             step={1}
             onValueChange={(v) => handleMacroSliderChange('carbs', v[0] ?? 0)}
           />
           <div className="flex justify-between text-sm text-on-surface-variant mt-2">
-            <span>{macros.carbs.grams.toLocaleString()}g</span>
-            <span>{macros.carbs.calories.toLocaleString()} cal</span>
+            <span>{sliderGrams.carbs.toLocaleString()}g</span>
+            <span>{(sliderGrams.carbs * 4).toLocaleString()} cal</span>
           </div>
         </div>
 
@@ -724,18 +764,18 @@ const MacroBreakdown = () => {
         <div className="mb-6">
           <div className="flex justify-between items-center mb-4">
             <label className="font-bold text-on-surface-variant">Healthy fats</label>
-            <span className="text-on-surface font-extrabold text-xl">{macros.fats.percentage}%</span>
+            <span className="text-on-surface font-extrabold text-xl">{sliderPercents.fats}%</span>
           </div>
           <Slider
-            value={[macros.fats.percentage]}
+            value={[sliderPercents.fats]}
             min={0}
             max={100}
             step={1}
             onValueChange={(v) => handleMacroSliderChange('fats', v[0] ?? 0)}
           />
           <div className="flex justify-between text-sm text-on-surface-variant mt-2">
-            <span>{macros.fats.grams.toLocaleString()}g</span>
-            <span>{macros.fats.calories.toLocaleString()} cal</span>
+            <span>{sliderGrams.fats.toLocaleString()}g</span>
+            <span>{(sliderGrams.fats * 9).toLocaleString()} cal</span>
           </div>
         </div>
 
@@ -764,7 +804,7 @@ const MacroBreakdown = () => {
 
       {/* Action Buttons */}
       <div className="flex flex-col gap-3 pt-4 pb-6">
-        <div className="flex justify-center gap-3">
+        <div className="flex flex-wrap justify-center gap-3">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -778,6 +818,14 @@ const MacroBreakdown = () => {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          <Button
+            onClick={handleSaveSlider}
+            variant="outline"
+            className="rounded-full px-6 py-3"
+            disabled={!sliderDraft}
+          >
+            Save
+          </Button>
           <Button onClick={handleOpenCustomPopup} variant="outline" className="rounded-full px-6 py-3">
             Customise Macro
           </Button>
@@ -960,7 +1008,7 @@ const MacroBreakdown = () => {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-on-surface">Below Recommended</AlertDialogTitle>
             <AlertDialogDescription className="text-on-surface-variant">
-              You have entered values for {belowRecommendedType === 'both' ? 'Protein and Fats' : belowRecommendedType === 'protein' ? 'Protein' : 'Fats'} below the recommended daily intake. This is not ideal and you should at least be eating at recommended daily intake. Do you want the app to adjust to recommended intake?
+              You have entered the {belowRecommendedLabel.includes(" and ") ? "values" : "value"} for {belowRecommendedLabel} below the recommendation. This is not ideal and you should at least be eating at the recommended daily intake. Do you want the app to adjust to recommended intake?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
@@ -981,6 +1029,60 @@ const MacroBreakdown = () => {
               }}
             >
               No, do not adjust.
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showSliderAutoAdjust} onOpenChange={setShowSliderAutoAdjust}>
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-on-surface">Macro check</AlertDialogTitle>
+            <AlertDialogDescription className="text-on-surface-variant">
+              {sliderAutoMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button
+              onClick={() => {
+                setShowSliderAutoAdjust(false);
+                handleResetToRecommended();
+              }}
+            >
+              Ok
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showSliderBelow} onOpenChange={setShowSliderBelow}>
+        <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-on-surface">Below recommended intake</AlertDialogTitle>
+            <AlertDialogDescription className="text-on-surface-variant">
+              The macros for {sliderBelowNames} is below the recommended daily intake, are you sure you want to proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (pendingSliderGrams) commitMacros(pendingSliderGrams);
+                setPendingSliderGrams(null);
+                setSliderDraft(null);
+                setShowSliderBelow(false);
+              }}
+            >
+              Yes
+            </Button>
+            <Button
+              onClick={() => {
+                setPendingSliderGrams(null);
+                setSliderDraft(null);
+                setShowSliderBelow(false);
+              }}
+            >
+              No
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

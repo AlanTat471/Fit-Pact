@@ -4,8 +4,8 @@ const Privacy = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-muted-foreground">Last updated: {new Date().toLocaleDateString()}</p>
+        <h1 className="text-3xl font-bold mb-2">Privacy and Disclaimer</h1>
+        <p className="text-muted-foreground">Last updated: 15 October 2026</p>
       </div>
 
       <Card>
@@ -190,7 +190,43 @@ const Privacy = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>11. Contact Us</CardTitle>
+          <CardTitle>12. Medical disclaimer — Numi is a tracker, not advice</CardTitle>
+        </CardHeader>
+        <CardContent className="prose prose-sm max-w-none space-y-3">
+          <p>Please read this before you use Numi. By continuing, you agree to each point below.</p>
+          <ol className="list-decimal pl-6 space-y-2">
+            <li>Numi is a weight-loss <strong>tracking</strong> tool. It records the numbers you type in, such as weight, steps, calories, and macros.</li>
+            <li>Numi is <strong>not</strong> a doctor, dietitian, personal trainer, or medical device. It does not diagnose, treat, cure, or prevent any condition.</li>
+            <li>Any calorie target, macro split, step goal, or weight figure shown in the app is a <strong>guide or reference only</strong>. It is calculated from the information you enter. It is not a personal prescription.</li>
+            <li>You should <strong>seek professional medical advice</strong> before starting any weight-loss plan, changing what you eat, or changing how much you exercise. This is especially important if you are pregnant, under 18, injured, or managing any health condition.</li>
+            <li>Stop and speak to a qualified health professional if you feel unwell, dizzy, or in pain. Do not rely on Numi to decide whether something is safe for you.</li>
+            <li>We do not guarantee any amount of weight loss, any health result, or that the calculations are suitable for your body.</li>
+            <li>You are responsible for the information you enter and for the decisions you make after seeing a number in the app.</li>
+          </ol>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>13. Terms — copying, copyright, and liability</CardTitle>
+        </CardHeader>
+        <CardContent className="prose prose-sm max-w-none space-y-3">
+          <ol className="list-decimal pl-6 space-y-2">
+            <li>Numi, its name, screens, wording, calculations, design, and code are owned by the operator of this app. They are protected by copyright.</li>
+            <li>You receive a personal, non-transferable permission to use the app for your own tracking. You do not own the app.</li>
+            <li>You must not copy, resell, republish, scrape, or reuse the app, its text, its screens, or its calculations to build another product or website.</li>
+            <li>You must not share your login so that someone else can use a paid plan, and you must not try to bypass payment.</li>
+            <li>If you copy or reuse Numi without written permission, that can be copyright infringement. The owner can ask you to stop, claim their losses, and take legal action, including being sued.</li>
+            <li>The app is provided as-is. To the extent the law allows, we are not liable for decisions you make from the numbers in the app, for data you delete yourself, or for a service interruption.</li>
+            <li>You can delete the progress stored in your account from Settings. Deleted tracking cannot be restored.</li>
+            <li>These terms apply together with the privacy sections above. If you do not agree, do not use Numi.</li>
+          </ol>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>14. Contact Us</CardTitle>
         </CardHeader>
         <CardContent className="prose prose-sm max-w-none space-y-3">
           <p>

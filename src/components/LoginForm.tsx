@@ -109,7 +109,7 @@ const LoginForm = () => {
           window.location.replace(window.location.origin + "/dashboard");
           return;
         }
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: "local" });
         setNewDeviceEmail(email.trim());
         setNewDeviceOtpSent(false);
         setShowNewDeviceOtp(true);

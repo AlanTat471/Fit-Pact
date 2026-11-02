@@ -22,7 +22,7 @@ const navigation = [
   { title: "Community & Help", url: "/community-help", icon: "help_outline" },
   { title: "Payment Details", url: "/payment-details", icon: "credit_card" },
   { title: "Settings", url: "/settings", icon: "settings" },
-  { title: "Privacy", url: "/privacy", icon: "shield" },
+  { title: "Privacy and Disclaimer", url: "/privacy", icon: "shield" },
   { title: "About Us", url: "/about-us", icon: "info" },
   { title: "Log Out", url: "/logout", icon: "logout" },
 ];

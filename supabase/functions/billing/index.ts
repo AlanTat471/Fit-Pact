@@ -31,7 +31,7 @@ try {
 }
 
 type PlanType = "monthly" | "annual" | "free";
-type BillingAction = "setup" | "checkout" | "activate" | "cancel" | "verify" | "switch" | "resume";
+type BillingAction = "setup" | "checkout" | "activate" | "cancel" | "verify" | "switch" | "resume" | "invoices" | "clear-billing";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -353,6 +353,62 @@ Deno.serve(async (req) => {
           cancelAtPeriodEnd: true,
           currentPeriodEnd: isoOrNull(cancelledSub.current_period_end),
         });
+      }
+
+      if (action === "invoices") {
+        const { data: currentSub } = await svc
+          .from("subscriptions")
+          .select("stripe_customer_id")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (!currentSub?.stripe_customer_id) {
+          return json({ success: true, invoices: [] });
+        }
+        const list = await stripe.invoices.list({
+          customer: currentSub.stripe_customer_id,
+          limit: 24,
+        });
+        return json({
+          success: true,
+          invoices: list.data.map((inv) => ({
+            id: inv.id,
+            date: inv.created ? new Date(inv.created * 1000).toISOString() : null,
+            description: inv.lines?.data?.[0]?.description || inv.description || "Numi subscription",
+            amount: ((inv.amount_paid ?? inv.total ?? 0) / 100).toFixed(2),
+            currency: (inv.currency || "aud").toUpperCase(),
+            status: inv.status,
+          })),
+        });
+      }
+
+      if (action === "clear-billing") {
+        const { data: currentSub } = await svc
+          .from("subscriptions")
+          .select("stripe_subscription_id, stripe_customer_id")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (currentSub?.stripe_subscription_id) {
+          try {
+            await stripe.subscriptions.cancel(currentSub.stripe_subscription_id);
+          } catch (e) {
+            console.error("[billing] cancel on wipe failed:", e);
+          }
+        }
+        if (currentSub?.stripe_customer_id) {
+          const methods = await stripe.paymentMethods.list({
+            customer: currentSub.stripe_customer_id,
+            type: "card",
+          });
+          for (const method of methods.data) {
+            try {
+              await stripe.paymentMethods.detach(method.id);
+            } catch (e) {
+              console.error("[billing] detach card failed:", e);
+            }
+          }
+        }
+        await svc.from("subscriptions").delete().eq("user_id", userId);
+        return json({ success: true });
       }
 
       // ── Switch plan on the existing subscription / resume a scheduled cancellation.

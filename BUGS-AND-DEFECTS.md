@@ -466,6 +466,10 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
 - **Fix:** `versionCode 18`, `versionName "2.4"` (version code retained at 18 by decision).
 - **Watch for:** if an AAB with `versionCode 18` was already uploaded to Play, the Console rejects the upload with "version code 18 has already been used". The remedy is a one-line change to `versionCode 19` and a rebuild.
 
+### 86. Android versionCode 19 / versionName 2.5 (Sep 2026)
+
+- Play Internal testing already listed release **18**. `android/app/build.gradle` updated to **versionCode 19** and **versionName "2.5"** so a new signed bundle can be uploaded.
+
 ### 59. Stripe is configured in TEST mode only
 
 - The A$72.00 yearly price was created with the Stripe **Test mode** toggle on, so `STRIPE_PRICE_ANNUAL` in Supabase currently holds a **test** price ID. `STRIPE_SECRET_KEY` must therefore also be a test key (`sk_test_…`) — a live key paired with a test price ID fails with "No such price".
@@ -706,3 +710,77 @@ The only remaining mentions of "Lovable" are in **documentation** (e.g. `cursor-
 - Headings stay `text-[14px]` and `whitespace-nowrap`. Best Value badge reduced to `text-[7px]`.
 - **v16.10 alignment (user-directed):** do not lift Annual’s Inactive. Give **every** card the same `min-h-[22px]` heading row so Free/Monthly Active/Inactive drop to Annual’s line. Best Value is a **one-line pill** again (`BEST VALUE (4 MONTHS FREE)`, `flex-row rounded-full`) — `flex-col` was what turned it into a tall circle. Badge sits top-right of that shared heading row.
 - Badge is a sibling on that heading row only when present. Status still sits immediately under the heading row. No empty `min-h` slot was added on Free/Monthly.
+
+## v16.11 — Launch readiness pass (15 Oct 2026)
+
+Confirmed with Alan before coding: idle stays 5 minutes from the last tap (switching apps does not start a new clock); a second device stays signed in and may still ask for one email code the first time; saving on one device overwrites the cloud and the other device sees it the next time that screen loads; Delete Account wipes progress and stays signed in, then opens My TDEE.
+
+### 86. Activity Level dropdown was clipped — FIXED
+
+- **Where:** `src/components/ui/select.tsx`
+- **Cause:** the open list was forced to the same height as the closed box, so the long activity sentences were cut off.
+- **Fix:** the open list can grow up to most of the screen, the words wrap, and the list scrolls if it is still taller than the screen.
+
+### 87. Idle logout restarted when the app was backgrounded — FIXED
+
+- **Where:** `src/layouts/AppLayout.tsx`
+- **Cause:** hiding the app called `resetTimer()`, which started a fresh 5 minutes from that moment. The timeout itself was already 5 minutes.
+- **Fix:** hiding the app no longer restarts the clock. Coming back does. Sign-out from idle now uses local scope so the other phone stays signed in.
+
+### 88. Second device stalled because sign-out was global — FIXED
+
+- **Where:** `LoginForm.tsx`, `AuthContext.tsx`, `AppLayout.tsx`
+- **Cause:** an untrusted device, Log Out, and idle all called `supabase.auth.signOut()` with the default global scope. That revokes every device. The second phone could be left on the login or welcome screen with a dead session.
+- **Fix:** those sign-outs are now `scope: "local"`. A brand-new device can still be asked for one email code. There is no live sync: the last save wins, and the other device picks it up the next time it loads that data.
+
+### 89. Macro slider saved every move, shook, and skipped the warnings — FIXED
+
+- **Where:** `src/pages/MacroBreakdown.tsx`
+- **Cause:** every slider tick wrote grams, then the percentage maths rounded carbohydrates back, so the handle fought the finger. Nothing checked 100% or a macro under 15% on the slider.
+- **Fix:** the slider only updates a draft until Save. Save sits between Recommended and Customise Macro, in the same button style. Recommended is unchanged.
+- Under 15% on any macro (including 100% of one macro): the app shows the selected percentages and, after Ok, returns to the recommended split.
+- At 15% or above, but still under the recommended intake: Yes keeps the selection, No puts the sliders back.
+- Customise Macros now names the macro that is actually low, including Carbohydrates. It no longer always says Protein.
+
+### 90. Profile text did not survive leaving the page — FIXED
+
+- **Where:** `Profile.tsx`, `Settings.tsx`
+- **Cause:** saves were written to Supabase, but the in-memory profile was not refreshed. Opening the page again painted the old profile over the saved text.
+- **Fix:** a successful save now refreshes the profile. Settings Profile Information no longer shows Height and Weight. It shows Mobile. Height and weight stay on My TDEE.
+
+### 91. Goals could not be edited — FIXED
+
+- **Where:** `Profile.tsx`
+- **Fix:** each day goal has Edit. The form becomes Save goal and keeps the progress already entered. Delete and progress update are unchanged.
+
+### 92. Dashboard kept the profile-creation weight — FIXED
+
+- **Where:** `Workouts.tsx` (My TDEE), `Dashboard.tsx`
+- **Cause:** My TDEE waited 450ms to save, and leaving the page cancelled that wait. Dashboard also stopped copying the TDEE weight once acclimation finished, and then replaced it with the acclimation average.
+- **Fix:** leaving My TDEE writes the pending weight and calories immediately. Dashboard starting weight and the stat cards follow the latest My TDEE weight. Calories already read `tdee.starting_calorie_intake`, which is included in that save.
+
+### 93. Privacy renamed, and acceptance is required before Dashboard
+
+- **Where:** `Privacy.tsx`, burger menu, sidebar, `TermsAcceptDialog.tsx`, My TDEE “Go to your Dashboard”, Profile “Go to my Dashboard”
+- The page title is Privacy and Disclaimer. Sections 12 and 13 cover the medical warning (tracking and guide only, seek professional advice) and copyright (do not copy or reuse; infringement can lead to legal action).
+- The first time Dashboard opens, including from the bottom Dashboard button, the agreement is shown. I agree stores the choice on the device and the account and stays on Dashboard. Not now returns to My TDEE. After I agree, it does not ask again.
+
+### 94. Delete Account wording and wipe-in-place — FIXED
+
+- **Where:** `Settings.tsx`, billing function action `clear-billing`
+- First question uses the requested wording, with Yes and No. No stays on the page. Yes asks “You will delete all data, do you wish to continue?”
+- The second Yes stays signed in, clears journey, TDEE, macros, goals, profile description, and local progress, asks Stripe to cancel the subscription and detach the card, then opens My TDEE.
+- Card removal only works after the billing function is deployed (`npx supabase functions deploy billing`). Until then, the app data still wipes and the card may remain in Stripe.
+
+### 95. Billing history was a fake empty table — PARTLY FIXED
+
+- **Where:** `Settings.tsx`, billing function action `invoices`
+- The table used to always say “No transactions yet”, even after a real charge.
+- It now asks Stripe for invoices. It will stay empty until a real charge exists, and until the billing function above is deployed. Do not treat a blank table as proof that payment failed before that deploy.
+
+### 96. Checks still open
+
+- `npx vite build` succeeded after these edits. `npx tsc --noEmit -p tsconfig.app.json` still reports older errors in `BottomNav.tsx` (`comingSoon`) and `Profile.tsx` day-goal types. Those were already in the project and are not from this pass.
+- Two-phone login, a real Stripe invoice, and the Play build cannot be proven from this PC alone. Alan needs to test those on the phones after deploy.
+- Plan cards were not changed.
+

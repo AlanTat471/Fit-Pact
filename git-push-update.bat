@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v16.10 - One Active plan, Free Select Plan, paid-plan popup
+echo   Numi v16.11 - Launch fixes: dropdown, idle, devices, macros, profile, goals, dashboard, privacy
 echo ============================================================
 echo.
 
@@ -152,12 +152,17 @@ echo      - Settings ^> Billing shows $72/year, never $71.88
 echo      - Log out and back in: this PC should NOT ask for a
 echo        new email code now that the trust fix is live
 echo.
-echo   4. ANDROID (after Android Studio finishes installing):
+echo   4. SUPABASE billing function (needed for billing history and
+echo      Delete Account card removal). In Command Prompt, from this folder:
+echo        npx supabase functions deploy billing
+echo      You must already be logged in: npx supabase login
+echo.
+echo   5. ANDROID — see the launch note in BUGS-AND-DEFECTS.md.
+echo      Current app version: versionCode 20, versionName 2.6
+echo      If Play says that version code is already used, add 1 to
+echo      versionCode in android/app/build.gradle and rebuild.
 echo        Double-click build-and-android-sync.bat
 echo      Android Studio ^> open the "android" folder
 echo      Build ^> Generate Signed Bundle / APK ^> Android App Bundle
-echo      Already set: versionCode 18, versionName 2.4
-echo      If Play says "version code 18 already used", change
-echo      versionCode to 19 in android/app/build.gradle and rebuild.
 echo ============================================================
 pause

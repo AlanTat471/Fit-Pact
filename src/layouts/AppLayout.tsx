@@ -1,8 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { BottomNav } from "@/components/BottomNav";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { TermsAcceptDialog, TERMS_ACCEPTED_KEY } from "@/components/TermsAcceptDialog";
+import { setUserPref } from "@/lib/supabaseUserPrefs";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { MOTIV_QUOTE_SESSION_KEY } from "@/lib/motivationalQuotes";
@@ -26,7 +28,9 @@ const IDLE_FLAG_KEY = "numiIdleSignOut";
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
-  const { session, loading } = useAuth();
+  const location = useLocation();
+  const { session, loading, user } = useAuth();
+  const [showTerms, setShowTerms] = useState(false);
   const hasRedirectedRef = useRef(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -83,18 +87,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
         // to avoid wiping cached journey/dashboard data. The user is just
         // being timed out, not deliberately quitting — their data should be
         // ready to read again the moment they sign back in.
-        try { await supabase.auth.signOut(); } catch { /* no-op */ }
+        // Local scope only. A global sign-out revokes every phone at once,
+        // which is what kicked a second device off while this one was idle.
+        try { await supabase.auth.signOut({ scope: "local" }); } catch { /* no-op */ }
       }, IDLE_TIMEOUT_MS);
     };
 
     const onActivity = () => resetTimer();
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") {
-        // App minimised: snap the timer to fire after exactly IDLE_TIMEOUT_MS
-        // measured from this moment. (resetTimer does that.)
-        resetTimer();
-      } else if (document.visibilityState === "visible") {
-        // User came back: also reset, since they're clearly still active.
+      // Switching away must NOT start a fresh 5-minute clock. The timer
+      // already running from the last tap keeps going. Coming back counts
+      // as activity and starts a new 5 minutes.
+      if (document.visibilityState === "visible") {
         resetTimer();
       }
     };
@@ -114,6 +118,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     };
   }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    if (location.pathname !== "/dashboard") {
+      setShowTerms(false);
+      return;
+    }
+    try {
+      setShowTerms(localStorage.getItem(TERMS_ACCEPTED_KEY) !== "1");
+    } catch {
+      setShowTerms(true);
+    }
+  }, [session, location.pathname]);
 
   if (loading) {
     return (
@@ -153,6 +170,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </main>
 
       <BottomNav />
+      <TermsAcceptDialog
+        open={showTerms}
+        onNotNow={() => {
+          setShowTerms(false);
+          navigate("/tdee-calculator");
+        }}
+        onAgree={() => {
+          try { localStorage.setItem(TERMS_ACCEPTED_KEY, "1"); } catch { /* ignore */ }
+          if (user?.id) void setUserPref(user.id, "termsAccepted", "1");
+          setShowTerms(false);
+        }}
+      />
     </div>
   );
 }

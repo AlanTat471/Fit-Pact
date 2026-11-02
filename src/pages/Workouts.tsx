@@ -23,6 +23,8 @@ import { useUserData } from "@/contexts/UserDataContext";
 import { resolveJourneyAnchorFromRow } from "@/lib/journeyAnchor";
 import { useAuth } from "@/contexts/AuthContext";
 import { upsertProfile } from "@/lib/supabaseProfile";
+import { setUserPref } from "@/lib/supabaseUserPrefs";
+import { TermsAcceptDialog, TERMS_ACCEPTED_KEY } from "@/components/TermsAcceptDialog";
 
 const TDEE = () => {
   const navigate = useNavigate();
@@ -31,6 +33,7 @@ const TDEE = () => {
 
   // Safety timeout: if loading exceeds 5s, force-show the form to avoid infinite spinner
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rawLoading = authLoading || (!!user && userDataLoading);
   const isLoading = rawLoading && !loadingTimedOut;
@@ -309,6 +312,14 @@ const TDEE = () => {
   };
 
   const tdeeSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingTdeeSaveRef = useRef<{
+    starting_calorie_intake: string;
+    suggested_weight_goal: string;
+    height: string;
+    current_weight: string;
+    weight_to_lose: string;
+    values_json: Record<string, string>;
+  } | null>(null);
   const manualStartingCalRef = useRef<string | null>(null);
   const startingCalHydratedRef = useRef(false);
 
@@ -396,18 +407,21 @@ const TDEE = () => {
       };
 
       if (tdeeSaveTimerRef.current) clearTimeout(tdeeSaveTimerRef.current);
+      const pendingSave = {
+        starting_calorie_intake: startingCalories.toFixed(0),
+        suggested_weight_goal: midWeight.toFixed(2),
+        height: heightNum.toString(),
+        current_weight: weightNum.toFixed(1),
+        weight_to_lose: weightToLose.toFixed(2),
+        values_json: valuesJson,
+      };
+      pendingTdeeSaveRef.current = pendingSave;
       tdeeSaveTimerRef.current = setTimeout(() => {
-        localStorage.setItem("startingCalorieIntake", startingCalories.toFixed(0));
-        localStorage.setItem("suggestedWeightGoal", midWeight.toFixed(2));
-        localStorage.setItem("tdeeCalculatedValues", JSON.stringify(valuesJson));
-        saveTdee({
-          starting_calorie_intake: startingCalories.toFixed(0),
-          suggested_weight_goal: midWeight.toFixed(2),
-          height: heightNum.toString(),
-          current_weight: weightNum.toFixed(1),
-          weight_to_lose: weightToLose.toFixed(2),
-          values_json: valuesJson,
-        });
+        localStorage.setItem("startingCalorieIntake", pendingSave.starting_calorie_intake);
+        localStorage.setItem("suggestedWeightGoal", pendingSave.suggested_weight_goal);
+        localStorage.setItem("tdeeCalculatedValues", JSON.stringify(pendingSave.values_json));
+        pendingTdeeSaveRef.current = null;
+        saveTdee(pendingSave);
         tdeeSaveTimerRef.current = null;
       }, 450);
     }
@@ -416,6 +430,21 @@ const TDEE = () => {
       if (tdeeSaveTimerRef.current) clearTimeout(tdeeSaveTimerRef.current);
     };
   }, [formData, saveTdee]);
+
+  // If the user leaves My TDEE before the short save delay finishes, write the
+  // latest weight and calories immediately. Clearing the timer alone used to
+  // drop the change, so Dashboard kept the old profile weight.
+  useEffect(() => {
+    return () => {
+      const pending = pendingTdeeSaveRef.current;
+      if (!pending) return;
+      pendingTdeeSaveRef.current = null;
+      localStorage.setItem("startingCalorieIntake", pending.starting_calorie_intake);
+      localStorage.setItem("suggestedWeightGoal", pending.suggested_weight_goal);
+      localStorage.setItem("tdeeCalculatedValues", JSON.stringify(pending.values_json));
+      void saveTdee(pending);
+    };
+  }, [saveTdee]);
 
   const prevClassRef = useRef(calculatedValues.yourClassification);
   useEffect(() => {
@@ -1079,7 +1108,11 @@ const TDEE = () => {
             if (!existingLocal && !hasServerAnchor) {
               localStorage.setItem("showReadyToStartPopup", "true");
             }
-            navigate('/dashboard');
+            if (localStorage.getItem(TERMS_ACCEPTED_KEY) === "1") {
+              navigate('/dashboard');
+              return;
+            }
+            setShowTerms(true);
           }}
         >
           Go to your Dashboard
@@ -1103,6 +1136,17 @@ const TDEE = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <TermsAcceptDialog
+        open={showTerms}
+        onNotNow={() => setShowTerms(false)}
+        onAgree={() => {
+          localStorage.setItem(TERMS_ACCEPTED_KEY, "1");
+          if (user?.id) void setUserPref(user.id, "termsAccepted", "1");
+          setShowTerms(false);
+          navigate("/dashboard");
+        }}
+      />
     </div>
   );
 };

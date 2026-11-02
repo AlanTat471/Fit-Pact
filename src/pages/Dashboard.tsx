@@ -544,6 +544,20 @@ const Dashboard = () => {
       }
     };
     loadTdeeValues();
+    const refreshFromLocal = () => {
+      try {
+        const s = localStorage.getItem("tdeeCalculatedValues");
+        if (!s) return;
+        const parsed = JSON.parse(s);
+        if (parsed && typeof parsed === "object") setTdeeValues(parsed);
+      } catch { /* ignore unreadable cache */ }
+    };
+    window.addEventListener("focus", refreshFromLocal);
+    window.addEventListener("storage", refreshFromLocal);
+    return () => {
+      window.removeEventListener("focus", refreshFromLocal);
+      window.removeEventListener("storage", refreshFromLocal);
+    };
   }, [tdee?.values_json, lastSyncedAt]);
 
   // Load acclimation calories: prefer tdee from Supabase, fallback to localStorage
@@ -1967,22 +1981,21 @@ const Dashboard = () => {
       : 0;
   };
 
-  // Before acclimation completes, Starting Weight mirrors the TDEE "Current Body Weight"
-  // so changes made on the TDEE page are always reflected here.
+  // Starting Weight follows the weight saved on My TDEE, including after acclimation.
   useEffect(() => {
-    if (isAcclimationComplete()) return;
     const w = tdeeValues?.currentWeight ? String(tdeeValues.currentWeight) : "";
     if (w && parseFloat(w) > 0 && w !== startingWeight) {
       setStartingWeight(w);
     }
-  }, [tdeeValues, startingWeight, isWeek1Complete, isWeek2Complete, isWeek3Complete, isWeek4Complete]);
+  }, [tdeeValues, startingWeight]);
 
-  // Once acclimation is complete, baseline the 12-week journey from the 4-week average.
+  // If My TDEE has not supplied a weight yet, fall back to the acclimation average.
   useEffect(() => {
     if (!isAcclimationComplete()) return;
+    if (tdeeValues?.currentWeight && parseFloat(String(tdeeValues.currentWeight)) > 0) return;
     const avg = getTotalAcclimationAverage();
     if (avg > 0) setStartingWeight(avg.toFixed(2));
-  }, [isWeek1Complete, isWeek2Complete, isWeek3Complete, isWeek4Complete, acclimationData]);
+  }, [isWeek1Complete, isWeek2Complete, isWeek3Complete, isWeek4Complete, acclimationData, tdeeValues]);
 
   // Recalculate steps & calories from scratch given a set of completed weeks
   const recalculateTargets = (weeks: typeof completedWeeks) => {

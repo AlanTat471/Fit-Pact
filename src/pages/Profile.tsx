@@ -39,7 +39,8 @@ import { BackButton } from "@/components/BackButton";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { upsertProfile } from "@/lib/supabaseProfile";
-import { getUserPref } from "@/lib/supabaseUserPrefs";
+import { getUserPref, setUserPref } from "@/lib/supabaseUserPrefs";
+import { TermsAcceptDialog, TERMS_ACCEPTED_KEY } from "@/components/TermsAcceptDialog";
 
 // Achievement icons and their data for display on Profile page
 const achievementsList = [
@@ -85,7 +86,7 @@ const buildGoalUnitOptions = (system: 'metric' | 'imperial') => {
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   
   // User name state - from Supabase profile
   const [userName, setUserName] = useState<{ firstName: string; lastName: string }>({ firstName: '', lastName: '' });
@@ -134,6 +135,8 @@ const Profile = () => {
   
   const [showGoalsPopup, setShowGoalsPopup] = useState(false);
   const [editingDay, setEditingDay] = useState<string | null>(null);
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [showTerms, setShowTerms] = useState(false);
   const [newGoalText, setNewGoalText] = useState("");
   const [newGoalTarget, setNewGoalTarget] = useState("");
   const [newGoalUnit, setNewGoalUnit] = useState<string>("Qty");
@@ -158,8 +161,10 @@ const Profile = () => {
 
   const closeDayDialog = () => {
     setEditingDay(null);
+    setEditingGoalId(null);
     setNewGoalText("");
     setNewGoalTarget("");
+    setNewGoalUnit("Qty");
     setShowUnsavedPrompt(false);
   };
 
@@ -251,17 +256,18 @@ const Profile = () => {
 
   const saveProfileToSupabase = useCallback(async (updates: { profile_description?: string; my_why?: string; my_goals?: Goal[]; my_day_goals?: DayGoals; profile_photo?: string }) => {
     if (!user?.id) return;
-    await upsertProfile(user.id, {
+    const result = await upsertProfile(user.id, {
       profile_description: updates.profile_description,
       my_why: updates.my_why,
       my_goals: updates.my_goals,
       my_day_goals: updates.my_day_goals,
       profile_photo: updates.profile_photo,
     });
-    // Note: intentionally NOT calling refreshProfile() here. Local state is the
-    // source of truth for what the user just typed; refetching mid-typing was
-    // the race that caused inputs to revert.
-  }, [user?.id]);
+    if (result.error) return;
+    // Refresh after the write has finished so leaving this page and coming
+    // back reads the saved text, not the copy from when the page first opened.
+    await refreshProfile();
+  }, [user?.id, refreshProfile]);
 
   // Hydrate from Supabase profile ONCE per logged-in user, then never overwrite
   // local state from profile changes (which fire on token-refresh / session
@@ -446,23 +452,34 @@ const Profile = () => {
     if (!newGoalText.trim()) return;
     
     const parsedTarget = newGoalTarget ? parseInt(newGoalTarget.replace(/,/g, '')) : undefined;
-    const newGoal: Goal = {
-      id: Date.now().toString(),
-      text: newGoalText,
-      target: parsedTarget,
-      targetUnit: parsedTarget != null ? newGoalUnit : undefined,
-      current: 0,
-      completed: false,
-    };
-    
-    const updatedDayGoals = {
-      ...dayGoals,
-      [day]: [...(dayGoals[day] || []), newGoal]
-    };
+    const updatedDayGoals = editingGoalId
+      ? {
+          ...dayGoals,
+          [day]: (dayGoals[day] || []).map((goal) => goal.id === editingGoalId
+            ? {
+                ...goal,
+                text: newGoalText,
+                target: parsedTarget,
+                targetUnit: parsedTarget != null ? newGoalUnit : undefined,
+              }
+            : goal),
+        }
+      : {
+          ...dayGoals,
+          [day]: [...(dayGoals[day] || []), {
+            id: Date.now().toString(),
+            text: newGoalText,
+            target: parsedTarget,
+            targetUnit: parsedTarget != null ? newGoalUnit : undefined,
+            current: 0,
+            completed: false,
+          }],
+        };
     localEditFlagsRef.current.dayGoals = true;
     setDayGoals(updatedDayGoals);
     localStorage.setItem('myDayGoals', JSON.stringify(updatedDayGoals));
     saveProfileToSupabase({ my_day_goals: updatedDayGoals });
+    setEditingGoalId(null);
     setNewGoalText("");
     setNewGoalTarget("");
     setNewGoalUnit("Qty");
@@ -924,6 +941,22 @@ const Profile = () => {
                                 {formatNumbersInText(goal.text)}
                               </span>
                             </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingDay(day);
+                                setEditingGoalId(goal.id);
+                                setNewGoalText(goal.text);
+                                setNewGoalTarget(goal.target != null ? formatNumberWithCommas(String(goal.target)) : "");
+                                setNewGoalUnit(goal.targetUnit || "Qty");
+                              }}
+                            >
+                              Edit
+                            </Button>
                             {hasTarget ? (
                               <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <Input
@@ -960,7 +993,13 @@ const Profile = () => {
 
       {/* Navigation Buttons */}
       <div className="flex flex-wrap gap-4 justify-center pt-4">
-        <Button variant="default" onClick={() => navigate('/dashboard')} className="gap-2">
+        <Button variant="default" onClick={() => {
+          if (localStorage.getItem(TERMS_ACCEPTED_KEY) === "1") {
+            navigate('/dashboard');
+            return;
+          }
+          setShowTerms(true);
+        }} className="gap-2">
           <MaterialIcon name="trending_up" size="sm" />
           Go to my Dashboard
         </Button>
@@ -1101,14 +1140,28 @@ const Profile = () => {
                 <div key={goal.id} className="p-3 border-2 border-outline-variant rounded-lg space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className={`text-sm font-medium ${goal.completed ? 'line-through text-muted-foreground' : ''}`}>{formatNumbersInText(goal.text)}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                      onClick={() => editingDay && handleDeleteDayGoal(editingDay, goal.id)}
-                    >
-                      <MaterialIcon name="delete" size="sm" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingGoalId(goal.id);
+                          setNewGoalText(goal.text);
+                          setNewGoalTarget(goal.target != null ? formatNumberWithCommas(String(goal.target)) : "");
+                          setNewGoalUnit(goal.targetUnit || "Qty");
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={() => editingDay && handleDeleteDayGoal(editingDay, goal.id)}
+                      >
+                        <MaterialIcon name="delete" size="sm" />
+                      </Button>
+                    </div>
                   </div>
                   {hasTarget && (
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -1184,8 +1237,8 @@ const Profile = () => {
                 onClick={() => editingDay && handleAddDayGoal(editingDay)}
                 className="w-full gap-2"
               >
-                <MaterialIcon name="add" size="sm" />
-                Add Goal
+                <MaterialIcon name={editingGoalId ? "save" : "add"} size="sm" />
+                {editingGoalId ? "Save goal" : "Add Goal"}
               </Button>
             </div>
           </div>
@@ -1194,6 +1247,17 @@ const Profile = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <TermsAcceptDialog
+        open={showTerms}
+        onNotNow={() => setShowTerms(false)}
+        onAgree={() => {
+          localStorage.setItem(TERMS_ACCEPTED_KEY, "1");
+          if (user?.id) void setUserPref(user.id, "termsAccepted", "1");
+          setShowTerms(false);
+          navigate("/dashboard");
+        }}
+      />
     </div>
   );
 };

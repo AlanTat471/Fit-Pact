@@ -13,7 +13,7 @@ const menuItems = [
   { label: "Profile Settings", path: "/settings", icon: "settings" },
   { label: "Payment Details", path: "/payment-details", icon: "credit_card" },
   { label: "Community & Help", path: "/community-help", icon: "help_outline" },
-  { label: "Privacy", path: "/privacy", icon: "shield" },
+  { label: "Privacy and Disclaimer", path: "/privacy", icon: "shield" },
   { label: "About Us", path: "/about-us", icon: "info" },
   { label: "Log Out", path: "/logout", icon: "logout" },
 ] as const;
