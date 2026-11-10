@@ -533,13 +533,13 @@ const PaymentDetails = () => {
         {badgeLine1 && (
           <Badge
             variant="secondary"
-            className="absolute -top-5 left-1/2 -translate-x-1/2 inline-flex flex-row items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[7px] leading-none uppercase tracking-wide"
+            className="absolute -top-5 left-1/2 -translate-x-1/2 inline-flex flex-row items-center whitespace-nowrap rounded-full border-0 bg-primary px-2 py-0.5 text-[7px] font-extrabold leading-none text-primary-foreground uppercase tracking-wide"
           >
             {[badgeLine1, badgeLine2].filter(Boolean).join(" ")}
           </Badge>
         )}
       </div>
-      <p className={`text-[12px] font-bold leading-tight mt-1 ${status === "inactive" ? "text-on-surface-variant" : "text-primary"}`}>
+      <p className={`mt-1 inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-[12px] font-extrabold leading-tight ${status === "inactive" ? "bg-surface-container-high text-on-surface-variant" : "bg-primary text-primary-foreground"}`}>
         {statusWord(status)}
       </p>
       <div className="mt-2">
@@ -574,7 +574,7 @@ const PaymentDetails = () => {
     badgeLine1?: string;
     badgeLine2?: string;
   }) => (
-    <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${planStatus(plan) !== 'inactive' ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
+    <Card className={`relative flex flex-col min-h-[540px] ${planStatus(plan) !== "inactive" ? "border-2 border-primary shadow-glow bg-gradient-hero" : "border border-border bg-card"}`}>
       <PlanCardHeader
         name={name}
         status={planStatus(plan)}
@@ -688,7 +688,7 @@ const PaymentDetails = () => {
       {/* Plans Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto items-stretch">
         {/* Free Plan */}
-        <Card className={`relative border flex flex-col min-h-[540px] rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-card ${planStatus('free') !== 'inactive' ? 'border-primary shadow-glow bg-gradient-hero' : 'border-outline-variant bg-surface-container-low'}`}>
+        <Card className={`relative flex flex-col min-h-[540px] ${planStatus("free") !== "inactive" ? "border-2 border-primary shadow-glow bg-gradient-hero" : "border border-border bg-card"}`}>
           <PlanCardHeader
             name="Free Plan"
             status={planStatus('free')}
@@ -764,7 +764,7 @@ const PaymentDetails = () => {
 
       {/* Billing History */}
       <div className="max-w-4xl mx-auto">
-        <Card className="border-outline-variant shadow-card bg-surface-container-low">
+        <Card className="border-0 shadow-primary bg-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Billing History</CardTitle>
           </CardHeader>

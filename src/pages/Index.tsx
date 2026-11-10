@@ -38,7 +38,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-md mx-auto">
+      <div className="w-full max-w-md mx-auto space-y-6">
+        <div className="text-center">
+          <p className="text-5xl font-extrabold text-primary lowercase tracking-tighter">numi</p>
+        </div>
         <LoginForm />
       </div>
 

@@ -2690,7 +2690,7 @@ const Dashboard = () => {
         <BackButton />
         
         {/* Welcome Section */}
-        <div className="flex flex-col space-y-4 rounded-xl border-2 border-primary/60 bg-surface-container-low px-6 py-6 shadow-card">
+        <div className="flex flex-col space-y-4 rounded-[28px] border border-border bg-card px-6 py-6 shadow-primary">
           <h1 className="text-2xl md:text-4xl font-black tracking-tight text-primary">Hey, {userName || 'there'}!</h1>
           <div className="pt-3">
             <p className="text-xs font-bold tracking-widest text-on-surface-variant uppercase mb-2">Motivation</p>
@@ -2801,8 +2801,8 @@ const Dashboard = () => {
         {/* Current Stats Section */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Stats</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
+          <div className="stat-grid">
+            <Card className="bg-surface-container-low border border-border transition-all duration-300  hover:border-primary overflow-hidden">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                 <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Estimated BMI</CardTitle>
                 <MaterialIcon name="monitor_weight" size="xs" className="text-primary shrink-0" />
@@ -2815,7 +2815,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
+            <Card className="bg-surface-container-low border border-border transition-all duration-300  hover:border-primary overflow-hidden">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                 <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Estimated Body %</CardTitle>
                 <MaterialIcon name="trending_up" size="xs" className="text-primary shrink-0" />
@@ -2828,7 +2828,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
+            <Card className="bg-surface-container-low border border-border transition-all duration-300  hover:border-primary overflow-hidden">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                 <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Classification</CardTitle>
                 <MaterialIcon name="emoji_events" size="xs" className="text-primary shrink-0" />
@@ -2841,7 +2841,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
+            <Card className="bg-surface-container-low border border-border transition-all duration-300  hover:border-primary overflow-hidden">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                 <CardTitle className="text-[11px] font-medium text-on-surface leading-tight flex items-center gap-1">
                   Starting Weight
@@ -2872,7 +2872,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
+            <Card className="bg-surface-container-low border border-border transition-all duration-300  hover:border-primary overflow-hidden">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                 <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Weight to lose (Kg)</CardTitle>
                 <MaterialIcon name="gps_fixed" size="xs" className="text-primary shrink-0" />
@@ -2972,8 +2972,77 @@ const Dashboard = () => {
                   <p className="text-xs text-muted-foreground">Daily baseline steps during &apos;Acclimation Phase.&apos;</p>
                 </div>
               </div>
+              <div className="md:hidden space-y-4">
+                {[1, 2, 3, 4].map((weekNumber) => {
+                  const weekKey = `week${weekNumber}` as keyof typeof acclimationData;
+                  const isComplete =
+                    weekNumber === 1 ? isWeek1Complete :
+                    weekNumber === 2 ? isWeek2Complete :
+                    weekNumber === 3 ? isWeek3Complete :
+                    isWeek4Complete;
+                  const weekValues = Object.values(acclimationData[weekKey]).filter((v) => v > 0);
+                  const weekAvg = weekValues.length > 0
+                    ? (weekValues.reduce((sum, v) => sum + v, 0) / weekValues.length).toFixed(2)
+                    : '–';
+                  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                  return (
+                    <Card key={`acclimation-week-mobile-${weekNumber}`} className="rounded-[20px] border-0 bg-muted p-4 shadow-none">
+                      <div className="mb-3 flex items-center justify-between text-sm">
+                        <span className="font-extrabold">{`Week ${weekNumber} Weight (kg)`}</span>
+                        <span className="text-muted-foreground">Avg <b className="text-primary">{weekAvg}</b></span>
+                      </div>
+                      <div className="grid grid-cols-7 gap-1.5">
+                        {days.map((day) => (
+                          <div key={day} className="flex min-w-0 flex-col items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground">{day[0]}</span>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              max="200"
+                              aria-label={`Week ${weekNumber} ${day}`}
+                              value={acclimationData[weekKey][day as keyof typeof acclimationData[typeof weekKey]] || ''}
+                              onChange={(e) => handleAcclimationDataChange(weekKey, day, parseFloat(e.target.value) || 0)}
+                              className="h-11 w-full px-0 text-center text-xs"
+                              placeholder="0"
+                              disabled={isComplete}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3">
+                        {!isComplete ? (
+                          <Button
+                            onClick={() => handleCompleteAcclimationWeek(weekNumber as 1 | 2 | 3 | 4)}
+                            variant="outline"
+                            className="w-full"
+                          >
+                            {`Complete Week ${weekNumber}`}
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => setEditingAcclimationWeek({ weekNumber: weekNumber as 1 | 2 | 3 | 4, data: { ...acclimationData[weekKey] } })}
+                            variant="outline"
+                            className="w-full"
+                          >
+                            {`Edit Week ${weekNumber}`}
+                          </Button>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+                <div className="flex items-center justify-between rounded-[20px] bg-primary px-4 py-3 text-white">
+                  <span className="text-sm font-extrabold">Average Weight (Kg)</span>
+                  <span className="text-sm font-extrabold">
+                    {(() => {
+                      const acclimationAvg = getTotalAcclimationAverage();
+                      return acclimationAvg > 0 ? acclimationAvg.toFixed(2) : '–';
+                    })()}
+                  </span>
+                </div>
+              </div>
               {/* Header Row - Days across the top */}
-              <div className="overflow-x-auto">
+              <div className="hidden overflow-x-auto md:block">
                 <div className="min-w-[900px]">
                   <div className="grid grid-cols-9 gap-2 items-center p-3 rounded-lg bg-muted/50 font-semibold text-sm">
                     <div></div> {/* Empty cell for week labels */}
@@ -3045,8 +3114,8 @@ const Dashboard = () => {
                   })}
                   
                   {/* Average Weight Row */}
-                  <div className="grid grid-cols-9 gap-2 items-center p-3 rounded-lg bg-muted/50 mt-4">
-                    <div className="col-span-8 font-medium text-sm text-right pr-4">Average Weight (Kg)</div>
+                  <div className="grid grid-cols-9 gap-2 items-center p-3 rounded-[20px] bg-primary text-primary-foreground mt-4">
+                    <div className="col-span-8 font-medium text-sm text-right pr-4 text-white">Average Weight (Kg)</div>
                     <div className="flex justify-center">
                       <Input
                         type="number"
@@ -3055,7 +3124,7 @@ const Dashboard = () => {
                           const acclimationAvg = getTotalAcclimationAverage();
                           return acclimationAvg > 0 ? acclimationAvg.toFixed(2) : '';
                         })()}
-                        className="w-20 h-7 text-xs text-center bg-muted font-semibold"
+                        className="w-20 h-7 text-xs text-center bg-white/20 font-semibold text-white"
                         readOnly
                         placeholder="0.00"
                       />
@@ -3126,7 +3195,7 @@ const Dashboard = () => {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Card className="bg-surface-container-low border-2 border-primary/60 cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+                  <Card className="bg-surface-container-low border border-border cursor-help transition-all duration-300  hover:border-primary">
                     <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                       <CardTitle className="text-[11px] font-medium text-on-surface leading-tight flex items-center gap-1">
                         Streak
@@ -3150,7 +3219,7 @@ const Dashboard = () => {
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Card className="bg-surface-container-low border-2 border-primary/60 cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+                  <Card className="bg-surface-container-low border border-border cursor-help transition-all duration-300  hover:border-primary">
                     <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                       <CardTitle className="text-[11px] font-medium text-on-surface leading-tight flex items-center gap-1">
                         Previous Week Average
@@ -3175,7 +3244,7 @@ const Dashboard = () => {
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Card className="bg-surface-container-low border-2 border-primary/60 cursor-help transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+                  <Card className="bg-surface-container-low border border-border cursor-help transition-all duration-300  hover:border-primary">
                     <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                       <CardTitle className="text-[11px] font-medium text-on-surface leading-tight flex items-center gap-1">
                         Weight loss to date
@@ -3736,7 +3805,7 @@ const Dashboard = () => {
               {/* Maintenance Stats */}
               <h2 className="text-xl font-semibold mb-4">Stats</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+                <Card className="bg-surface-container-low border border-border transition-all duration-300  hover:border-primary">
                   <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                     <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">New Estimated BMI</CardTitle>
                     <MaterialIcon name="monitor_weight" size="xs" className="text-primary shrink-0" />
@@ -3749,7 +3818,7 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+                <Card className="bg-surface-container-low border border-border transition-all duration-300  hover:border-primary">
                   <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                     <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">New Estimated BF %</CardTitle>
                     <MaterialIcon name="trending_up" size="xs" className="text-primary shrink-0" />
@@ -3762,7 +3831,7 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+                <Card className="bg-surface-container-low border border-border transition-all duration-300  hover:border-primary">
                   <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                     <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Updated Classification</CardTitle>
                     <MaterialIcon name="emoji_events" size="xs" className="text-primary shrink-0" />
@@ -3775,7 +3844,7 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-surface-container-low border-2 border-primary/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary">
+                <Card className="bg-surface-container-low border border-border transition-all duration-300  hover:border-primary">
                   <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                     <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Maintenance baseline</CardTitle>
                     <MaterialIcon name="monitor_weight" size="xs" className="text-primary shrink-0" />

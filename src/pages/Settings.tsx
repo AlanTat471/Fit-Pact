@@ -473,25 +473,25 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" value={firstName} onChange={e => setFirstName(e.target.value)} />
+                  <Input id="firstName" className="h-12" value={firstName} onChange={e => setFirstName(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" value={lastName} onChange={e => setLastName(e.target.value)} />
+                  <Input id="lastName" className="h-12" value={lastName} onChange={e => setLastName(e.target.value)} />
                 </div>
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+                <Input id="email" className="h-12" type="email" value={email} onChange={e => setEmail(e.target.value)} />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="mobile">Mobile</Label>
-                <Input id="mobile" type="tel" value={mobile} onChange={e => setMobile(e.target.value)} placeholder="04xx xxx xxx" />
+                <Input id="mobile" className="h-12" type="tel" value={mobile} onChange={e => setMobile(e.target.value)} placeholder="04xx xxx xxx" />
               </div>
 
-              <Button variant="default" onClick={handleSaveProfile}>Save Changes</Button>
+              <Button variant="default" className="w-full" onClick={handleSaveProfile}>Save Changes</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -707,10 +707,10 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-medium">Date</th>
-                      <th className="text-left p-3 font-medium">Description</th>
-                      <th className="text-left p-3 font-medium">Amount</th>
-                      <th className="text-left p-3 font-medium">Status</th>
+                      <th className="text-left border-b p-3 text-xs font-extrabold text-on-surface-variant">Date</th>
+                      <th className="text-left border-b p-3 text-xs font-extrabold text-on-surface-variant">Description</th>
+                      <th className="text-left border-b p-3 text-xs font-extrabold text-on-surface-variant">Amount</th>
+                      <th className="text-left border-b p-3 text-xs font-extrabold text-on-surface-variant">Status</th>
                     </tr>
                   </thead>
                   <tbody>

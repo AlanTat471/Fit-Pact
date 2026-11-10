@@ -110,7 +110,7 @@ const CommunityHelp = () => {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <Card className="transition-all duration-300 hover:shadow-card hover:-translate-y-1">
+        <Card className="">
           <CardHeader>
             <MaterialIcon name="email" className="mb-2 text-primary" size="lg" />
             <CardTitle>Email Support</CardTitle>
@@ -133,7 +133,7 @@ const CommunityHelp = () => {
           </CardContent>
         </Card>
 
-        <Card className="opacity-60 transition-all duration-300 hover:shadow-card hover:-translate-y-1">
+        <Card className="opacity-60 ">
           <CardHeader>
             <MaterialIcon name="chat" className="mb-2 text-muted-foreground" size="lg" />
             <div className="flex items-center gap-2 flex-nowrap">
@@ -151,7 +151,7 @@ const CommunityHelp = () => {
           </CardContent>
         </Card>
 
-        <Card className="opacity-60 transition-all duration-300 hover:shadow-card hover:-translate-y-1">
+        <Card className="opacity-60 ">
           <CardHeader>
             <MaterialIcon name="menu_book" className="mb-2 text-muted-foreground" size="lg" />
             <div className="flex items-center gap-2 flex-nowrap">
@@ -169,7 +169,7 @@ const CommunityHelp = () => {
           </CardContent>
         </Card>
 
-        <Card className="opacity-60 transition-all duration-300 hover:shadow-card hover:-translate-y-1">
+        <Card className="opacity-60 ">
           <CardHeader>
             <MaterialIcon name="group" className="mb-2 text-muted-foreground" size="lg" />
             <div className="flex items-center gap-2 flex-nowrap">

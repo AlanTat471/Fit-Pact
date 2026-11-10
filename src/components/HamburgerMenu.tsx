@@ -25,13 +25,13 @@ export function HamburgerMenu() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <button className="p-2 text-primary hover:text-primary/80 transition-colors">
+        <button className="flex h-11 w-11 items-center justify-center rounded-full bg-card text-primary shadow-primary hover:text-primary/80 transition-colors">
           <MaterialIcon name="menu" size="md" />
         </button>
       </SheetTrigger>
       <SheetContent side="left" className="w-72 bg-surface-container-lowest border-outline-variant p-0">
         <SheetHeader className="px-6 py-6 border-b border-outline-variant">
-          <SheetTitle className="text-2xl font-bold text-primary lowercase tracking-tight">
+          <SheetTitle className="text-[28px] font-extrabold text-primary lowercase tracking-tight">
             Numi
           </SheetTitle>
         </SheetHeader>

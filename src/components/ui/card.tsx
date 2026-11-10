@@ -2,6 +2,9 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/* Cards lift 3px with a soft green shadow only while the mouse is over them.
+   Only the innermost card lifts (see .card-lift in index.css), so a section card
+   that holds other cards stays still while the card you point at moves. */
 const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -9,7 +12,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      "card-lift rounded-[28px] border bg-card text-card-foreground shadow-primary",
       className
     )}
     {...props}
@@ -36,7 +39,7 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-2xl font-extrabold leading-none tracking-tight",
       className
     )}
     {...props}

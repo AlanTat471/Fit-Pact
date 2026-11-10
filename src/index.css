@@ -1,84 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* Numi Light Theme — Warm palette from Stitch */
-    --background: 38 100% 98%;
-    --foreground: 60 5% 21%;
+    /* Numi — soft mint page, white cards, deep-green accent */
+    --background: 115 27% 92%;            /* #E7F0E6 */
+    --foreground: 120 9% 11%;              /* #1A1F1A */
 
-    --card: 40 64% 97%;
-    --card-foreground: 60 5% 21%;
+    --card: 0 0% 100%;
+    --card-foreground: 120 9% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 60 5% 21%;
+    --popover-foreground: 120 9% 11%;
 
-    /* Primary: Warm Brown */
-    --primary: 16 19% 40%;
+    /* Primary: deep green (white text passes 4.5:1) */
+    --primary: 100 88% 26%;               /* #2F7A08 */
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 15 74% 86%;
+    --primary-glow: 100 59% 85%;
 
-    /* Secondary: Muted Brown */
-    --secondary: 16 5% 40%;
+    --secondary: 180 76% 25%;             /* teal #0F6E6E */
     --secondary-foreground: 0 0% 100%;
 
-    /* Accent: Earthy Tertiary */
-    --accent: 32 8% 39%;
+    --accent: 18 71% 38%;                 /* burnt orange #A9461C */
     --accent-foreground: 0 0% 100%;
 
-    --muted: 40 33% 95%;
-    --muted-foreground: 60 4% 38%;
+    --muted: 105 38% 96%;                 /* #F2F8F0 */
+    --muted-foreground: 120 8% 33%;        /* #4D5A4D */
 
     --destructive: 12 65% 41%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 16 19% 40%;
-    --input: 48 19% 90%;
-    --ring: 16 19% 40%;
+    --border: 111 28% 86%;
+    --input: 110 25% 82%;
+    --ring: 100 88% 26%;
 
-    /* Stitch M3 Surface Tokens */
-    --surface: 38 100% 98%;
-    --surface-dim: 48 6% 88%;
-    --surface-bright: 38 100% 98%;
+    --surface: 115 27% 92%;
+    --surface-dim: 112 20% 86%;
+    --surface-bright: 110 30% 95%;
     --surface-container-lowest: 0 0% 100%;
-    --surface-container-low: 40 64% 97%;
-    --surface-container: 40 33% 95%;
-    --surface-container-high: 48 25% 92%;
-    --surface-container-highest: 48 19% 90%;
+    --surface-container-low: 0 0% 100%;
+    --surface-container: 105 38% 96%;
+    --surface-container-high: 110 30% 91%;
+    --surface-container-highest: 108 30% 87%;
 
-    /* M3 Container Colors */
-    --primary-container: 15 74% 86%;
-    --on-primary-container: 16 24% 30%;
-    --secondary-container: 14 30% 89%;
-    --on-secondary-container: 14 9% 33%;
-    --tertiary-container: 31 47% 91%;
-    --on-tertiary-container: 32 11% 34%;
+    --primary-container: 100 59% 85%;      /* pale green */
+    --on-primary-container: 101 89% 21%;
+    --secondary-container: 150 46% 89%;    /* mint */
+    --on-secondary-container: 150 30% 18%;
+    --tertiary-container: 15 80% 91%;      /* peach */
+    --on-tertiary-container: 15 50% 22%;
 
-    --on-surface: 60 5% 21%;
-    --on-surface-variant: 60 4% 38%;
-    --outline: 60 3% 49%;
-    --outline-variant: 47 6% 72%;
+    --on-surface: 120 9% 11%;
+    --on-surface-variant: 120 8% 33%;
+    --outline: 120 6% 42%;
+    --outline-variant: 110 20% 80%;
 
-    /* Gradients — warm version */
-    --gradient-primary: linear-gradient(135deg, hsl(16 19% 40%), hsl(32 8% 39%));
-    --gradient-secondary: linear-gradient(135deg, hsl(15 74% 86%), hsl(14 30% 89%));
-    --gradient-hero: linear-gradient(135deg, hsl(16 19% 40% / 0.06), hsl(32 8% 39% / 0.06));
+    /* Gradient used by buttons and the active nav pill */
+    --gradient-primary: linear-gradient(160deg, hsl(100 88% 27%), hsl(100 88% 24%));
+    --gradient-secondary: linear-gradient(135deg, hsl(100 59% 85%), hsl(150 46% 89%));
+    --gradient-hero: linear-gradient(135deg, hsl(100 88% 26% / 0.06), hsl(150 46% 40% / 0.06));
 
-    /* Shadows — warm subtle */
-    --shadow-primary: 0 10px 30px -10px hsl(16 19% 40% / 0.12);
-    --shadow-glow: 0 0 40px hsl(16 19% 40% / 0.06);
+    --shadow-primary: 0 6px 20px -6px hsl(100 88% 26% / 0.12);
+    --shadow-glow: 0 10px 22px hsl(100 88% 26% / 0.16);
 
-    --radius: 1rem;
+    --radius: 1.5rem;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 60 5% 21%;
-    --sidebar-primary: 16 19% 40%;
+    --sidebar-foreground: 120 9% 11%;
+    --sidebar-primary: 100 88% 26%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 40 33% 95%;
-    --sidebar-accent-foreground: 60 5% 21%;
-    --sidebar-border: 47 6% 72%;
-    --sidebar-ring: 16 19% 40%;
+    --sidebar-accent: 105 38% 96%;
+    --sidebar-accent-foreground: 120 9% 11%;
+    --sidebar-border: 110 20% 80%;
+    --sidebar-ring: 100 88% 26%;
   }
 }
 
@@ -89,9 +86,7 @@
 
   body {
     @apply bg-background text-foreground;
-    /* Allow content to extend under the Android system navigation gesture area;
-       per-element safe-area padding is added on the bottom nav and any other
-       elements that anchor to the bottom of the screen. */
+    font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
   }
 
   input[type="number"] {
@@ -106,25 +101,54 @@
   }
 }
 
+/* Outside Tailwind's layers so the pastel colours beat each card's own background. */
+.stat-grid {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding: 0.5rem 0.25rem 1.25rem;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.stat-grid > * { flex: 0 0 8.75rem; scroll-snap-align: start; border-color: transparent; }
+.stat-grid > :nth-child(1) { background: #D6F0C8; }
+.stat-grid > :nth-child(2) { background: #D3F0E3; }
+.stat-grid > :nth-child(3) { background: #FBDDD3; }
+.stat-grid > :nth-child(4) { background: #FFF0C7; }
+.stat-grid > :nth-child(5) { background: #E3EBD3; }
+.stat-grid .text-primary { color: hsl(120 9% 11%); }
+.stat-grid .text-on-surface-variant { color: #3A463A; }
+@media (min-width: 768px) {
+  .stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+  .stat-grid > * { flex: initial; }
+}
+@media (min-width: 1024px) {
+  .stat-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+/* Lift only while the mouse is over the card. A card that contains other cards stays still. */
+.card-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-lift:not(:has(.card-lift)):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px hsl(100 88% 26% / 0.16);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-lift { transition: none; }
+  .card-lift:not(:has(.card-lift)):hover { transform: none; }
+}
+
 @layer utilities {
-  /* Auto-shrinking text inside fixed-width containers — when content would wrap,
-     the browser will shrink the font down to a minimum.
-     Applied via the .auto-fit-text class on stat values,
-     and any other place where overflow risk exists. */
   .auto-fit-text {
-    /* font-size: clamp(min, preferred, max). The "preferred" uses a container query unit
-       so it scales with the container width. Falls back to viewport-width on older browsers. */
     font-size: clamp(0.65rem, 4cqi, 1rem);
     line-height: 1.1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    /* Containment so cqi works on direct ancestor */
     container-type: inline-size;
   }
 
-  /* Previous-week row on Dashboard: one line, smaller type, no ellipsis so
-     “Gain of +0.29 kg” / “Loss of -0.29 kg” stays fully readable on narrow phones. */
   .completed-week-summary-line {
     white-space: nowrap;
     line-height: 1.15;
@@ -140,16 +164,7 @@
     display: none;
   }
 
-  /* Safe-area padding helpers for Android edge-to-edge rendering.
-     `viewport-fit=cover` + these classes let our app paint behind the system
-     navigation bar while keeping interactive content above it. */
-  .pb-safe {
-    padding-bottom: env(safe-area-inset-bottom, 0);
-  }
-  .pb-safe-nav {
-    padding-bottom: calc(env(safe-area-inset-bottom, 0) + 0.5rem);
-  }
-  .pt-safe {
-    padding-top: env(safe-area-inset-top, 0);
-  }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0); }
+  .pb-safe-nav { padding-bottom: calc(env(safe-area-inset-bottom, 0) + 0.5rem); }
+  .pt-safe { padding-top: env(safe-area-inset-top, 0); }
 }

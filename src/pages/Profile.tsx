@@ -23,7 +23,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -744,10 +743,10 @@ const Profile = () => {
 
       {/* Profile Header */}
       <section className="text-center space-y-4">
-        <div className="relative w-32 h-32 mx-auto rounded-2xl overflow-hidden border-2 border-primary/30 p-1 bg-gradient-to-br from-primary/20 to-accent/20">
-          <Avatar className="w-full h-full rounded-xl">
+        <div className="relative mx-auto h-[104px] w-[104px]">
+          <Avatar className="h-[104px] w-[104px] border-4 border-card shadow-primary">
             <AvatarImage src={profilePhoto || "/placeholder-avatar.jpg"} alt="Profile" className="object-cover" />
-            <AvatarFallback className="text-2xl rounded-xl">{(userName.firstName?.[0] || '') + (userName.lastName?.[0] || '') || 'U'}</AvatarFallback>
+            <AvatarFallback className="bg-primary-container text-2xl text-primary">{(userName.firstName?.[0] || '') + (userName.lastName?.[0] || '') || 'U'}</AvatarFallback>
           </Avatar>
           {activePlan !== 'free' && (
             <span className="absolute top-2 right-2 bg-green-400 text-[#0A0A0A] text-[10px] font-black px-2 py-0.5 rounded-sm uppercase">PRO</span>
@@ -778,7 +777,7 @@ const Profile = () => {
           />
         </div>
         <div>
-          <h2 className="text-3xl font-black tracking-tighter uppercase italic">
+          <h2 className="text-[28px] font-extrabold tracking-tight">
             {userName.firstName && userName.lastName
               ? `${userName.firstName} ${userName.lastName}`
               : userName.firstName || userName.lastName || 'User'}
@@ -813,11 +812,11 @@ const Profile = () => {
 
       {/* Stats Row — values use auto-fit-text so long numbers shrink to stay on one line */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-surface-container-low p-4 rounded-xl border-2 border-primary/60 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
+        <div className="bg-surface-container-low p-4 rounded-xl border border-border text-center transition-all duration-300  hover:border-primary overflow-hidden">
           <span className="block text-2xl font-black text-primary auto-fit-text">{getCompletedAchievements().length}</span>
           <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">Badges</span>
         </div>
-        <div className="bg-surface-container-low p-4 rounded-xl border-2 border-primary/60 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
+        <div className="bg-surface-container-low p-4 rounded-xl border border-border text-center transition-all duration-300  hover:border-primary overflow-hidden">
           <span className="block text-2xl font-black text-primary auto-fit-text">
             {(() => {
               const kg = getWeightPhaseDeltaKg();
@@ -828,7 +827,7 @@ const Profile = () => {
           </span>
           <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">Weight change</span>
         </div>
-        <div className="bg-surface-container-low p-4 rounded-xl border-2 border-primary/60 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-card hover:border-primary overflow-hidden">
+        <div className="bg-surface-container-low p-4 rounded-xl border border-border text-center transition-all duration-300  hover:border-primary overflow-hidden">
           <span className="block text-2xl font-black text-primary auto-fit-text">{badgeData.currentStreak}</span>
           <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">Streak</span>
         </div>
@@ -862,7 +861,7 @@ const Profile = () => {
       {/* My Why Card */}
       <section className="space-y-4">
         <h3 className="text-xs font-bold tracking-widest text-on-surface-variant uppercase">My Why</h3>
-        <div className="bg-surface-container-low p-8 rounded-xl border-2 border-primary/60 relative transition-all duration-300 hover:shadow-card hover:-translate-y-1 hover:border-primary">
+        <Card className="border-0 p-5 shadow-primary">
           <p className="text-xl font-medium leading-relaxed text-on-surface relative z-10">
             {myWhy}
           </p>
@@ -875,7 +874,7 @@ const Profile = () => {
           >
             <MaterialIcon name="edit" size="xs" className="mr-1" /> Edit Statement
           </button>
-        </div>
+        </Card>
       </section>
 
       {/* Daily Goals Section */}
@@ -891,7 +890,7 @@ const Profile = () => {
             const isExpanded = expandedDays[day] !== false;
             const goalsForDay = dayGoals[day] || [];
             return (
-              <div key={day} className="rounded-xl overflow-hidden border-2 border-primary/60 transition-all duration-300 hover:shadow-card hover:border-primary bg-surface-container-low">
+              <Card key={day} className="overflow-hidden border border-border p-4">
                 <div className="flex items-center justify-between p-4 bg-surface-container-low transition-colors">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <button
@@ -905,9 +904,10 @@ const Profile = () => {
                     <button
                       type="button"
                       onClick={() => openDayForNewGoal(day)}
-                      className="text-left cursor-pointer hover:underline"
+                      className="flex min-h-11 flex-1 items-center justify-between text-left"
                     >
                       <h4 className="font-bold text-sm text-on-surface">{day}</h4>
+                      <MaterialIcon name="chevron_right" size="sm" className="text-on-surface-variant" />
                     </button>
                   </div>
                   <span className="text-xs text-on-surface-variant shrink-0">{goalsForDay.length} goals</span>
@@ -927,11 +927,11 @@ const Profile = () => {
                         else motivation = `Keep going, you're ${percentage}% complete!`;
                       }
                       return (
-                        <div key={goal.id} className={`rounded-lg border-2 p-2.5 ${goal.completed ? 'border-primary/50 bg-primary/5' : 'border-outline-variant bg-background'}`}>
+                        <Card key={goal.id} className="rounded-[18px] border-0 bg-muted p-3.5 shadow-none">
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center space-x-3 flex-1 min-w-0">
                               <div
-                                className={`w-5 h-5 rounded-sm flex items-center justify-center cursor-pointer shrink-0 ${goal.completed ? 'bg-primary' : 'border-2 border-primary/60'}`}
+                                className={`w-5 h-5 rounded-sm flex items-center justify-center cursor-pointer shrink-0 ${goal.completed ? 'bg-primary' : 'border border-border'}`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const updatedDayGoals = {
@@ -974,6 +974,17 @@ const Profile = () => {
                             >
                               Edit
                             </Button>
+                            <button
+                              type="button"
+                              aria-label="Delete goal"
+                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-[1.5px] border-destructive text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteDayGoal(day, goal.id);
+                              }}
+                            >
+                              <MaterialIcon name="delete" size="sm" />
+                            </button>
                             {hasTarget ? (
                               <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <Input
@@ -986,7 +997,7 @@ const Profile = () => {
                                     handleUpdateDayGoalProgress(day, goal.id, Math.min(999999999, numValue));
                                   }}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="h-7 w-20 px-2 text-xs text-right"
+                                  className="h-11 w-20 rounded-xl border bg-card px-2 text-xs text-right"
                                 />
                                 <span className="text-xs text-on-surface-variant whitespace-nowrap">/ {formatNumberWithCommas(target.toString())}{goal.targetUnit ? ` ${goal.targetUnit}` : ''}</span>
                               </div>
@@ -997,12 +1008,12 @@ const Profile = () => {
                               {motivation}
                             </p>
                           )}
-                        </div>
+                        </Card>
                       );
                     })}
                   </div>
                 )}
-              </div>
+              </Card>
             );
           })}
         </div>
@@ -1242,9 +1253,9 @@ const Profile = () => {
               </Button>
             </div>
           </div>
-          <DialogFooter>
+          <div className="flex justify-end">
             <Button
-              variant="default"
+              variant="outline"
               onClick={() => {
                 if (hasUnsavedNewGoal()) {
                   setShowSaveGoalPrompt(true);
@@ -1255,7 +1266,7 @@ const Profile = () => {
             >
               Save
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

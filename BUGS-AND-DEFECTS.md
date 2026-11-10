@@ -1,6 +1,40 @@
 # Numi — Bugs, Defects, Fixes, and How the App Works
 
-This is the audit file for Numi (the app folder is still named Fit-Pact / sweat-script-buddy). Older numbered items below are the history. **If an older item disagrees with this section, follow this section.** Last brought up to date: 3 November 2026 (v16.12).
+This is the audit file for Numi (the app folder is still named Fit-Pact / sweat-script-buddy). Older numbered items below are the history. **If an older item disagrees with this section, follow this section.** Last brought up to date: 10 November 2026, evening audit (green look, not yet published).
+
+### Audit 10 November 2026, evening
+
+Checked in the code, and the project build succeeded earlier the same day. A signed-in click-through on the live site was not possible from here. Alan still needs to refresh `http://localhost:8080/` and walk the checklist below.
+
+Still correct in the code:
+
+- Full disclaimer is on the login page only, once per account. Accept goes to My TDEE. Decline then Yes signs out that phone only.
+- Idle is 5 minutes from the last tap. Leaving the app does not restart the clock. Coming back does. Sign-out is this phone only.
+- Underweight warning is when the person leaves the Current Body Weight box.
+- Goals: the footer Save asks before keeping a half-typed new goal. Save goal / Add Goal still saves immediately.
+- Prices: Free $0, Monthly $8.99, Annual $6.00/month billed $72 yearly. One Active plan. Best Value is the small one-line pill just inside the Annual card.
+- Delete Account wipes the data and stays signed in, then opens My TDEE. It does not close the login.
+
+Red flags, not fixed in this audit (waiting for a yes):
+
+- Android stays at versionCode 22 and versionName "1.0". Alan confirmed on 10 November 2026: leave it as 22. If Play says 22 is already used, stop and tell Cursor before changing it.
+- Billing history and “remove the card on Delete Account” stay empty or skipped until `npx supabase functions deploy billing` has been run. The website bat does not do this.
+- Popup buttons are now side by side. A long label such as “Save Custom Macros” may feel tight on a phone. Words and actions are unchanged.
+- Login, My TDEE, Profile, Settings and Privacy were laid out to the green design on 10 November 2026. Words, prices, and button actions were not changed. Long popups stay side by side. Gender on My TDEE is two pills (Male / Female) that set the same value as the old circles. TDEE and Starting Calorie Intake can still be edited. A goal row on Profile has a delete icon that uses the existing delete.
+- `NUMI-UI-CODE-FOR-CLAUDE.txt` is a designer copy. The bat now leaves it off GitHub.
+
+### Look only (10 November 2026)
+
+Colours, corners, and spacing changed. Prices, plan rules, calculations, the disclaimer, and what each button does did not change.
+
+- Page is mint. Buttons are deep green pills, including the plan buttons. Cards are white and lift slightly only while the mouse is over them. A card that contains other cards stays still. Clicking or typing inside a card does not lift it.
+- The bottom bar is a dark floating pill. The current page is a white pill with its name.
+- Dashboard stat boxes are pastel and slide sideways on a phone.
+- On a phone, the four acclimation weeks are a stack of day boxes. The wide table is still there on a computer.
+- Macro tiles are green, teal, and orange. The three macro buttons are full width.
+- Plan cards: Active is a green pill and Inactive is a grey pill, in the same place under the plan name. Best Value stays the small one-line pill (`text-[7px]`, `-top-5`) centred just inside the top edge of Annual, so it does not cover the border or the words Annual Plan. No empty gap was added. Alan confirmed on 10 November 2026 that Best Value sits inside the card and clear of the border. Do not move it.
+- Achievements stays grey and says Coming Soon.
+- The app from before any of these colour changes is saved as git branch `before-any-ui-changes` (commit `c87565c`). The new look is not published until `git-push-update.bat` is run. To throw the new look away before that, in Command Prompt, from the project folder: `git restore .`
 
 The file is in the project folder, next to `package.json`:
 

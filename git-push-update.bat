@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v16.12 - Full terms at sign-in, goal Save prompt, underweight on click-away
+echo   Numi v16.13 - Green look: mint page, green buttons, dark bottom bar
 echo ============================================================
 echo.
 
@@ -34,6 +34,8 @@ if not exist package.json (
 
 echo [2/4] Staging ALL changes (modified, new and deleted)...
 git add -A
+REM Designer dump. It is a copy of the screens for Claude, not the app.
+git reset HEAD -- "NUMI-UI-CODE-FOR-CLAUDE.txt" >nul 2>&1
 
 REM "git diff --cached --quiet" exits 1 when something IS staged.
 git diff --cached --quiet
@@ -49,24 +51,9 @@ git status --short
 echo.
 
 git commit ^
-  -m "v16.10: remove reserved badge gap; one Active plan; paid-plan popup" ^
-  -m "Plan card header no longer reserves an empty badge row on Free/Monthly. Annual Best Value badge sits on the same line as the Annual Plan heading; all three headings use the same 15px size. Status stays directly under the heading with no empty gap before the price." ^
-  -m "A chosen Monthly or Annual plan is now Active even before Week 4 is charged, so Free no longer stays Active beside it. Headings are only Active or Inactive." ^
-  -m "Free button reads Select Plan (cancels your current plan) instead of Cancel selected plan. Best Value badge sits under Active/Inactive so Annual's status word lines up with Free and Monthly." ^
-  -m "First switch from Free to a paid plan shows a popup explaining the 4-week Acclimation charge and unlock of Weight Loss and Maintenance phases." ^
-  -m "v16.9 (included): fix Billing announcing the wrong plan; three-state plan cards" ^
-  -m "BUG FIX: markPremiumUnlocked never cleared pendingPlan, so after a plan activated the Billing page kept reading a spent note and announced the wrong plan (Monthly) while Profile correctly showed Annual. Now cleared on activation, hasPendingSelection also requires that no paid plan is live, and PaymentDetails self-heals accounts already holding the bad combination." ^
-  -m "Plan cards: single status word under each heading (Active / Selected / Inactive) with the bracketed explanation moved onto the button. Inactive shows 'Select Plan (plan not active)'; the live plan shows 'Selected (your current active plan)'. Resume Plan and Cancel selected plan keep their own wording because they are the only controls for those actions." ^
-  -m "Headings renamed to Monthly Plan and Annual Plan; Best Value badge shortened so it fits on the heading line; heading row and description slot pinned to fixed heights so all three cards align." ^
-  -m "v16.8 (included): plan card gaps removed, unified Active/Inactive status, 4-week free trial with real end date" ^
-  -m "Plan cards: the Annually badge now sits beside the heading (smaller text) and the reserved empty badge slot is gone, so Free Plan and Monthly no longer have a blank gap under their headings." ^
-  -m "Status: all three cards show the same Active/(your current active plan) or Inactive/(plan not active) block under the heading, and exactly one card is ever Active. Buttons keep their distinct actions (Subscribe, Selected, Cancel selected plan, Resume plan, Update payment method, Switch to Free Plan) with consistent typography." ^
-  -m "Free trial: card now says 4 weeks instead of 14 days, matching the 28-day Acclimation Phase the code has always granted. Trial Period reads 'Your Free Trial will end on DD/MM/YY' from the journey's acclimation end date, falling back to '4 weeks after your journey start date' for users with no start date yet." ^
-  -m "v16.7 (included): annual plan $72/year, plan card redesign, login and device-trust fixes, Android project added" ^
-  -m "Pricing: annual is now A$72/year shown as $6.00/month with 'Billed $72 yearly'; Best Value badge wraps onto two lines; Free/Monthly/Annually share one card header so all three boxes align; Settings and the switch-plan popup quote $72. No Quarterly plan." ^
-  -m "Login: 60-second cooldown on sending verification codes with live countdown, plain-English Supabase email rate-limit messages (new src/lib/authEmailErrors.ts), and legacy device-fingerprint migration so devices trusted before v12 are recognised without a fresh OTP." ^
-  -m "Community Help: success popup spins three times then freezes with a green tick." ^
-  -m "Repo hygiene: Capacitor android/ project added to version control, Supabase CLI scratch files untracked and gitignored, stray 0-byte files removed. Android set to versionCode 18 / versionName 2.4."
+  -m "v16.13: mint page, green buttons, dark bottom bar" ^
+  -m "Look only. Prices stay $0, $8.99/month and $6.00/month billed $72 yearly. Calculations, the sign-in disclaimer, and what each button does are unchanged." ^
+  -m "Best Value stays one small line, BEST VALUE (4 MONTHS FREE), centred just inside the top of the Annual card so it does not cover the border or the plan name. No empty gap on Free or Monthly."
 
 if errorlevel 1 (
     echo.
@@ -121,48 +108,47 @@ if errorlevel 1 (
 
 echo.
 echo ============================================================
-echo   Push complete!  v16.7
+echo   Push complete.  v16.13 green look
 echo.
-echo   Confirm nothing is left behind - this should print nothing:
+echo   Confirm nothing important is left behind:
 git status --short
-echo   (if lines appear above, tell Cursor)
+echo   (NUMI-UI-CODE-FOR-CLAUDE.txt may still be listed. That file is a
+echo    designer copy and is meant to stay off GitHub.)
 echo.
-echo   1. VERCEL: wait 2-3 mins, then open
+echo   1. VERCEL: wait 2-3 minutes, then open
 echo      https://fit-pact.vercel.app
-echo      and press Ctrl+Shift+R (hard refresh).
-echo      Annually must show $6.00 /month and "Billed $72 yearly".
+echo      and press Ctrl+Shift+R.
+echo      The page should be mint, buttons green, bottom bar dark.
 echo.
-echo   2. STRIPE + SUPABASE: already done by you (TEST mode).
-echo      Nothing further to do for testing.
-echo      BEFORE REAL LAUNCH you must repeat in LIVE mode:
-echo        - create the A$72.00 yearly price in Live mode
-echo        - put that LIVE price ID in STRIPE_PRICE_ANNUAL
-echo        - swap STRIPE_SECRET_KEY to the live sk_live_ key
-echo        - create a Live webhook and set STRIPE_WEBHOOK_SECRET
-echo      Test and Live price IDs are NOT interchangeable.
+echo   2. STRIPE + SUPABASE prices: no price change in this update.
+echo      Annual is still A$72.00 a year, shown as $6.00 /month.
+echo      BEFORE REAL CUSTOMERS you must use LIVE mode:
+echo        - A$72.00 yearly price in Live mode
+echo        - that LIVE price ID in STRIPE_PRICE_ANNUAL
+echo        - STRIPE_SECRET_KEY swapped to the live sk_live_ key
+echo        - a Live webhook and STRIPE_WEBHOOK_SECRET
+echo      Test and Live price IDs are not interchangeable.
 echo.
-echo   3. TEST on web (Payment Details page):
-echo      - Annually: $6.00 /month + "Billed $72 yearly"
-echo      - Badge line 1: BEST VALUE - 33%% DISCOUNT
-echo        Badge line 2: (4 MONTHS FREE)
-echo      - Monthly: $8.99 /month + "Billed $8.99 monthly"
-echo      - All three boxes equal height, buttons aligned
-echo      - Stripe TEST checkout for Annually shows A$72.00
-echo      - Settings ^> Billing shows $72/year, never $71.88
-echo      - Log out and back in: this PC should NOT ask for a
-echo        new email code now that the trust fix is live
+echo   3. TEST on the website:
+echo      - Annual: $6.00 /month and "Billed $72 yearly"
+echo      - Best Value is ONE line: BEST VALUE (4 MONTHS FREE)
+echo        It sits just inside the top of the Annual card.
+echo      - Monthly: $8.99 /month and "Billed $8.99 monthly"
+echo      - Free and Monthly have no blank gap under Inactive
+echo      - Settings Billing shows $72/year, never $71.88
 echo.
-echo   4. SUPABASE billing function (needed for billing history and
-echo      Delete Account card removal). In Command Prompt, from this folder:
+echo   4. SUPABASE billing function. The website push does NOT do this.
+echo      Needed for the billing history table and for Delete Account
+echo      to detach a saved card. In Command Prompt, from this folder:
+echo        npx supabase login
 echo        npx supabase functions deploy billing
-echo      You must already be logged in: npx supabase login
 echo.
-echo   5. ANDROID — see the launch note in BUGS-AND-DEFECTS.md.
-echo      Current app version: versionCode 22, versionName 2.7
-echo      If Play says that version code is already used, add 1 to
-echo      versionCode in android/app/build.gradle and rebuild.
+echo   5. ANDROID. The phone app does not change when the website does.
+echo      Current file: versionCode 22, versionName 1.0
+echo      If Play says that version code is already used, stop and
+echo      tell Cursor before uploading.
 echo        Double-click build-and-android-sync.bat
-echo      Android Studio ^> open the "android" folder
-echo      Build ^> Generate Signed Bundle / APK ^> Android App Bundle
+echo      Then Android Studio, open the android folder,
+echo      Build, Generate Signed Bundle / APK, Android App Bundle.
 echo ============================================================
 pause

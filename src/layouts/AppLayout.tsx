@@ -133,19 +133,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col w-full bg-background text-foreground">
-      <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-4">
+      <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl px-6 py-4 flex justify-between items-center gap-3">
+        <div className="flex min-w-0 items-center gap-4">
           <HamburgerMenu />
         </div>
         <h1
-          className="text-2xl font-bold text-primary lowercase tracking-tight cursor-pointer"
+          className="text-[28px] font-extrabold text-primary lowercase tracking-tight cursor-pointer"
           onClick={() => navigate("/dashboard")}
         >
           Numi
         </h1>
-        <button className="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-container-high">
-          <MaterialIcon name="notifications" size="md" />
-        </button>
+        <div className="relative shrink-0 z-10">
+          <button className="flex h-11 w-11 items-center justify-center rounded-full bg-card text-on-surface shadow-primary hover:text-primary transition-colors">
+            <MaterialIcon name="notifications" size="md" />
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 pt-20 pb-36 px-4 sm:px-6 overflow-x-hidden max-w-2xl mx-auto w-full" style={{ paddingBottom: "calc(9rem + env(safe-area-inset-bottom, 0))" }}>

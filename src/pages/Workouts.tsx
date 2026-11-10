@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -655,7 +654,7 @@ const TDEE = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 rounded-xl border border-outline-variant bg-gradient-hero px-4 py-5 shadow-primary">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+          <h1 className="text-[28px] font-extrabold tracking-tight flex items-center gap-2">
             My TDEE Calculator
             <Tooltip>
               <TooltipTrigger asChild>
@@ -666,13 +665,13 @@ const TDEE = () => {
               </TooltipContent>
             </Tooltip>
           </h1>
-          <p className="text-muted-foreground">Calculate your Total Daily Energy Expenditure and ideal body metrics</p>
+          <p className="text-sm text-muted-foreground">Calculate your Total Daily Energy Expenditure and ideal body metrics</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Input Form */}
-        <Card className="border-outline-variant transition-all duration-300 hover:shadow-card">
+        <Card className="border-outline-variant p-5">
           <CardHeader>
             <CardTitle>My Details</CardTitle>
           </CardHeader>
@@ -682,20 +681,22 @@ const TDEE = () => {
               <TooltipField tooltip="Biological sex affects metabolic rate calculations. Males typically have higher BMR than females due to muscle mass differences.">
                 <Label htmlFor="gender">Gender</Label>
               </TooltipField>
-              <RadioGroup
-                value={formData.gender}
-                onValueChange={(value) => handleInputChange("gender", value)}
-                className="flex gap-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="male" id="male" />
-                  <Label htmlFor="male">Male</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="female" id="female" />
-                  <Label htmlFor="female">Female</Label>
-                </div>
-              </RadioGroup>
+              <div className="flex gap-1.5 rounded-full bg-muted p-1">
+                <button
+                  type="button"
+                  onClick={() => handleInputChange("gender", "male")}
+                  className={`h-11 flex-1 rounded-full font-extrabold ${formData.gender === "male" ? "bg-primary text-primary-foreground" : "text-on-surface"}`}
+                >
+                  Male
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInputChange("gender", "female")}
+                  className={`h-11 flex-1 rounded-full font-extrabold ${formData.gender === "female" ? "bg-primary text-primary-foreground" : "text-on-surface"}`}
+                >
+                  Female
+                </button>
+              </div>
             </div>
 
             {/* Age */}
@@ -709,7 +710,7 @@ const TDEE = () => {
                 value={formData.age}
                 onChange={(e) => handleInputChange("age", e.target.value)}
                 placeholder="Enter your age"
-                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="h-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
 
@@ -724,7 +725,7 @@ const TDEE = () => {
                 value={formData.height}
                 onChange={(e) => handleInputChange("height", e.target.value)}
                 placeholder="Enter your height in cm"
-                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="h-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
 
@@ -734,15 +735,15 @@ const TDEE = () => {
                 <Label htmlFor="activityLevel">Activity Level</Label>
               </TooltipField>
               <Select value={formData.activityLevel} onValueChange={(value) => handleInputChange("activityLevel", value)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-12">
                   <SelectValue placeholder="Select your activity level" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sedentary">Sedentary (x1.2) - Less than 3,000 steps/day (Desk job, minimal movement)</SelectItem>
-                  <SelectItem value="lightly-active">Lightly Active (x1.375) - 3,000-7,000 steps/day (Retail worker, teacher)</SelectItem>
-                  <SelectItem value="moderately-active">Moderately Active (x1.55) - 7,500-9,000 steps/day (Warehouse worker, nurse)</SelectItem>
-                  <SelectItem value="very-active">Very Active (x1.725) - 10,000-12,000 steps/day (Construction worker, personal trainer)</SelectItem>
-                  <SelectItem value="super-active">Super Active (x1.9) - 12,500+ steps/day (Professional athlete, courier)</SelectItem>
+                <SelectContent className="max-h-72 overflow-y-auto">
+                  <SelectItem className="whitespace-normal py-3 leading-snug" value="sedentary">Sedentary (x1.2) - Less than 3,000 steps/day (Desk job, minimal movement)</SelectItem>
+                  <SelectItem className="whitespace-normal py-3 leading-snug" value="lightly-active">Lightly Active (x1.375) - 3,000-7,000 steps/day (Retail worker, teacher)</SelectItem>
+                  <SelectItem className="whitespace-normal py-3 leading-snug" value="moderately-active">Moderately Active (x1.55) - 7,500-9,000 steps/day (Warehouse worker, nurse)</SelectItem>
+                  <SelectItem className="whitespace-normal py-3 leading-snug" value="very-active">Very Active (x1.725) - 10,000-12,000 steps/day (Construction worker, personal trainer)</SelectItem>
+                  <SelectItem className="whitespace-normal py-3 leading-snug" value="super-active">Super Active (x1.9) - 12,500+ steps/day (Professional athlete, courier)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -760,20 +761,20 @@ const TDEE = () => {
                 onChange={(e) => handleInputChange("weight", e.target.value)}
                 onBlur={handleWeightBlur}
                 placeholder="Enter your weight in kg"
-                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="h-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           </CardContent>
         </Card>
 
         {/* Calculated Results */}
-        <Card className="border-outline-variant transition-all duration-300 hover:shadow-card">
+        <Card className="border-outline-variant ">
           <CardHeader>
             <CardTitle>Calculated Values</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="grid grid-cols-2 gap-2.5">
             {/* BMR */}
-            <div className="space-y-2">
+            <div className="space-y-2 rounded-[18px] bg-[#D6F0C8] p-3.5">
               <TooltipField tooltip="This is the number of calories burned at rest (i.e., Breathing, Blood circulation, Regulate body temperature, Digesting process etc.).">
                 <Label htmlFor="bmr">Basal Metabolic Rate (BMR)</Label>
               </TooltipField>
@@ -787,7 +788,7 @@ const TDEE = () => {
             </div>
 
             {/* TDEE */}
-            <div className="space-y-2">
+            <div className="space-y-2 rounded-[18px] bg-[#D3F0E3] p-3.5">
               <TooltipField tooltip="Your Total Daily Energy Expenditure is calculated by multiplying your BMR by your activity level multiplier. This represents the total calories you burn per day based on your current daily activity level and is what you need to eat to maintain your current weight.">
                 <Label htmlFor="tdee">Total Daily Energy Expenditure (TDEE)</Label>
               </TooltipField>
@@ -814,7 +815,7 @@ const TDEE = () => {
             </div>
 
             {/* Starting Calories */}
-            <div className="space-y-2">
+            <div className="space-y-2 rounded-[18px] bg-[#FBDDD3] p-3.5">
               <TooltipField tooltip="Use this value to start your four-week 'Acclimation Phase'. This is to establish a baseline to start your diet. You may edit this value if you wish to start at a different calorie intake.">
                 <Label htmlFor="startingCalories">Starting Calorie Intake</Label>
               </TooltipField>
@@ -849,7 +850,7 @@ const TDEE = () => {
             </div>
 
             {/* Current BMI */}
-            <div className="space-y-2">
+            <div className="space-y-2 rounded-[18px] bg-[#FFF0C7] p-3.5">
               <TooltipField tooltip="Your current Body Mass Index based on your height and weight. BMI categories: Underweight (<18.5), Healthy (18.5-24.9), Overweight (25-29.9), Obese (≥30).">
                 <Label htmlFor="currentBMI">Estimated BMI</Label>
               </TooltipField>
@@ -863,7 +864,7 @@ const TDEE = () => {
             </div>
 
             {/* Estimated Body Fat % */}
-            <div className="space-y-2">
+            <div className="space-y-2 rounded-[18px] bg-[#E1F2D8] p-3.5">
               <TooltipField tooltip="Estimated body fat percentage calculated using the Deurenberg formula based on your BMI, age, and gender.">
                 <Label htmlFor="estimatedBodyFat">Estimated Body Fat %</Label>
               </TooltipField>
@@ -877,7 +878,7 @@ const TDEE = () => {
             </div>
 
             {/* Your Classification */}
-            <div className="space-y-2">
+            <div className="col-span-2 space-y-2 rounded-[18px] bg-[#E3EBD3] p-3.5">
               <TooltipField tooltip="Your health classification category based on BMI and other metrics: Underweight, Healthy, Overweight, or Obese.">
                 <Label htmlFor="yourClassification">Your Classification</Label>
               </TooltipField>
@@ -893,9 +894,9 @@ const TDEE = () => {
       </div>
 
       {/* Ideal Ranges */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-2 gap-2.5">
         {/* Ideal Weight Range */}
-        <Card className="md:col-span-1 border-outline-variant transition-all duration-300 hover:shadow-card">
+        <Card className="md:col-span-1 border-0 bg-[#E1F2D8]">
           <CardHeader>
             <CardTitle>Ideal Weight Range</CardTitle>
             <p className="text-xs text-muted-foreground font-normal mt-1">
@@ -931,7 +932,7 @@ const TDEE = () => {
         </Card>
 
         {/* Ideal Body Fat Range */}
-        <Card className="md:col-span-1 border-outline-variant transition-all duration-300 hover:shadow-card hover:-translate-y-1">
+        <Card className="md:col-span-1 border-0 bg-[#D7EFEA]">
           <CardHeader>
             <CardTitle>Ideal Body Fat Range</CardTitle>
             <p className="text-xs text-muted-foreground font-normal mt-1">
@@ -967,7 +968,7 @@ const TDEE = () => {
         </Card>
 
         {/* Ideal BMI Range */}
-        <Card className="md:col-span-1 border-outline-variant transition-all duration-300 hover:shadow-card hover:-translate-y-1">
+        <Card className="md:col-span-1 border-0 bg-[#FBE4D8]">
           <CardHeader>
             <CardTitle>Ideal Body Mass Index (BMI) Range</CardTitle>
             <p className="text-xs text-muted-foreground font-normal mt-1">
@@ -1004,7 +1005,7 @@ const TDEE = () => {
 
         {/* Weight Suggestion */}
         {calculatedValues.currentBMI && calculatedValues.idealWeightMax && formData.weight && (
-          <Card className="md:col-span-1 border-outline-variant transition-all duration-300 hover:shadow-card hover:-translate-y-1">
+          <Card className="md:col-span-1 border-0 bg-[#FFF3D2]">
             <CardHeader>
               <CardTitle>Suggested Weight Loss Goal</CardTitle>
               <p className="text-xs text-muted-foreground font-normal mt-1">
@@ -1088,15 +1089,14 @@ const TDEE = () => {
       </AlertDialog>
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row justify-center gap-4">
-        <Button variant="outline" size="lg" className="gap-2" onClick={handleClearFields}>
+      <div className="flex flex-col gap-3">
+        <Button variant="outline" size="lg" className="w-full gap-2" onClick={handleClearFields}>
           <MaterialIcon name="refresh" size="sm" />
           Clear Fields
         </Button>
         <Button
-          variant="outline"
           size="lg"
-          className="gap-2"
+          className="w-full gap-2"
           disabled={hasInvalidCalcs || isUnderweight}
           onClick={() => {
             if (isUnderweight) {

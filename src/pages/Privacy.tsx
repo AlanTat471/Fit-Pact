@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export function DisclaimerContent() {
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="mb-3 p-[18px]">
         <CardHeader>
-          <CardTitle>1. Introduction</CardTitle>
+          <CardTitle className="text-base font-extrabold">1. Introduction</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm max-w-none space-y-3">
+        <CardContent className="prose prose-sm max-w-none space-y-3 text-[13px] leading-relaxed text-on-surface">
           <p>
             Welcome to Numi ("we", "our", "us", or the "App"). We are committed to protecting
             your personal information and your right to privacy. This Privacy Policy explains what information
@@ -20,11 +20,11 @@ export function DisclaimerContent() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mb-3 p-[18px]">
         <CardHeader>
-          <CardTitle>2. Information We Collect</CardTitle>
+          <CardTitle className="text-base font-extrabold">2. Information We Collect</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm max-w-none space-y-3">
+        <CardContent className="prose prose-sm max-w-none space-y-3 text-[13px] leading-relaxed text-on-surface">
           <p>We collect only the information necessary to provide you with accurate and personalised fitness recommendations:</p>
           <ul className="list-disc pl-6 space-y-1">
             <li><strong>Personal details:</strong> Name, email address, age, gender, and mobile number (optional).</li>
@@ -40,11 +40,11 @@ export function DisclaimerContent() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mb-3 p-[18px]">
         <CardHeader>
-          <CardTitle>3. How We Use Your Information</CardTitle>
+          <CardTitle className="text-base font-extrabold">3. How We Use Your Information</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm max-w-none space-y-3">
+        <CardContent className="prose prose-sm max-w-none space-y-3 text-[13px] leading-relaxed text-on-surface">
           <p>Your information is used solely to:</p>
           <ul className="list-disc pl-6 space-y-1">
             <li>Calculate your Total Daily Energy Expenditure (TDEE), Basal Metabolic Rate (BMR), Body Mass Index (BMI), and estimated body fat percentage.</li>
@@ -57,11 +57,11 @@ export function DisclaimerContent() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mb-3 p-[18px]">
         <CardHeader>
-          <CardTitle>4. Data Sharing</CardTitle>
+          <CardTitle className="text-base font-extrabold">4. Data Sharing</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm max-w-none space-y-3">
+        <CardContent className="prose prose-sm max-w-none space-y-3 text-[13px] leading-relaxed text-on-surface">
           <p>
             <strong>We do not sell, trade, rent, or share your personal information with third parties</strong> for
             marketing or any other purpose unrelated to the operation of this App.
@@ -75,11 +75,11 @@ export function DisclaimerContent() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mb-3 p-[18px]">
         <CardHeader>
-          <CardTitle>5. Data Storage & Security</CardTitle>
+          <CardTitle className="text-base font-extrabold">5. Data Storage & Security</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm max-w-none space-y-3">
+        <CardContent className="prose prose-sm max-w-none space-y-3 text-[13px] leading-relaxed text-on-surface">
           <p>
             We implement industry-standard security measures to protect your personal information from
             unauthorised access, alteration, disclosure, or destruction. Your data is stored securely and
@@ -92,11 +92,11 @@ export function DisclaimerContent() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mb-3 p-[18px]">
         <CardHeader>
-          <CardTitle>6. Data Retention</CardTitle>
+          <CardTitle className="text-base font-extrabold">6. Data Retention</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm max-w-none space-y-3">
+        <CardContent className="prose prose-sm max-w-none space-y-3 text-[13px] leading-relaxed text-on-surface">
           <p>
             We retain your personal data only for as long as necessary to provide the services described
             in this policy. You may request deletion of your data at any time by contacting us through the
@@ -105,11 +105,11 @@ export function DisclaimerContent() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mb-3 p-[18px]">
         <CardHeader>
-          <CardTitle>7. Your Rights</CardTitle>
+          <CardTitle className="text-base font-extrabold">7. Your Rights</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm max-w-none space-y-3">
+        <CardContent className="prose prose-sm max-w-none space-y-3 text-[13px] leading-relaxed text-on-surface">
           <p>You have the right to:</p>
           <ul className="list-disc pl-6 space-y-1">
             <li><strong>Access</strong> the personal data we hold about you.</li>
@@ -124,11 +124,11 @@ export function DisclaimerContent() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mb-3 p-[18px]">
         <CardHeader>
-          <CardTitle>8. Health & Medical Disclaimer</CardTitle>
+          <CardTitle className="text-base font-extrabold">8. Health & Medical Disclaimer</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm max-w-none space-y-3">
+        <CardContent className="prose prose-sm max-w-none space-y-3 text-[13px] leading-relaxed text-on-surface">
           <p>
             <strong>Numi is not a medical device, medical service, or substitute for professional
             medical advice, diagnosis, or treatment.</strong> The App provides general fitness and nutritional
@@ -157,11 +157,11 @@ export function DisclaimerContent() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mb-3 p-[18px]">
         <CardHeader>
-          <CardTitle>9. Children's Privacy</CardTitle>
+          <CardTitle className="text-base font-extrabold">9. Children's Privacy</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm max-w-none space-y-3">
+        <CardContent className="prose prose-sm max-w-none space-y-3 text-[13px] leading-relaxed text-on-surface">
           <p>
             Numi is not intended for use by individuals under the age of 18. We do not
             knowingly collect personal information from children. If we become aware that we have
@@ -170,11 +170,11 @@ export function DisclaimerContent() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mb-3 p-[18px]">
         <CardHeader>
-          <CardTitle>10. Changes to This Privacy Policy</CardTitle>
+          <CardTitle className="text-base font-extrabold">10. Changes to This Privacy Policy</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm max-w-none space-y-3">
+        <CardContent className="prose prose-sm max-w-none space-y-3 text-[13px] leading-relaxed text-on-surface">
           <p>
             We may update this Privacy Policy from time to time. Any changes will be reflected on this page
             with an updated "Last updated" date. We encourage you to review this policy periodically.
@@ -183,11 +183,11 @@ export function DisclaimerContent() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mb-3 p-[18px]">
         <CardHeader>
-          <CardTitle>12. Medical disclaimer — Numi is a tracker, not advice</CardTitle>
+          <CardTitle className="text-base font-extrabold">12. Medical disclaimer — Numi is a tracker, not advice</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm max-w-none space-y-3">
+        <CardContent className="prose prose-sm max-w-none space-y-3 text-[13px] leading-relaxed text-on-surface">
           <p>Please read this before you use Numi. By continuing, you agree to each point below.</p>
           <ol className="list-decimal pl-6 space-y-2">
             <li>Numi is a weight-loss <strong>tracking</strong> tool. It records the numbers you type in, such as weight, steps, calories, and macros.</li>
@@ -201,11 +201,11 @@ export function DisclaimerContent() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mb-3 p-[18px]">
         <CardHeader>
-          <CardTitle>13. Terms — copying, copyright, and liability</CardTitle>
+          <CardTitle className="text-base font-extrabold">13. Terms — copying, copyright, and liability</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm max-w-none space-y-3">
+        <CardContent className="prose prose-sm max-w-none space-y-3 text-[13px] leading-relaxed text-on-surface">
           <ol className="list-decimal pl-6 space-y-2">
             <li>Numi, its name, screens, wording, calculations, design, and code are owned by the operator of this app. They are protected by copyright.</li>
             <li>You receive a personal, non-transferable permission to use the app for your own tracking. You do not own the app.</li>
@@ -219,11 +219,11 @@ export function DisclaimerContent() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mb-3 p-[18px]">
         <CardHeader>
-          <CardTitle>14. Contact Us</CardTitle>
+          <CardTitle className="text-base font-extrabold">14. Contact Us</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm max-w-none space-y-3">
+        <CardContent className="prose prose-sm max-w-none space-y-3 text-[13px] leading-relaxed text-on-surface">
           <p>
             If you have any questions, concerns, or requests regarding this Privacy Policy or how your
             data is handled, please contact us through the Community & Help page or email us at{" "}
@@ -241,7 +241,7 @@ const Privacy = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Privacy and Disclaimer</h1>
+        <h1 className="mb-2 text-[28px] font-extrabold tracking-tight">Privacy and Disclaimer</h1>
         <p className="text-muted-foreground">Last updated: 2 November 2026</p>
       </div>
       <DisclaimerContent />

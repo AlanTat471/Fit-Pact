@@ -676,47 +676,47 @@ const MacroBreakdown = () => {
 
       {/* Bento Grid — Macro Display */}
       <div className="grid grid-cols-2 gap-4 mb-2">
-        <div className="col-span-2 bg-surface-container-low p-8 rounded-xl flex flex-col items-center justify-center text-center">
+        <div className="card-lift col-span-2 bg-card p-8 rounded-[28px] shadow-primary flex flex-col items-center justify-center text-center">
           <span className="text-on-surface-variant font-semibold mb-2">Daily Calories</span>
           <span className="text-6xl font-extrabold text-primary">
             {parseInt(dailyCalories || '0') > 0 ? parseInt(dailyCalories).toLocaleString() : '—'}
           </span>
           <span className="text-on-surface-variant/60 mt-2 font-medium">kcal total target</span>
         </div>
-        <div className="bg-tertiary-container p-6 rounded-xl flex flex-col">
-          <span className="text-on-tertiary-container font-semibold">Protein</span>
+        <div className="card-lift bg-[#2F7A08] text-white p-6 rounded-[22px] flex flex-col">
+          <span className="text-white font-semibold">Protein</span>
           <div className="mt-4 flex items-baseline gap-1">
-            <span className="text-3xl font-bold text-on-tertiary-container">{macros.protein.grams.toLocaleString()}</span>
-            <span className="text-on-tertiary-container/70 font-medium">g</span>
+            <span className="text-3xl font-bold text-white">{macros.protein.grams.toLocaleString()}</span>
+            <span className="text-white/80 font-medium">g</span>
           </div>
-          <div className="w-full h-3 bg-white/50 rounded-full mt-4 overflow-hidden">
-            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${macros.protein.percentage}%` }}></div>
+          <div className="w-full h-3 bg-white/30 rounded-full mt-4 overflow-hidden">
+            <div className="h-full bg-white rounded-full transition-all" style={{ width: `${macros.protein.percentage}%` }}></div>
           </div>
         </div>
-        <div className="bg-secondary-container p-6 rounded-xl flex flex-col">
-          <span className="text-on-secondary-container font-semibold">Carbs</span>
+        <div className="card-lift bg-[#0F6E6E] text-white p-6 rounded-[22px] flex flex-col">
+          <span className="text-white font-semibold">Carbs</span>
           <div className="mt-4 flex items-baseline gap-1">
-            <span className="text-3xl font-bold text-on-secondary-container">{macros.carbs.grams.toLocaleString()}</span>
-            <span className="text-on-secondary-container/70 font-medium">g</span>
+            <span className="text-3xl font-bold text-white">{macros.carbs.grams.toLocaleString()}</span>
+            <span className="text-white/80 font-medium">g</span>
           </div>
-          <div className="w-full h-3 bg-white/50 rounded-full mt-4 overflow-hidden">
-            <div className="h-full bg-secondary rounded-full transition-all" style={{ width: `${macros.carbs.percentage}%` }}></div>
+          <div className="w-full h-3 bg-white/30 rounded-full mt-4 overflow-hidden">
+            <div className="h-full bg-white rounded-full transition-all" style={{ width: `${macros.carbs.percentage}%` }}></div>
           </div>
         </div>
-        <div className="col-span-2 bg-primary-container p-6 rounded-xl flex flex-col">
-          <span className="text-on-primary-container font-semibold">Fats</span>
+        <div className="card-lift col-span-2 bg-[#A9461C] text-white p-6 rounded-[22px] flex flex-col">
+          <span className="text-white font-semibold">Fats</span>
           <div className="mt-4 flex items-baseline gap-1">
-            <span className="text-3xl font-bold text-on-primary-container">{macros.fats.grams.toLocaleString()}</span>
-            <span className="text-on-primary-container/70 font-medium">g</span>
+            <span className="text-3xl font-bold text-white">{macros.fats.grams.toLocaleString()}</span>
+            <span className="text-white/80 font-medium">g</span>
           </div>
-          <div className="w-full h-3 bg-white/50 rounded-full mt-4 overflow-hidden">
-            <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${macros.fats.percentage}%` }}></div>
+          <div className="w-full h-3 bg-white/30 rounded-full mt-4 overflow-hidden">
+            <div className="h-full bg-white rounded-full transition-all" style={{ width: `${macros.fats.percentage}%` }}></div>
           </div>
         </div>
       </div>
 
       {/* Slider Card */}
-      <div className="bg-surface-container-lowest p-8 rounded-xl shadow-card">
+      <div className="bg-card p-6 rounded-[28px] shadow-primary">
         <div className="flex items-center justify-between mb-8">
           <h3 className="text-xl font-bold text-on-surface">Fine-tune targets</h3>
           <MaterialIcon name="tune" size="md" className="text-outline" />
@@ -804,11 +804,11 @@ const MacroBreakdown = () => {
 
       {/* Action Buttons */}
       <div className="flex flex-col gap-3 pt-4 pb-6">
-        <div className="flex flex-wrap justify-center gap-3">
+        <div className="flex flex-col gap-3">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button onClick={handleResetToRecommended} variant="outline" className="gap-2 rounded-full px-6 py-3">
+                <Button onClick={handleResetToRecommended} variant="outline" className="w-full gap-2 rounded-full px-6 py-3">
                   Recommended
                   <MaterialIcon name="help_outline" size="xs" />
                 </Button>
@@ -821,12 +821,12 @@ const MacroBreakdown = () => {
           <Button
             onClick={handleSaveSlider}
             variant="outline"
-            className="rounded-full px-6 py-3"
+            className="w-full rounded-full px-6 py-3"
             disabled={!sliderDraft}
           >
             Save
           </Button>
-          <Button onClick={handleOpenCustomPopup} variant="outline" className="rounded-full px-6 py-3">
+          <Button onClick={handleOpenCustomPopup} variant="outline" className="w-full rounded-full px-6 py-3">
             Customise Macro
           </Button>
         </div>

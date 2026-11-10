@@ -401,10 +401,10 @@ const LoginForm = () => {
     <>
       <Card className="w-full max-w-md mx-auto bg-background border-border">
         <CardHeader className="text-center space-y-2">
-          <CardTitle className="text-2xl font-bold text-foreground">
+          <CardTitle className="text-[28px] font-extrabold tracking-tight text-primary">
             Welcome Back
           </CardTitle>
-          <CardDescription className="text-foreground/70">
+          <CardDescription className="text-sm text-muted-foreground">
             Sign in to continue your fitness journey
           </CardDescription>
         </CardHeader>
@@ -442,7 +442,7 @@ const LoginForm = () => {
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-1 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                     tabIndex={-1}
                   >
                     <MaterialIcon
@@ -453,13 +453,13 @@ const LoginForm = () => {
                 </div>
               </div>
               <div className="flex flex-col items-center gap-3">
-                <button
+                <Button
                   type="submit"
-                  className="w-full h-12 text-base font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  className="w-full h-[50px]"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? "Signing in…" : "Sign In"}
-                </button>
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"
@@ -541,19 +541,20 @@ const LoginForm = () => {
 
           <div className="text-center space-y-3">
             {signInMode === "password" && (
-              <button
+              <Button
                 type="button"
-                className="text-sm text-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
+                variant="link"
+                className="h-11"
                 onClick={() => setShowForgotPasswordDialog(true)}
               >
                 Forgot your password?
-              </button>
+              </Button>
             )}
             <div className="text-sm text-foreground inline-flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
               <span>Don&apos;t have an account?</span>
               <Link
                 to="/create-your-profile"
-                className="text-primary font-semibold underline underline-offset-4 hover:text-primary/80"
+                className="inline-flex h-11 w-full items-center justify-center rounded-full border-2 border-primary bg-card font-extrabold text-on-primary-container hover:bg-primary hover:text-primary-foreground"
               >
                 Create a new profile
               </Link>

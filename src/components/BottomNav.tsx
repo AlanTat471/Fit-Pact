@@ -10,41 +10,48 @@ const navItems = [
   { label: "Achievements", path: "/achievements", icon: "emoji_events", comingSoon: true },
 ] as const;
 
+/* Floating dark pill. The current screen is a white pill with its label;
+   the others are round icon buttons. Achievements is disabled. */
 export function BottomNav() {
   const { pathname } = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background flex justify-around items-center px-2 pt-2 pb-safe-nav border-t border-outline-variant/30 min-h-[5rem]">
+    <nav
+      aria-label="Main"
+      className="fixed left-4 right-4 z-50 mx-auto flex h-[68px] max-w-md items-center justify-between rounded-full bg-[#14171C] px-2 shadow-[0_10px_24px_rgba(20,23,28,0.25)]"
+      style={{ bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}
+    >
       {navItems.map((item) => {
-        const active = !item.comingSoon && pathname === item.path;
-
         if (item.comingSoon) {
           return (
             <div
               key={item.path}
-              className="flex flex-col items-center justify-center px-2 py-2 rounded-full text-[10px] font-semibold tracking-wide text-on-surface-variant/60 cursor-not-allowed opacity-70"
               aria-disabled
+              aria-label="Achievements, Coming Soon"
+              className="flex h-14 w-16 cursor-not-allowed flex-col items-center justify-center gap-0.5 text-[9px] font-extrabold text-[#B4BAC2]"
             >
               <MaterialIcon name={item.icon} size="sm" />
-              <span className="mt-0.5 leading-tight text-center">{item.label}</span>
-              <span className="text-[8px] font-normal opacity-80">Coming Soon!</span>
+              <span>Coming Soon!</span>
             </div>
           );
         }
+
+        const active = pathname === item.path;
 
         return (
           <NavLink
             key={item.path}
             to={item.path}
+            aria-label={item.label}
             className={cn(
-              "flex flex-col items-center justify-center px-3 py-2 rounded-full text-[10px] font-semibold tracking-wide transition-all",
+              "flex h-11 items-center justify-center gap-2 rounded-full text-[13px] font-extrabold transition-all",
               active
-                ? "bg-primary text-primary-foreground scale-105 shadow-lg"
-                : "text-on-surface-variant hover:bg-surface-container-high active:scale-90"
+                ? "bg-white px-4 text-[#14171C]"
+                : "w-11 bg-[#2A2F36] text-[#E8ECEF] hover:bg-[#3A4048] active:scale-95"
             )}
           >
             <MaterialIcon name={item.icon} size="sm" filled={active} />
-            <span className="mt-0.5">{item.label}</span>
+            {active && <span>{item.label}</span>}
           </NavLink>
         );
       })}
