@@ -1,6 +1,103 @@
-# Weight Loss Buddy — Bugs, Defects & Errors
+# Numi — Bugs, Defects, Fixes, and How the App Works
 
-This document lists issues found during a codebase and logic audit. Fixes are ordered by severity (Critical → High → Medium → Low).
+This is the audit file for Numi (the app folder is still named Fit-Pact / sweat-script-buddy). Older numbered items below are the history. **If an older item disagrees with this section, follow this section.** Last brought up to date: 3 November 2026 (v16.12).
+
+The file is in the project folder, next to `package.json`:
+
+`Desktop` → `FitPact - Cursor` → `sweat-script-buddy-main` → `sweat-script-buddy-main` → **`BUGS-AND-DEFECTS.md`**
+
+Open it in Cursor from the left-hand file list, or double-click it in File Explorer.
+
+---
+
+## How Numi is meant to work now
+
+### Sign-in and the disclaimer
+
+- After a successful sign-in, the **full** Privacy and Disclaimer appears on the **login page**, once per account. It does **not** appear on the Dashboard. Item 93 below is out of date.
+- **Accept** saves the choice (this phone and the account) and opens **My TDEE**. Later sign-ins go to the Dashboard and do not ask again.
+- **Decline**, then **Yes**, signs the person out and returns to the login page. The full wording appears again the next time they sign in. They cannot use the app until they accept.
+- **Decline**, then **No**, returns to the full wording so they can press Accept.
+- The short 3-point “I agree” box is retired. The saved flag is `numiTermsAcceptedFull` on the phone and `termsAcceptedFull` on the account. An older “I agree” does not count.
+
+### Two phones
+
+- Signing out, going idle, or starting a code on a new phone signs out **that phone only**. It must not kick the other phone off.
+- A brand-new phone may still ask for one email code the first time.
+- A save on one phone overwrites the cloud copy. The other phone sees it the next time that screen loads. It does not update live while both phones are open.
+
+### Idle logout
+
+- 5 minutes from the last tap. Switching away from the app does **not** start a new 5-minute clock. Coming back does, because that counts as using the app.
+
+### My TDEE, Dashboard, and underweight
+
+- Activity Level options wrap and scroll. They must not be clipped to the height of the closed box.
+- Leaving My TDEE saves the latest weight and calories immediately. Dashboard starting weight and the stat cards follow that weight. They must not stay stuck on the weight from profile creation.
+- The underweight warning appears when the person **clicks away** from Current Body Weight, not while they are still typing. “Go to your Dashboard” still stays blocked while the weight is underweight.
+
+### Macros
+
+- **Recommended** is unchanged.
+- **Save** sits between Recommended and Customise Macro. Moving a slider does not save until Save is pressed. The three percentages still add up to 100.
+- Any macro under 15% (including 100% of one): after Ok, the app returns to the recommended split.
+- Every macro is 15% or more, but one is still under the recommended intake: **Yes** keeps it, **No** puts the sliders back.
+- Customise Macros names the macro that is actually low, including Carbohydrates. It must not always say Protein.
+
+### Profile, goals, and Settings
+
+- Profile text and Settings (including Mobile) must still be there after leaving the page and coming back.
+- Burger menu → Profile Information shows **Mobile**, not Height and Weight. Height and weight stay on My TDEE.
+- Each day goal can be edited. **Save goal** / **Add Goal** saves immediately. The footer **Save**, when the new-goal fields have text, asks “You have entered details for a new goal, do you want to save changes?” **Yes** adds the goal. **No** closes the box and clears the fields.
+
+### Plans (do not “fix” the cards by adding an empty row)
+
+- Exactly one plan is **Active**. A paid plan chosen before Week 4 is Active. Free is Active only when no paid plan is chosen.
+- Annual is **$72/year** ($6.00 a month equivalent). Do not put $71.88 back.
+- Best Value is one line: **BEST VALUE (4 MONTHS FREE)**. It sits centred, slightly below the top edge of the Annual card. It must not be a tall circle, and Free/Monthly must not get an empty box to “line up” with it.
+- Buttons stay Selected ✓ / Select Plan / Resume Plan. Do not change that wording unless Alan asks.
+
+### Delete Account and billing
+
+- Delete Account asks twice. **No** stays on the page. The second **Yes** stays signed in, wipes progress, goals, profile text, and the saved plan, then opens My TDEE. It does not close the login.
+- Removing the card, and showing real invoices in Billing History, only works after this command has been run from the project folder:
+
+```bat
+npx supabase functions deploy billing
+```
+
+- A blank billing table before that command, or before Stripe has taken a real payment, is not proof that payment failed. Do not invent fake transactions.
+
+### Android and iPhone
+
+- Play bundle in the project: **versionCode 22**, **versionName 1.0** (`android/app/build.gradle`). Play rejects a file if that version code was already uploaded. If it says 22 is used, change versionCode to 23, save, and rebuild. Do not reuse 18, 19, 20, or 21.
+- Internal testers: `https://play.google.com/apps/internaltest/4701145150153936983`. They must be signed into the Play Store with an email on the tester list.
+- iPhone cannot install the Play build. Until there is a Mac and an Apple Developer account, iPhone testers use the live website.
+- The release keystore is `android/numi-release-key.jks`. The password is not stored in the project. `android/local.properties` points at the SDK on this PC and must not be committed.
+
+### How to publish
+
+1. Double-click `git-push-update.bat` in the project folder. That sends the code to GitHub. Vercel rebuilds the website from GitHub. It does **not** update the Supabase billing function.
+2. Run the billing deploy command above when billing or Delete Account card removal changed.
+3. For Android, double-click `build-and-android-sync.bat`, then in Android Studio open the `android` folder, **Build → Generate Signed Bundle / APK → Android App Bundle**, and upload the `.aab` to Play Console → Internal testing.
+
+---
+
+## Red flags still open (3 November 2026)
+
+- The website and the Play Store do not update until the bat file (and, for Android, a new Play release) is actually run. Code sitting only in Cursor is not live.
+- Billing history and card removal on Delete Account stay incomplete until `npx supabase functions deploy billing` succeeds.
+- Two phones, a real Stripe charge, and the Play install were not proven from this PC. They still need a check on the phones after deploy.
+- `npx vite build` succeeded for v16.11 and v16.12. `npx tsc --noEmit -p tsconfig.app.json` still reports older errors in `BottomNav.tsx` (`comingSoon`) and `Profile.tsx` day-goal types. Those did not stop the Vite build.
+- Play’s displayed version name is currently **1.0** even though the version code is **22**. If testers need to see 2.7, change `versionName` in `android/app/build.gradle` before the next bundle.
+- Achievements is still a Coming Soon page. It does not read real progress.
+- There is no iOS project in this folder. Windows cannot build an iPhone app.
+
+---
+
+## History
+
+Items below are the original audit and later fix notes. Severity order (Critical → High → Medium → Low) applies to the first audit only. From v16 onward, items are dated notes. **Item 93 was replaced by item 97.**
 
 ---
 
@@ -759,11 +856,10 @@ Confirmed with Alan before coding: idle stays 5 minutes from the last tap (switc
 - **Cause:** My TDEE waited 450ms to save, and leaving the page cancelled that wait. Dashboard also stopped copying the TDEE weight once acclimation finished, and then replaced it with the acclimation average.
 - **Fix:** leaving My TDEE writes the pending weight and calories immediately. Dashboard starting weight and the stat cards follow the latest My TDEE weight. Calories already read `tdee.starting_calorie_intake`, which is included in that save.
 
-### 93. Privacy renamed, and acceptance is required before Dashboard
+### 93. Privacy renamed — SUPERSEDED for where the box appears
 
-- **Where:** `Privacy.tsx`, burger menu, sidebar, `TermsAcceptDialog.tsx`, My TDEE “Go to your Dashboard”, Profile “Go to my Dashboard”
-- The page title is Privacy and Disclaimer. Sections 12 and 13 cover the medical warning (tracking and guide only, seek professional advice) and copyright (do not copy or reuse; infringement can lead to legal action).
-- The first time Dashboard opens, including from the bottom Dashboard button, the agreement is shown. I agree stores the choice on the device and the account and stays on Dashboard. Not now returns to My TDEE. After I agree, it does not ask again.
+- The page title is still Privacy and Disclaimer. Sections 12 and 13 are the medical warning and the copyright warning.
+- **Do not follow the old behaviour.** The short box on the Dashboard was removed in v16.12 (item 97). The full wording now appears once, on the login page, after sign-in.
 
 ### 94. Delete Account wording and wipe-in-place — FIXED
 
@@ -811,7 +907,8 @@ Confirmed with Alan before coding: idle stays 5 minutes from the last tap (switc
 
 ### 100. Android number for this release
 
-- `android/app/build.gradle`: versionCode **22**, versionName **2.7**.
+- `android/app/build.gradle` on 3 November 2026: versionCode **22**, versionName **1.0**.
+- An earlier note said versionName 2.7. The file on disk is **1.0**. Play will show 1.0 to testers. The number that must increase for each upload is versionCode, not the name.
 - If Play says 22 is already used, add 1 to versionCode and rebuild.
 
 
