@@ -539,7 +539,7 @@ const PaymentDetails = () => {
           </Badge>
         )}
       </div>
-      <p className={`mt-1 inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-[12px] font-extrabold leading-tight ${status === "inactive" ? "bg-surface-container-high text-on-surface-variant" : "bg-primary text-primary-foreground"}`}>
+      <p className={`mt-1 inline-flex w-fit items-center rounded-full px-3 py-0.5 text-[12px] font-semibold uppercase leading-tight tracking-[0.08em] ${status === "inactive" ? "bg-white/12 text-white" : "bg-gradient-primary text-[#0A0A0C]"}`}>
         {statusWord(status)}
       </p>
       <div className="mt-2">
@@ -574,7 +574,7 @@ const PaymentDetails = () => {
     badgeLine1?: string;
     badgeLine2?: string;
   }) => (
-    <Card className={`relative flex flex-col min-h-[540px] ${planStatus(plan) !== "inactive" ? "border-2 border-primary shadow-glow bg-gradient-hero" : "border border-border bg-card"}`}>
+    <Card className={`relative flex flex-col min-h-[540px] ${planStatus(plan) !== "inactive" ? "border-[1.5px] border-transparent shadow-glow [background:linear-gradient(#141417,#141417)_padding-box,linear-gradient(135deg,#FF8A2A,#FF2E93,#7B4DFF)_border-box]" : "border border-white/10 bg-white/[0.06]"}`}>
       <PlanCardHeader
         name={name}
         status={planStatus(plan)}
@@ -650,7 +650,7 @@ const PaymentDetails = () => {
               </Button>
             )
           ) : (
-            <Button onClick={() => requestSelectPlan(plan)} variant="default" className={planButtonClass} disabled={billingLoading}>
+            <Button onClick={() => requestSelectPlan(plan)} variant="outline" className={planButtonClass} disabled={billingLoading}>
               <ButtonLabel main="Select Plan" sub="(plan not active)" />
             </Button>
           )}
@@ -688,7 +688,7 @@ const PaymentDetails = () => {
       {/* Plans Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto items-stretch">
         {/* Free Plan */}
-        <Card className={`relative flex flex-col min-h-[540px] ${planStatus("free") !== "inactive" ? "border-2 border-primary shadow-glow bg-gradient-hero" : "border border-border bg-card"}`}>
+        <Card className={`relative flex flex-col min-h-[540px] ${planStatus("free") !== "inactive" ? "border-[1.5px] border-transparent shadow-glow [background:linear-gradient(#141417,#141417)_padding-box,linear-gradient(135deg,#FF8A2A,#FF2E93,#7B4DFF)_border-box]" : "border border-white/10 bg-white/[0.06]"}`}>
           <PlanCardHeader
             name="Free Plan"
             status={planStatus('free')}
@@ -725,7 +725,7 @@ const PaymentDetails = () => {
             </div>
             <div className="absolute left-4 right-4 bottom-6">
               {hasPendingSelection ? (
-                <Button onClick={() => handleSelectPlan('free')} variant="default" className={planButtonClass} disabled={billingLoading}>
+                <Button onClick={() => handleSelectPlan('free')} variant="outline" className={planButtonClass} disabled={billingLoading}>
                   <ButtonLabel main="Select Plan" sub="(cancels your current plan)" />
                 </Button>
               ) : planStatus('free') === 'active' ? (
@@ -733,7 +733,7 @@ const PaymentDetails = () => {
                   <ButtonLabel main="Selected ✓" sub="(your current active plan)" />
                 </Button>
               ) : (
-                <Button onClick={() => handleSelectPlan('free')} variant="default" className={planButtonClass} disabled={billingLoading}>
+                <Button onClick={() => handleSelectPlan('free')} variant="outline" className={planButtonClass} disabled={billingLoading}>
                   <ButtonLabel main="Select Plan" sub="(plan not active)" />
                 </Button>
               )}

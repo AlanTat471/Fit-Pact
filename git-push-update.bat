@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v16.13 - Green look: mint page, green buttons, dark bottom bar
+echo   Numi v16.14 - Dark look: white logo, white buttons, colour glow
 echo ============================================================
 echo.
 
@@ -51,9 +51,9 @@ git status --short
 echo.
 
 git commit ^
-  -m "v16.13: mint page, green buttons, dark bottom bar" ^
+  -m "v16.14: dark canvas, white numi logo, white pill buttons" ^
   -m "Look only. Prices stay $0, $8.99/month and $6.00/month billed $72 yearly. Calculations, the sign-in disclaimer, and what each button does are unchanged." ^
-  -m "Best Value stays one small line, BEST VALUE (4 MONTHS FREE), centred just inside the top of the Annual card so it does not cover the border or the plan name. No empty gap on Free or Monthly."
+  -m "Best Value stays the small one-line pill just inside the Annual card. It was not moved."
 
 if errorlevel 1 (
     echo.
@@ -108,7 +108,7 @@ if errorlevel 1 (
 
 echo.
 echo ============================================================
-echo   Push complete.  v16.13 green look
+echo   Push complete.  v16.14 dark look
 echo.
 echo   Confirm nothing important is left behind:
 git status --short
@@ -118,7 +118,7 @@ echo.
 echo   1. VERCEL: wait 2-3 minutes, then open
 echo      https://fit-pact.vercel.app
 echo      and press Ctrl+Shift+R.
-echo      The page should be mint, buttons green, bottom bar dark.
+echo      The page should be near-black, the logo white, buttons white.
 echo.
 echo   2. STRIPE + SUPABASE prices: no price change in this update.
 echo      Annual is still A$72.00 a year, shown as $6.00 /month.

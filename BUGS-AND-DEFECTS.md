@@ -1,6 +1,14 @@
 # Numi — Bugs, Defects, Fixes, and How the App Works
 
-This is the audit file for Numi (the app folder is still named Fit-Pact / sweat-script-buddy). Older numbered items below are the history. **If an older item disagrees with this section, follow this section.** Last brought up to date: 10 November 2026, evening audit (green look, not yet published).
+This is the audit file for Numi (the app folder is still named Fit-Pact / sweat-script-buddy). Older numbered items below are the history. **If an older item disagrees with this section, follow this section.** Last brought up to date: 11 November 2026 (dark look, on this computer, not published until the bat is run again).
+
+### Look only (11 November 2026)
+
+Acclimation Clear All Data and Collapse Section sit on the right edge of that card. The Average Weight bar is only as wide as the label and the number. My TDEE result boxes use the dark orange, pink, violet, and blue glow instead of the old pastel fills.
+
+The page is near-black with an orange, pink, and violet glow. Buttons are white pills. Cards are glassy. The header and the login page use the white numi logo. The bottom bar is black. A card still lifts only while the mouse is over it.
+
+Prices, the disclaimer, Best Value position, and what each button does did not change. Best Value stays the small pill just inside the Annual card. Alan confirmed that place on 10 November 2026. Do not move it. Android stays versionCode 22 and versionName 1.0 until Play says 22 is already used. Because 22 may already be on internal testing from the green look, the next phone upload may need 23. Stop and ask before changing it.
 
 ### Audit 10 November 2026, evening
 

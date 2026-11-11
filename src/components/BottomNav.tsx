@@ -10,15 +10,15 @@ const navItems = [
   { label: "Achievements", path: "/achievements", icon: "emoji_events", comingSoon: true },
 ] as const;
 
-/* Floating dark pill. The current screen is a white pill with its label;
-   the others are round icon buttons. Achievements is disabled. */
+/* Floating black pill. The current screen is a white pill with an uppercase label;
+   the others are bare white icons. Achievements is disabled. */
 export function BottomNav() {
   const { pathname } = useLocation();
 
   return (
     <nav
       aria-label="Main"
-      className="fixed left-4 right-4 z-50 mx-auto flex h-[68px] max-w-md items-center justify-between rounded-full bg-[#14171C] px-2 shadow-[0_10px_24px_rgba(20,23,28,0.25)]"
+      className="fixed left-4 right-4 z-50 mx-auto flex h-[68px] max-w-md items-center justify-between rounded-full border border-white/10 bg-black px-2 shadow-[0_12px_30px_rgba(0,0,0,0.55)]"
       style={{ bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}
     >
       {navItems.map((item) => {
@@ -28,7 +28,7 @@ export function BottomNav() {
               key={item.path}
               aria-disabled
               aria-label="Achievements, Coming Soon"
-              className="flex h-14 w-16 cursor-not-allowed flex-col items-center justify-center gap-0.5 text-[9px] font-extrabold text-[#B4BAC2]"
+              className="flex h-14 w-[68px] cursor-not-allowed flex-col items-center justify-center gap-0.5 text-[9px] font-semibold tracking-[0.04em] text-white/60"
             >
               <MaterialIcon name={item.icon} size="sm" />
               <span>Coming Soon!</span>
@@ -44,10 +44,10 @@ export function BottomNav() {
             to={item.path}
             aria-label={item.label}
             className={cn(
-              "flex h-11 items-center justify-center gap-2 rounded-full text-[13px] font-extrabold transition-all",
+              "flex items-center justify-center gap-2 rounded-full text-[12px] font-semibold uppercase tracking-[0.08em] transition-all",
               active
-                ? "bg-white px-4 text-[#14171C]"
-                : "w-11 bg-[#2A2F36] text-[#E8ECEF] hover:bg-[#3A4048] active:scale-95"
+                ? "h-12 bg-white px-[18px] text-[#0A0A0C]"
+                : "h-11 w-11 text-white/90 hover:bg-white/10 active:scale-95"
             )}
           >
             <MaterialIcon name={item.icon} size="sm" filled={active} />

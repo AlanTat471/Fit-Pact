@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { MaterialIcon } from "@/components/ui/material-icon";
+import { NumiLogo } from "@/components/NumiLogo";
 
 const IDLE_FLAG_KEY = "numiIdleSignOut";
 
@@ -37,11 +38,9 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-md mx-auto space-y-6">
-        <div className="text-center">
-          <p className="text-5xl font-extrabold text-primary lowercase tracking-tighter">numi</p>
-        </div>
+    <div className="login-aurora relative min-h-screen overflow-hidden">
+      <NumiLogo height={34} className="absolute left-6 top-14" />
+      <div className="mx-auto w-full max-w-md px-6 pb-10 pt-[220px]">
         <LoginForm />
       </div>
 

@@ -2690,8 +2690,8 @@ const Dashboard = () => {
         <BackButton />
         
         {/* Welcome Section */}
-        <div className="flex flex-col space-y-4 rounded-[28px] border border-border bg-card px-6 py-6 shadow-primary">
-          <h1 className="text-2xl md:text-4xl font-black tracking-tight text-primary">Hey, {userName || 'there'}!</h1>
+        <div className="flex flex-col space-y-4 rounded-[28px] border border-white/10 bg-white/[0.06] px-6 py-6 backdrop-blur-xl">
+          <h1 className="text-[42px] font-semibold tracking-tight leading-[1.02] text-white">Hey, {userName || 'there'}!</h1>
           <div className="pt-3">
             <p className="text-xs font-bold tracking-widest text-on-surface-variant uppercase mb-2">Motivation</p>
             <blockquote>
@@ -2890,9 +2890,7 @@ const Dashboard = () => {
         {/* Acclimation Phase Section */}
         <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
           <CardHeader>
-            {/* Responsive: title on its own line on mobile, action buttons underneath.
-                Tablet+ (sm:) keeps them inline on the same row. */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex w-full items-start justify-between gap-4">
               <CardTitle className="flex items-center gap-2 text-foreground">
                 <MaterialIcon name="event" size="sm" className="text-yellow-500" />
                 Acclimation Phase
@@ -2905,7 +2903,7 @@ const Dashboard = () => {
                   </TooltipContent>
                 </Tooltip>
               </CardTitle>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="ml-auto flex shrink-0 flex-col items-stretch gap-2">
                 <Button
                   onClick={() => {
                     if (confirm('Are you sure you want to clear all acclimation data?')) {
@@ -2923,7 +2921,7 @@ const Dashboard = () => {
                   }}
                   variant="outline"
                   size="sm"
-                  className="text-xs flex-1 sm:flex-none"
+                  className="text-xs"
                 >
                   Clear All Data
                 </Button>
@@ -2931,7 +2929,7 @@ const Dashboard = () => {
                   onClick={() => setAcclimationCollapsed(prev => !prev)}
                   variant="outline"
                   size="sm"
-                  className="text-xs flex-1 sm:flex-none"
+                  className="text-xs"
                 >
                   {acclimationCollapsed ? 'Expand Section' : 'Collapse Section'}
                 </Button>
@@ -3031,7 +3029,8 @@ const Dashboard = () => {
                     </Card>
                   );
                 })}
-                <div className="flex items-center justify-between rounded-[20px] bg-primary px-4 py-3 text-white">
+                <div className="flex justify-end">
+                <div className="inline-flex w-fit items-center gap-3 rounded-[22px] bg-gradient-primary px-4 py-2 text-[#0A0A0C]">
                   <span className="text-sm font-extrabold">Average Weight (Kg)</span>
                   <span className="text-sm font-extrabold">
                     {(() => {
@@ -3039,6 +3038,7 @@ const Dashboard = () => {
                       return acclimationAvg > 0 ? acclimationAvg.toFixed(2) : '–';
                     })()}
                   </span>
+                </div>
                 </div>
               </div>
               {/* Header Row - Days across the top */}
@@ -3114,8 +3114,9 @@ const Dashboard = () => {
                   })}
                   
                   {/* Average Weight Row */}
-                  <div className="grid grid-cols-9 gap-2 items-center p-3 rounded-[20px] bg-primary text-primary-foreground mt-4">
-                    <div className="col-span-8 font-medium text-sm text-right pr-4 text-white">Average Weight (Kg)</div>
+                  <div className="mt-4 flex justify-end">
+                    <div className="inline-flex items-center gap-3 rounded-[22px] bg-gradient-primary px-4 py-2 text-[#0A0A0C]">
+                    <div className="font-medium text-sm text-[#0A0A0C]">Average Weight (Kg)</div>
                     <div className="flex justify-center">
                       <Input
                         type="number"
@@ -3124,7 +3125,7 @@ const Dashboard = () => {
                           const acclimationAvg = getTotalAcclimationAverage();
                           return acclimationAvg > 0 ? acclimationAvg.toFixed(2) : '';
                         })()}
-                        className="w-20 h-7 text-xs text-center bg-white/20 font-semibold text-white"
+                        className="w-20 h-7 text-xs text-center bg-black/10 font-semibold text-[#0A0A0C]"
                         readOnly
                         placeholder="0.00"
                       />
@@ -3132,6 +3133,7 @@ const Dashboard = () => {
                   </div>
                 </div>
               </div>
+            </div>
             </div>
           </CardContent>
         </Card>

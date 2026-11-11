@@ -241,7 +241,7 @@ const Privacy = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="mb-2 text-[28px] font-extrabold tracking-tight">Privacy and Disclaimer</h1>
+        <h1 className="mb-2 text-[42px] font-semibold tracking-tight text-white">Privacy and Disclaimer</h1>
         <p className="text-muted-foreground">Last updated: 2 November 2026</p>
       </div>
       <DisclaimerContent />

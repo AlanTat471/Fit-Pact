@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { NumiLogo } from "@/components/NumiLogo";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import {
   Sheet,
@@ -25,14 +26,14 @@ export function HamburgerMenu() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <button className="flex h-11 w-11 items-center justify-center rounded-full bg-card text-primary shadow-primary hover:text-primary/80 transition-colors">
+        <button className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/[0.08] text-white transition-colors hover:bg-white/15">
           <MaterialIcon name="menu" size="md" />
         </button>
       </SheetTrigger>
       <SheetContent side="left" className="w-72 bg-surface-container-lowest border-outline-variant p-0">
         <SheetHeader className="px-6 py-6 border-b border-outline-variant">
-          <SheetTitle className="text-[28px] font-extrabold text-primary lowercase tracking-tight">
-            Numi
+          <SheetTitle className="text-white">
+            <NumiLogo height={26} />
           </SheetTitle>
         </SheetHeader>
         <nav className="px-4 py-4 space-y-1">

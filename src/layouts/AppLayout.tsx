@@ -3,6 +3,7 @@ import { MaterialIcon } from "@/components/ui/material-icon";
 import { BottomNav } from "@/components/BottomNav";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
 import { useNavigate } from "react-router-dom";
+import { NumiLogo } from "@/components/NumiLogo";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { MOTIV_QUOTE_SESSION_KEY } from "@/lib/motivationalQuotes";
@@ -132,19 +133,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col w-full bg-background text-foreground">
-      <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl px-6 py-4 flex justify-between items-center gap-3">
-        <div className="flex min-w-0 items-center gap-4">
+    <div className="app-aurora min-h-screen flex flex-col w-full text-foreground">
+      <header className="fixed top-0 z-50 grid w-full grid-cols-[44px_1fr_44px] items-center gap-3 bg-black/40 px-4 py-3 backdrop-blur-xl">
+        <div className="flex min-w-0 items-center">
           <HamburgerMenu />
         </div>
-        <h1
-          className="text-[28px] font-extrabold text-primary lowercase tracking-tight cursor-pointer"
+        <button
+          type="button"
+          aria-label="numi"
+          className="flex min-h-11 items-center justify-self-center"
           onClick={() => navigate("/dashboard")}
         >
-          Numi
-        </h1>
-        <div className="relative shrink-0 z-10">
-          <button className="flex h-11 w-11 items-center justify-center rounded-full bg-card text-on-surface shadow-primary hover:text-primary transition-colors">
+          <NumiLogo height={26} />
+        </button>
+        <div className="relative z-10 shrink-0 justify-self-end">
+          <button className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/[0.08] text-white transition-colors hover:bg-white/15">
             <MaterialIcon name="notifications" size="md" />
           </button>
         </div>

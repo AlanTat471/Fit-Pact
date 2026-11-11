@@ -676,14 +676,14 @@ const MacroBreakdown = () => {
 
       {/* Bento Grid — Macro Display */}
       <div className="grid grid-cols-2 gap-4 mb-2">
-        <div className="card-lift col-span-2 bg-card p-8 rounded-[28px] shadow-primary flex flex-col items-center justify-center text-center">
+        <div className="card-lift col-span-2 rounded-[28px] border border-white/10 bg-white/[0.06] p-6 backdrop-blur-xl flex flex-col items-center justify-center text-center">
           <span className="text-on-surface-variant font-semibold mb-2">Daily Calories</span>
-          <span className="text-6xl font-extrabold text-primary">
+          <span className="text-[72px] font-semibold leading-none tracking-tight text-gradient-primary">
             {parseInt(dailyCalories || '0') > 0 ? parseInt(dailyCalories).toLocaleString() : '—'}
           </span>
           <span className="text-on-surface-variant/60 mt-2 font-medium">kcal total target</span>
         </div>
-        <div className="card-lift bg-[#2F7A08] text-white p-6 rounded-[22px] flex flex-col">
+        <div className="card-lift rounded-[22px] border border-white/15 bg-gradient-to-br from-[#FF7A1A]/40 to-white/5 p-4 text-white flex flex-col">
           <span className="text-white font-semibold">Protein</span>
           <div className="mt-4 flex items-baseline gap-1">
             <span className="text-3xl font-bold text-white">{macros.protein.grams.toLocaleString()}</span>
@@ -693,7 +693,7 @@ const MacroBreakdown = () => {
             <div className="h-full bg-white rounded-full transition-all" style={{ width: `${macros.protein.percentage}%` }}></div>
           </div>
         </div>
-        <div className="card-lift bg-[#0F6E6E] text-white p-6 rounded-[22px] flex flex-col">
+        <div className="card-lift rounded-[22px] border border-white/15 bg-gradient-to-br from-[#7B4DFF]/40 to-white/5 p-4 text-white flex flex-col">
           <span className="text-white font-semibold">Carbs</span>
           <div className="mt-4 flex items-baseline gap-1">
             <span className="text-3xl font-bold text-white">{macros.carbs.grams.toLocaleString()}</span>
@@ -703,7 +703,7 @@ const MacroBreakdown = () => {
             <div className="h-full bg-white rounded-full transition-all" style={{ width: `${macros.carbs.percentage}%` }}></div>
           </div>
         </div>
-        <div className="card-lift col-span-2 bg-[#A9461C] text-white p-6 rounded-[22px] flex flex-col">
+        <div className="card-lift col-span-2 rounded-[22px] border border-white/15 bg-gradient-to-br from-[#FF2E93]/40 to-white/5 p-4 text-white flex flex-col">
           <span className="text-white font-semibold">Fats</span>
           <div className="mt-4 flex items-baseline gap-1">
             <span className="text-3xl font-bold text-white">{macros.fats.grams.toLocaleString()}</span>

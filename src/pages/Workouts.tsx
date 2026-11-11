@@ -774,7 +774,7 @@ const TDEE = () => {
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-2.5">
             {/* BMR */}
-            <div className="space-y-2 rounded-[18px] bg-[#D6F0C8] p-3.5">
+            <div className="space-y-2 rounded-[20px] border border-white/10 bg-gradient-to-br from-[#FF7A1A]/30 to-white/5 p-3.5 text-white">
               <TooltipField tooltip="This is the number of calories burned at rest (i.e., Breathing, Blood circulation, Regulate body temperature, Digesting process etc.).">
                 <Label htmlFor="bmr">Basal Metabolic Rate (BMR)</Label>
               </TooltipField>
@@ -788,7 +788,7 @@ const TDEE = () => {
             </div>
 
             {/* TDEE */}
-            <div className="space-y-2 rounded-[18px] bg-[#D3F0E3] p-3.5">
+            <div className="space-y-2 rounded-[20px] border border-white/10 bg-gradient-to-br from-[#FF2E93]/30 to-white/5 p-3.5 text-white">
               <TooltipField tooltip="Your Total Daily Energy Expenditure is calculated by multiplying your BMR by your activity level multiplier. This represents the total calories you burn per day based on your current daily activity level and is what you need to eat to maintain your current weight.">
                 <Label htmlFor="tdee">Total Daily Energy Expenditure (TDEE)</Label>
               </TooltipField>
@@ -815,7 +815,7 @@ const TDEE = () => {
             </div>
 
             {/* Starting Calories */}
-            <div className="space-y-2 rounded-[18px] bg-[#FBDDD3] p-3.5">
+            <div className="space-y-2 rounded-[20px] border border-white/10 bg-gradient-to-br from-[#7B4DFF]/30 to-white/5 p-3.5 text-white">
               <TooltipField tooltip="Use this value to start your four-week 'Acclimation Phase'. This is to establish a baseline to start your diet. You may edit this value if you wish to start at a different calorie intake.">
                 <Label htmlFor="startingCalories">Starting Calorie Intake</Label>
               </TooltipField>
@@ -850,7 +850,7 @@ const TDEE = () => {
             </div>
 
             {/* Current BMI */}
-            <div className="space-y-2 rounded-[18px] bg-[#FFF0C7] p-3.5">
+            <div className="space-y-2 rounded-[20px] border border-white/10 bg-gradient-to-br from-[#2F8CFF]/30 to-white/5 p-3.5 text-white">
               <TooltipField tooltip="Your current Body Mass Index based on your height and weight. BMI categories: Underweight (<18.5), Healthy (18.5-24.9), Overweight (25-29.9), Obese (≥30).">
                 <Label htmlFor="currentBMI">Estimated BMI</Label>
               </TooltipField>
@@ -864,7 +864,7 @@ const TDEE = () => {
             </div>
 
             {/* Estimated Body Fat % */}
-            <div className="space-y-2 rounded-[18px] bg-[#E1F2D8] p-3.5">
+            <div className="space-y-2 rounded-[20px] border border-white/10 bg-gradient-to-br from-[#19D4B0]/25 to-white/5 p-3.5 text-white">
               <TooltipField tooltip="Estimated body fat percentage calculated using the Deurenberg formula based on your BMI, age, and gender.">
                 <Label htmlFor="estimatedBodyFat">Estimated Body Fat %</Label>
               </TooltipField>
@@ -878,7 +878,7 @@ const TDEE = () => {
             </div>
 
             {/* Your Classification */}
-            <div className="col-span-2 space-y-2 rounded-[18px] bg-[#E3EBD3] p-3.5">
+            <div className="col-span-2 space-y-2 rounded-[20px] border border-white/10 bg-gradient-to-br from-[#FFC21A]/28 to-white/5 p-3.5 text-white">
               <TooltipField tooltip="Your health classification category based on BMI and other metrics: Underweight, Healthy, Overweight, or Obese.">
                 <Label htmlFor="yourClassification">Your Classification</Label>
               </TooltipField>
@@ -896,7 +896,7 @@ const TDEE = () => {
       {/* Ideal Ranges */}
       <div className="grid grid-cols-2 gap-2.5">
         {/* Ideal Weight Range */}
-        <Card className="md:col-span-1 border-0 bg-[#E1F2D8]">
+        <Card className="md:col-span-1 border border-white/10 bg-gradient-to-br from-[#FF7A1A]/25 to-white/5 text-white">
           <CardHeader>
             <CardTitle>Ideal Weight Range</CardTitle>
             <p className="text-xs text-muted-foreground font-normal mt-1">
@@ -932,7 +932,7 @@ const TDEE = () => {
         </Card>
 
         {/* Ideal Body Fat Range */}
-        <Card className="md:col-span-1 border-0 bg-[#D7EFEA]">
+        <Card className="md:col-span-1 border border-white/10 bg-gradient-to-br from-[#FF2E93]/25 to-white/5 text-white">
           <CardHeader>
             <CardTitle>Ideal Body Fat Range</CardTitle>
             <p className="text-xs text-muted-foreground font-normal mt-1">
@@ -968,7 +968,7 @@ const TDEE = () => {
         </Card>
 
         {/* Ideal BMI Range */}
-        <Card className="md:col-span-1 border-0 bg-[#FBE4D8]">
+        <Card className="md:col-span-1 border border-white/10 bg-gradient-to-br from-[#7B4DFF]/25 to-white/5 text-white">
           <CardHeader>
             <CardTitle>Ideal Body Mass Index (BMI) Range</CardTitle>
             <p className="text-xs text-muted-foreground font-normal mt-1">
@@ -1005,7 +1005,7 @@ const TDEE = () => {
 
         {/* Weight Suggestion */}
         {calculatedValues.currentBMI && calculatedValues.idealWeightMax && formData.weight && (
-          <Card className="md:col-span-1 border-0 bg-[#FFF3D2]">
+          <Card className="md:col-span-1 border border-white/10 bg-gradient-to-br from-[#FFC21A]/22 to-white/5 text-white">
             <CardHeader>
               <CardTitle>Suggested Weight Loss Goal</CardTitle>
               <p className="text-xs text-muted-foreground font-normal mt-1">

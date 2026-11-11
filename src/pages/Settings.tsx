@@ -707,10 +707,10 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left border-b p-3 text-xs font-extrabold text-on-surface-variant">Date</th>
-                      <th className="text-left border-b p-3 text-xs font-extrabold text-on-surface-variant">Description</th>
-                      <th className="text-left border-b p-3 text-xs font-extrabold text-on-surface-variant">Amount</th>
-                      <th className="text-left border-b p-3 text-xs font-extrabold text-on-surface-variant">Status</th>
+                      <th className="border-b border-white/15 p-3 text-left text-xs font-semibold uppercase tracking-[0.06em] text-white/80">Date</th>
+                      <th className="border-b border-white/15 p-3 text-left text-xs font-semibold uppercase tracking-[0.06em] text-white/80">Description</th>
+                      <th className="border-b border-white/15 p-3 text-left text-xs font-semibold uppercase tracking-[0.06em] text-white/80">Amount</th>
+                      <th className="border-b border-white/15 p-3 text-left text-xs font-semibold uppercase tracking-[0.06em] text-white/80">Status</th>
                     </tr>
                   </thead>
                   <tbody>

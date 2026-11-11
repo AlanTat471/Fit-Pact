@@ -401,7 +401,7 @@ const LoginForm = () => {
     <>
       <Card className="w-full max-w-md mx-auto bg-background border-border">
         <CardHeader className="text-center space-y-2">
-          <CardTitle className="text-[28px] font-extrabold tracking-tight text-primary">
+          <CardTitle className="text-[42px] font-semibold tracking-tight leading-[1.02] text-white">
             Welcome Back
           </CardTitle>
           <CardDescription className="text-sm text-muted-foreground">

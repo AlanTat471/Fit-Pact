@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,76 +6,74 @@
 
 @layer base {
   :root {
-    /* Numi — soft mint page, white cards, deep-green accent */
-    --background: 115 27% 92%;            /* #E7F0E6 */
-    --foreground: 120 9% 11%;              /* #1A1F1A */
+    /* Numi: near-black canvas, glass cards, white pill buttons, orange / magenta / violet glow */
+    --background: 240 10% 4%;              /* #0A0A0C */
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 120 9% 11%;
+    --card: 240 6% 8%;                     /* #131316 (popups, solid surfaces) */
+    --card-foreground: 0 0% 100%;
+    --popover: 240 6% 8%;
+    --popover-foreground: 0 0% 100%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 120 9% 11%;
+    /* Primary = white pill with dark text */
+    --primary: 0 0% 100%;
+    --primary-foreground: 240 10% 4%;
+    --primary-glow: 24 100% 55%;
 
-    /* Primary: deep green (white text passes 4.5:1) */
-    --primary: 100 88% 26%;               /* #2F7A08 */
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 100 59% 85%;
+    --secondary: 258 100% 74%;             /* violet #9B7BFF */
+    --secondary-foreground: 240 10% 4%;
 
-    --secondary: 180 76% 25%;             /* teal #0F6E6E */
-    --secondary-foreground: 0 0% 100%;
+    --accent: 24 100% 55%;                 /* orange #FF7A1A */
+    --accent-foreground: 240 10% 4%;
 
-    --accent: 18 71% 38%;                 /* burnt orange #A9461C */
-    --accent-foreground: 0 0% 100%;
+    --muted: 240 5% 14%;
+    --muted-foreground: 0 0% 72%;
 
-    --muted: 105 38% 96%;                 /* #F2F8F0 */
-    --muted-foreground: 120 8% 33%;        /* #4D5A4D */
+    --destructive: 8 100% 68%;             /* #FF6B57 */
+    --destructive-foreground: 240 10% 4%;
 
-    --destructive: 12 65% 41%;
-    --destructive-foreground: 0 0% 100%;
+    --border: 240 4% 17%;
+    --input: 240 4% 22%;
+    --ring: 24 100% 55%;
 
-    --border: 111 28% 86%;
-    --input: 110 25% 82%;
-    --ring: 100 88% 26%;
+    --surface: 240 10% 4%;
+    --surface-dim: 240 6% 6%;
+    --surface-bright: 240 5% 14%;
+    --surface-container-lowest: 240 6% 6%;
+    --surface-container-low: 240 6% 8%;
+    --surface-container: 240 5% 11%;
+    --surface-container-high: 240 5% 14%;
+    --surface-container-highest: 240 4% 18%;
 
-    --surface: 115 27% 92%;
-    --surface-dim: 112 20% 86%;
-    --surface-bright: 110 30% 95%;
-    --surface-container-lowest: 0 0% 100%;
-    --surface-container-low: 0 0% 100%;
-    --surface-container: 105 38% 96%;
-    --surface-container-high: 110 30% 91%;
-    --surface-container-highest: 108 30% 87%;
+    --primary-container: 24 60% 16%;
+    --on-primary-container: 24 100% 78%;
+    --secondary-container: 258 40% 18%;
+    --on-secondary-container: 258 100% 85%;
+    --tertiary-container: 330 50% 17%;
+    --on-tertiary-container: 330 100% 85%;
 
-    --primary-container: 100 59% 85%;      /* pale green */
-    --on-primary-container: 101 89% 21%;
-    --secondary-container: 150 46% 89%;    /* mint */
-    --on-secondary-container: 150 30% 18%;
-    --tertiary-container: 15 80% 91%;      /* peach */
-    --on-tertiary-container: 15 50% 22%;
+    --on-surface: 0 0% 100%;
+    --on-surface-variant: 0 0% 72%;
+    --outline: 0 0% 55%;
+    --outline-variant: 240 4% 22%;
 
-    --on-surface: 120 9% 11%;
-    --on-surface-variant: 120 8% 33%;
-    --outline: 120 6% 42%;
-    --outline-variant: 110 20% 80%;
+    --gradient-primary: linear-gradient(110deg, #FF8A2A, #FF4FA3);
+    --gradient-secondary: linear-gradient(135deg, hsl(24 60% 16%), hsl(330 50% 17%));
+    --gradient-hero: linear-gradient(135deg, rgba(255,122,26,.12), rgba(255,46,147,.12));
 
-    /* Gradient used by buttons and the active nav pill */
-    --gradient-primary: linear-gradient(160deg, hsl(100 88% 27%), hsl(100 88% 24%));
-    --gradient-secondary: linear-gradient(135deg, hsl(100 59% 85%), hsl(150 46% 89%));
-    --gradient-hero: linear-gradient(135deg, hsl(100 88% 26% / 0.06), hsl(150 46% 40% / 0.06));
-
-    --shadow-primary: 0 6px 20px -6px hsl(100 88% 26% / 0.12);
-    --shadow-glow: 0 10px 22px hsl(100 88% 26% / 0.16);
+    --shadow-primary: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+    --shadow-glow: 0 14px 30px rgba(255, 90, 60, 0.2);
 
     --radius: 1.5rem;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 120 9% 11%;
-    --sidebar-primary: 100 88% 26%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 105 38% 96%;
-    --sidebar-accent-foreground: 120 9% 11%;
-    --sidebar-border: 110 20% 80%;
-    --sidebar-ring: 100 88% 26%;
+    --sidebar-background: 240 6% 8%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 240 10% 4%;
+    --sidebar-accent: 240 5% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 4% 17%;
+    --sidebar-ring: 24 100% 55%;
   }
 }
 
@@ -84,10 +82,16 @@
     @apply border-border;
   }
 
+  html { color-scheme: dark; }
+
   body {
     @apply bg-background text-foreground;
-    font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.005em;
   }
+
+  /* Big headlines: tight, bold, geometric */
+  h1 { letter-spacing: -0.035em; line-height: 1.02; }
 
   input[type="number"] {
     -moz-appearance: textfield;
@@ -99,9 +103,39 @@
     -webkit-appearance: none;
     margin: 0;
   }
+
+  ::placeholder { color: rgba(255, 255, 255, 0.58); }
 }
 
-/* Outside Tailwind's layers so the pastel colours beat each card's own background. */
+@layer components {
+  /* Soft colour glow behind every signed-in page.
+     Add className="app-aurora" to the outer layout wrapper (AppLayout). */
+  .app-aurora {
+    background:
+      radial-gradient(60% 34% at 100% 0%, rgba(255, 122, 26, 0.5), transparent 70%),
+      radial-gradient(55% 34% at 0% 36%, rgba(255, 46, 147, 0.34), transparent 70%),
+      radial-gradient(60% 40% at 100% 72%, rgba(123, 77, 255, 0.36), transparent 70%),
+      radial-gradient(55% 34% at 0% 100%, rgba(47, 140, 255, 0.3), transparent 70%),
+      hsl(var(--background));
+    background-attachment: fixed;
+  }
+
+  /* Vivid blurred colour wash for the Login screen (top ~60%), fading to black.
+     Add className="login-aurora" to the Login page wrapper. */
+  .login-aurora {
+    background:
+      linear-gradient(180deg, rgba(10, 10, 12, 0.15) 0%, rgba(10, 10, 12, 0.35) 38%, #0A0A0C 78%),
+      radial-gradient(60% 34% at 18% 16%, #FF3B2F 0%, transparent 70%),
+      radial-gradient(55% 32% at 86% 10%, #FF9A1F 0%, transparent 70%),
+      radial-gradient(48% 30% at 72% 38%, #19D4B0 0%, transparent 70%),
+      radial-gradient(46% 28% at 14% 46%, #FF2E93 0%, transparent 70%),
+      radial-gradient(50% 28% at 90% 58%, #3A7BFF 0%, transparent 70%),
+      #0A0A0C;
+  }
+
+}
+
+/* Outside Tailwind's layers so the stat colours beat each card's own background. */
 .stat-grid {
   display: flex;
   gap: 0.75rem;
@@ -110,14 +144,20 @@
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
 }
-.stat-grid > * { flex: 0 0 8.75rem; scroll-snap-align: start; border-color: transparent; }
-.stat-grid > :nth-child(1) { background: #D6F0C8; }
-.stat-grid > :nth-child(2) { background: #D3F0E3; }
-.stat-grid > :nth-child(3) { background: #FBDDD3; }
-.stat-grid > :nth-child(4) { background: #FFF0C7; }
-.stat-grid > :nth-child(5) { background: #E3EBD3; }
-.stat-grid .text-primary { color: hsl(120 9% 11%); }
-.stat-grid .text-on-surface-variant { color: #3A463A; }
+.stat-grid > * {
+  flex: 0 0 9.375rem;
+  scroll-snap-align: start;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+  color: #fff;
+}
+.stat-grid > :nth-child(1) { background: linear-gradient(160deg, rgba(255,122,26,.38), rgba(255,255,255,.05)); }
+.stat-grid > :nth-child(2) { background: linear-gradient(160deg, rgba(255,46,147,.38), rgba(255,255,255,.05)); }
+.stat-grid > :nth-child(3) { background: linear-gradient(160deg, rgba(123,77,255,.38), rgba(255,255,255,.05)); }
+.stat-grid > :nth-child(4) { background: linear-gradient(160deg, rgba(47,140,255,.38), rgba(255,255,255,.05)); }
+.stat-grid > :nth-child(5) { background: linear-gradient(160deg, rgba(255,194,26,.38), rgba(255,255,255,.05)); }
+.stat-grid .text-primary { color: #fff; }
+.stat-grid .text-on-surface-variant { color: rgba(255,255,255,.76); }
 @media (min-width: 768px) {
   .stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
   .stat-grid > * { flex: initial; }
@@ -128,11 +168,12 @@
 
 /* Lift only while the mouse is over the card. A card that contains other cards stays still. */
 .card-lift {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .card-lift:not(:has(.card-lift)):hover {
   transform: translateY(-3px);
-  box-shadow: 0 10px 22px hsl(100 88% 26% / 0.16);
+  box-shadow: 0 14px 30px rgba(255, 90, 60, 0.2);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 @media (prefers-reduced-motion: reduce) {
   .card-lift { transition: none; }
@@ -162,6 +203,14 @@
   }
   .completed-week-summary-line::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Gradient text, used for the big calorie number */
+  .text-gradient-primary {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
   .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0); }
