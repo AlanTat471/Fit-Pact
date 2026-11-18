@@ -38,6 +38,19 @@ import { getMotivationalQuoteForSession } from "@/lib/motivationalQuotes";
 import { registerJourneyFlush } from "@/lib/journeySaveFlush";
 import { callBillingApi, loadPremiumAccessState } from "@/lib/billingApi";
 import { toast } from "@/hooks/use-toast";
+import { App } from "@capacitor/app";
+import {
+  STEPS_CHOICE_KEY,
+  STEPS_MANUAL_DATE_KEY,
+  STEPS_PROMPT_KEY,
+  connectHealthSteps,
+  getAndroidStepMode,
+  readTodaySteps,
+  todayIsoDate,
+  todayWeekdayName,
+  type StepPhone,
+  type StepsChoice,
+} from "@/lib/phoneSteps";
 import type { JourneyRow } from "@/lib/supabaseJourney";
 
 /** One completed user cycle (acclimation + 12-week WL + maintenance) for Archived Phases */
@@ -458,6 +471,10 @@ const Dashboard = () => {
 
   const [showWelcomeBackDialog, setShowWelcomeBackDialog] = useState(false);
   const [calorieReminder, setCalorieReminder] = useState<"high" | "low" | null>(null);
+  const [stepPhone, setStepPhone] = useState<StepPhone>("web");
+  const [stepsChoice, setStepsChoice] = useState<StepsChoice | null>(null);
+  const [showStepsPrompt, setShowStepsPrompt] = useState(false);
+  const [journeyDataReady, setJourneyDataReady] = useState(false);
 
   // State for streak tracking
   const [currentStreak, setCurrentStreak] = useState(0);
@@ -574,7 +591,10 @@ const Dashboard = () => {
       // overwrite state again — this prevents saveJourney() round-trips from
       // clobbering in-progress user input (the flickering / input-override bug).
       const alreadyHydrated = currentUserId !== "" && journeyHydratedForUserRef.current === currentUserId;
-      if (alreadyHydrated) return;
+      if (alreadyHydrated) {
+        setJourneyDataReady(true);
+        return;
+      }
 
       // Prefer journey from Supabase (source of truth)
       if (journey) {
@@ -661,6 +681,7 @@ const Dashboard = () => {
             weekData,
           });
         }
+        setJourneyDataReady(true);
         return;
       }
 
@@ -755,6 +776,7 @@ const Dashboard = () => {
       if (storedStartingWeight) {
         setStartingWeight(storedStartingWeight);
       }
+      setJourneyDataReady(true);
 
     };
 
@@ -1870,6 +1892,63 @@ const Dashboard = () => {
     }));
   };
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const mode = await getAndroidStepMode();
+      if (cancelled) return;
+      setStepPhone(mode);
+      if (mode === "web") return;
+      const saved = localStorage.getItem(STEPS_CHOICE_KEY);
+      if (localStorage.getItem(STEPS_PROMPT_KEY) === "1" && (saved === "manual" || saved === "health")) {
+        setStepsChoice(saved);
+        return;
+      }
+      setShowStepsPrompt(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const rememberStepsChoice = (choice: StepsChoice) => {
+    localStorage.setItem(STEPS_CHOICE_KEY, choice);
+    localStorage.setItem(STEPS_PROMPT_KEY, "1");
+    if (choice === "health") localStorage.removeItem(STEPS_MANUAL_DATE_KEY);
+    setStepsChoice(choice);
+    setShowStepsPrompt(false);
+  };
+
+  const applyTodayPhoneSteps = useCallback(async () => {
+    if (journeyComplete) return;
+    if (localStorage.getItem(STEPS_MANUAL_DATE_KEY) === todayIsoDate()) return;
+    const steps = await readTodaySteps();
+    if (steps == null || steps <= 0) return;
+    const day = todayWeekdayName();
+    setWeeklyData((prev) => {
+      const current = prev[day as keyof typeof prev];
+      if (!current || current.steps === steps) return prev;
+      return { ...prev, [day]: { ...current, steps } };
+    });
+  }, [journeyComplete]);
+
+  useEffect(() => {
+    if (!journeyDataReady || stepsChoice !== "health" || stepPhone !== "new") return;
+    let removed = false;
+    let handle: { remove: () => Promise<void> } | undefined;
+    void applyTodayPhoneSteps();
+    void App.addListener("appStateChange", ({ isActive }) => {
+      if (isActive) void applyTodayPhoneSteps();
+    }).then((listener) => {
+      if (removed) void listener.remove();
+      else handle = listener;
+    });
+    return () => {
+      removed = true;
+      void handle?.remove();
+    };
+  }, [journeyDataReady, stepsChoice, stepPhone, applyTodayPhoneSteps]);
+
   const handleAcclimationDataChange = (week: string, day: string, value: number) => {
     // Apply weight limit
     if (value > 200) {
@@ -2680,6 +2759,60 @@ const Dashboard = () => {
 
   return (
     <TooltipProvider>
+      <AlertDialog
+        open={showStepsPrompt}
+        onOpenChange={(open) => {
+          if (open || stepPhone !== "old") return;
+          rememberStepsChoice("manual");
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {stepPhone === "new" ? "How should Numi record steps?" : "Type your steps"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {stepPhone === "new"
+                ? "This phone can fill today's steps from Health Connect, or you can type them in the day boxes."
+                : "This phone does not include Health Connect. Enter your steps in the day boxes."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {stepPhone === "new" ? (
+              <>
+                <AlertDialogCancel
+                  onClick={() => rememberStepsChoice("manual")}
+                >
+                  I'll type them
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void (async () => {
+                      const allowed = await connectHealthSteps();
+                      if (!allowed) {
+                        rememberStepsChoice("manual");
+                        toast({
+                          title: "Type your steps",
+                          description: "Health Connect did not allow access, so the day boxes stay open for typing.",
+                        });
+                        return;
+                      }
+                      rememberStepsChoice("health");
+                    })();
+                  }}
+                >
+                  Use Health Connect
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction onClick={() => rememberStepsChoice("manual")}>
+                OK
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {/* onBlur on the root container fires whenever any descendant <Input>
           loses focus (React's synthetic onBlur bubbles, unlike native blur).
           This is how we honour "save the moment a field is completed / the
@@ -2828,13 +2961,13 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-surface-container-low border border-border transition-all duration-300  hover:border-primary overflow-hidden">
+            <Card className="bg-surface-container-low border border-border transition-all duration-300 hover:border-primary">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-1 p-3">
                 <CardTitle className="text-[11px] font-medium text-on-surface leading-tight">Classification</CardTitle>
                 <MaterialIcon name="emoji_events" size="xs" className="text-primary shrink-0" />
               </CardHeader>
               <CardContent className="p-3 pt-0">
-                <div className="text-sm font-bold text-primary leading-tight auto-fit-text">
+                <div className="text-sm font-bold text-primary leading-snug whitespace-normal break-words">
                   {tdeeValues?.classification || getClassification()}
                 </div>
                 <p className="text-[10px] text-on-surface-variant leading-tight mt-1">Health category</p>
@@ -3334,6 +3467,41 @@ const Dashboard = () => {
                 {journeyComplete ? '🎉 Journey Complete' : `Week ${Math.min(completedWeeks.length + 1, 12)} of 12`}
               </Badge>
             </div>
+            {stepPhone === "new" && stepsChoice && (
+              <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-on-surface-variant">
+                <span>
+                  {stepsChoice === "health"
+                    ? "Today's steps come from your phone. You can still type over today if you need to."
+                    : "You are typing your steps."}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => {
+                    if (stepsChoice === "health") {
+                      rememberStepsChoice("manual");
+                      return;
+                    }
+                    void (async () => {
+                      const allowed = await connectHealthSteps();
+                      if (!allowed) {
+                        rememberStepsChoice("manual");
+                        toast({
+                          title: "Type your steps",
+                          description: "Health Connect did not allow access, so the day boxes stay open for typing.",
+                        });
+                        return;
+                      }
+                      rememberStepsChoice("health");
+                    })();
+                  }}
+                >
+                  {stepsChoice === "health" ? "Type them instead" : "Use phone steps"}
+                </Button>
+              </div>
+            )}
             <div className="overflow-x-auto">
               <div className="min-w-[800px]">
                 <div className="space-y-4">
@@ -3361,6 +3529,9 @@ const Dashboard = () => {
                         value={stepsValue > 0 ? stepsValue.toLocaleString() : ''}
                         onChange={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '').replace(/[^0-9]/g, '');
+                          if (stepsChoice === "health" && day === todayWeekdayName()) {
+                            localStorage.setItem(STEPS_MANUAL_DATE_KEY, todayIsoDate());
+                          }
                           handleWeeklyDataChange(day, 'steps', parseInt(rawValue, 10) || 0);
                         }}
                         className="w-16 h-7 text-xs text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"

@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v16.14 - Dark look: white logo, white buttons, colour glow
+echo   Numi v16.15 - Classification wrap, badge text, phone icon, Health Connect choice
 echo ============================================================
 echo.
 
@@ -51,9 +51,8 @@ git status --short
 echo.
 
 git commit ^
-  -m "v16.14: dark canvas, white numi logo, white pill buttons" ^
-  -m "Look only. Prices stay $0, $8.99/month and $6.00/month billed $72 yearly. Calculations, the sign-in disclaimer, and what each button does are unchanged." ^
-  -m "Best Value stays the small one-line pill just inside the Annual card. It was not moved."
+  -m "v16.15: wrap Classification, badge text, home-screen icon, Health Connect choice" ^
+  -m "Prices stay $0, $8.99/month and $6.00/month billed $72 yearly. The Annual badge now says over 4 months free. Android versionCode 25."
 
 if errorlevel 1 (
     echo.
@@ -108,7 +107,7 @@ if errorlevel 1 (
 
 echo.
 echo ============================================================
-echo   Push complete.  v16.14 dark look
+echo   Push complete.  v16.15
 echo.
 echo   Confirm nothing important is left behind:
 git status --short
@@ -118,37 +117,28 @@ echo.
 echo   1. VERCEL: wait 2-3 minutes, then open
 echo      https://fit-pact.vercel.app
 echo      and press Ctrl+Shift+R.
-echo      The page should be near-black, the logo white, buttons white.
 echo.
-echo   2. STRIPE + SUPABASE prices: no price change in this update.
-echo      Annual is still A$72.00 a year, shown as $6.00 /month.
-echo      BEFORE REAL CUSTOMERS you must use LIVE mode:
-echo        - A$72.00 yearly price in Live mode
-echo        - that LIVE price ID in STRIPE_PRICE_ANNUAL
-echo        - STRIPE_SECRET_KEY swapped to the live sk_live_ key
-echo        - a Live webhook and STRIPE_WEBHOOK_SECRET
-echo      Test and Live price IDs are not interchangeable.
+echo   2. STRIPE is unchanged. Prices on screen stay
+echo      Monthly $8.99 and Annual $6.00/month billed $72 yearly.
+echo      Subscriptions are NOT Google Play Billing yet.
 echo.
 echo   3. TEST on the website:
-echo      - Annual: $6.00 /month and "Billed $72 yearly"
-echo      - Best Value is ONE line: BEST VALUE (4 MONTHS FREE)
+echo      - Annual badge is ONE line: BEST VALUE (OVER 4 MONTHS FREE)
 echo        It sits just inside the top of the Annual card.
-echo      - Monthly: $8.99 /month and "Billed $8.99 monthly"
-echo      - Free and Monthly have no blank gap under Inactive
-echo      - Settings Billing shows $72/year, never $71.88
+echo      - Monthly: $8.99 /month
+echo      - Dashboard Classification shows the full word, wrapping if needed
 echo.
 echo   4. SUPABASE billing function. The website push does NOT do this.
-echo      Needed for the billing history table and for Delete Account
-echo      to detach a saved card. In Command Prompt, from this folder:
+echo      In Command Prompt, from this folder:
 echo        npx supabase login
 echo        npx supabase functions deploy billing
 echo.
 echo   5. ANDROID. The phone app does not change when the website does.
-echo      Current file: versionCode 22, versionName 1.0
-echo      If Play says that version code is already used, stop and
-echo      tell Cursor before uploading.
+echo      This build is versionCode 25, versionName 1.0
+echo      Oldest phone that can install it: Android 8.
 echo        Double-click build-and-android-sync.bat
 echo      Then Android Studio, open the android folder,
 echo      Build, Generate Signed Bundle / APK, Android App Bundle.
+echo      Use the existing key file android\numi-release-key.jks
 echo ============================================================
 pause

@@ -756,9 +756,9 @@ const PaymentDetails = () => {
           priceMain="$6.00"
           priceUnit="/month"
           billingLine="Billed $72 yearly"
-          description="Get 4 months free compared to Monthly - you save $35.88 every year. Full access to all Numi features after your free Acclimation Phase."
+          description="Get over 4 months free compared to Monthly - you save $35.88 every year. Full access to all Numi features after your free Acclimation Phase."
           badgeLine1="Best Value"
-          badgeLine2="(4 months free)"
+          badgeLine2="(over 4 months free)"
         />
       </div>
 

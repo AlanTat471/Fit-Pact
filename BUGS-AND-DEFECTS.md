@@ -1,6 +1,14 @@
 # Numi — Bugs, Defects, Fixes, and How the App Works
 
-This is the audit file for Numi (the app folder is still named Fit-Pact / sweat-script-buddy). Older numbered items below are the history. **If an older item disagrees with this section, follow this section.** Last brought up to date: 11 November 2026 (dark look, on this computer, not published until the bat is run again).
+This is the audit file for Numi (the app folder is still named Fit-Pact / sweat-script-buddy). Older numbered items below are the history. **If an older item disagrees with this section, follow this section.** Last brought up to date: 18 November 2026.
+
+### 18 November 2026
+
+- Dashboard Classification card wraps the full word. "Overweight" is no longer chopped to "Overwei...".
+- Annual badge text is now "over 4 months free". Prices are unchanged: Monthly $8.99, Annual $6.00 a month billed $72 a year. Best Value stays the small one-line pill just inside the Annual card.
+- Phone home-screen icon uses the dark-red numi picture. The white logo inside the app is unchanged. The Play Store listing icon is a separate upload Alan does in Play Console.
+- Android 14 and newer: the first time the Dashboard opens, the person chooses Health Connect or typing steps. Today's box fills from the phone when they connect, and they can type over that day. A button under Current Week switches the choice. Android 8 through 13 get one message to type steps. The website does not ask. The Health Connect add-on requires Android 8, so the app's oldest supported phone is now Android 8 (versionCode 25).
+- Login "too many tries" is still Supabase's own message on the password button. It is not an email template.
 
 ### Look only (11 November 2026)
 

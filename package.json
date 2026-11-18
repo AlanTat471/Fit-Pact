@@ -16,6 +16,8 @@
     "@capacitor/app": "^8.1.0",
     "@capacitor/cli": "^8.3.1",
     "@capacitor/core": "^8.3.1",
+    "@capacitor/device": "^8.0.3",
+    "@capgo/capacitor-health": "^8.13.0",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -69,12 +71,12 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@eslint/js": "^9.32.0",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
-    "@capacitor/assets": "^3.0.5",
     "@vitejs/plugin-react-swc": "^4.3.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.32.0",
