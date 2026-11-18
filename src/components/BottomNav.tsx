@@ -12,7 +12,7 @@ const navItems = [
 
 /* Floating black pill. The current screen is a white pill with an uppercase label;
    the others are bare white icons. Achievements is disabled. */
-export function BottomNav() {
+export function BottomNav({ spotlightPath = null }: { spotlightPath?: string | null }) {
   const { pathname } = useLocation();
 
   return (
@@ -37,21 +37,23 @@ export function BottomNav() {
         }
 
         const active = pathname === item.path;
+        const emphasized = spotlightPath ? spotlightPath === item.path : active;
 
         return (
           <NavLink
             key={item.path}
             to={item.path}
+            data-guide={item.path}
             aria-label={item.label}
             className={cn(
               "flex items-center justify-center gap-2 rounded-full text-[12px] font-semibold uppercase tracking-[0.08em] transition-all",
-              active
-                ? "h-12 bg-white px-[18px] text-[#0A0A0C]"
-                : "h-11 w-11 text-white/90 hover:bg-white/10 active:scale-95"
+              emphasized
+                ? "h-12 bg-white px-[18px] text-[#0A0A0C] transition-none"
+                : "h-11 w-11 text-white/90 transition-all hover:bg-white/10 active:scale-95"
             )}
           >
-            <MaterialIcon name={item.icon} size="sm" filled={active} />
-            {active && <span>{item.label}</span>}
+            <MaterialIcon name={item.icon} size="sm" filled={emphasized} />
+            {emphasized && <span>{item.label}</span>}
           </NavLink>
         );
       })}

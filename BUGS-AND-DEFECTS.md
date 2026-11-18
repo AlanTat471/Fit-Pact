@@ -9,6 +9,7 @@ This is the audit file for Numi (the app folder is still named Fit-Pact / sweat-
 - Phone home-screen icon uses the dark-red numi picture. The white logo inside the app is unchanged. The Play Store listing icon is a separate upload Alan does in Play Console.
 - Android 14 and newer: the first time the Dashboard opens, the person chooses Health Connect or typing steps. Today's box fills from the phone when they connect, and they can type over that day. A button under Current Week switches the choice. Android 8 through 13 get one message to type steps. The website does not ask. The Health Connect add-on requires Android 8, so the app's oldest supported phone is now Android 8 (versionCode 25).
 - Login "too many tries" is still Supabase's own message on the password button. It is not an email template.
+- Page guide (18 November 2026, version 1): after sign-in, Profile, TDEE, Dashboard, then Macros are highlighted one at a time. The blur stops at the button's own edge, with no extra line around it. Next, or a tap on the blur, moves on. Done on the last stop stores `numiPageGuideVersion` = `1` on that phone or browser. Anyone without that value sees it, including people who already had an account. Bump `PAGE_GUIDE_VERSION` in `src/components/PageGuide.tsx` to show a new guide later.
 
 ### Look only (11 November 2026)
 

@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { BottomNav } from "@/components/BottomNav";
+import { PageGuide } from "@/components/PageGuide";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
 import { useNavigate } from "react-router-dom";
 import { NumiLogo } from "@/components/NumiLogo";
@@ -28,6 +29,7 @@ const IDLE_FLAG_KEY = "numiIdleSignOut";
 export default function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
   const { session, loading } = useAuth();
+  const [guideSpotlight, setGuideSpotlight] = useState<string | null>(null);
   const hasRedirectedRef = useRef(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -157,7 +159,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {children}
       </main>
 
-      <BottomNav />
+      <BottomNav spotlightPath={guideSpotlight} />
+      <PageGuide onSpotlight={setGuideSpotlight} spotlightPath={guideSpotlight} />
     </div>
   );
 }

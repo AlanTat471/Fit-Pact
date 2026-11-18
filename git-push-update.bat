@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v16.15 - Classification wrap, badge text, phone icon, Health Connect choice
+echo   Numi v16.15 - Page guide, Classification wrap, badge, icon, Health Connect
 echo ============================================================
 echo.
 
@@ -51,8 +51,8 @@ git status --short
 echo.
 
 git commit ^
-  -m "v16.15: wrap Classification, badge text, home-screen icon, Health Connect choice" ^
-  -m "Prices stay $0, $8.99/month and $6.00/month billed $72 yearly. The Annual badge now says over 4 months free. Android versionCode 25."
+  -m "v16.15: page guide, Classification wrap, badge text, icon, Health Connect choice" ^
+  -m "The four-stop guide shows once for every signed-in person after this update. Prices stay $0, $8.99/month and $6.00/month billed $72 yearly. Android versionCode 25."
 
 if errorlevel 1 (
     echo.
