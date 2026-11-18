@@ -29,7 +29,7 @@ export function DisclaimerContent() {
           <ul className="list-disc pl-6 space-y-1">
             <li><strong>Personal details:</strong> Name, email address, age, gender, and mobile number (optional).</li>
             <li><strong>Physical data:</strong> Height, current weight, and activity level — used to calculate your BMR, TDEE, macronutrient breakdown, and recommended calorie intake.</li>
-            <li><strong>Tracking data:</strong> Daily weight entries, step counts, calorie intake, and weekly progress data — used to monitor your journey and adjust recommendations. On an Android 14 or newer phone, if you choose to connect Health Connect, Numi reads only today's step total from your phone. It does not read your other health records. You can switch back to typing steps at any time.</li>
+            <li><strong>Tracking data:</strong> Daily weight entries, step counts, calorie intake, and weekly progress data — used to monitor your journey and adjust recommendations. On an Android 14 or newer phone, if you choose to connect Health Connect, Numi reads this week's step totals from Monday through today. It does not read tomorrow, completed weeks, or your other health records. You can switch back to typing steps at any time, and you are asked before a typed day is replaced.</li>
             <li><strong>Profile content:</strong> Profile photo, personal description, goals, and motivational notes you choose to add.</li>
             <li><strong>Support correspondence:</strong> Information you provide when contacting our support team.</li>
           </ul>

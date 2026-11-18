@@ -41,13 +41,18 @@ import { toast } from "@/hooks/use-toast";
 import { App } from "@capacitor/app";
 import {
   STEPS_CHOICE_KEY,
-  STEPS_MANUAL_DATE_KEY,
   STEPS_PROMPT_KEY,
+  clearManualStepDays,
+  clearStepsSyncFrom,
   connectHealthSteps,
   getAndroidStepMode,
-  readTodaySteps,
-  todayIsoDate,
-  todayWeekdayName,
+  isoForWeekdayThisWeek,
+  loadManualStepDays,
+  readCurrentWeekSteps,
+  saveManualStepDays,
+  setStepsSyncFromTomorrow,
+  stepsSyncFromIso,
+  weekdaysThroughToday,
   type StepPhone,
   type StepsChoice,
 } from "@/lib/phoneSteps";
@@ -474,6 +479,12 @@ const Dashboard = () => {
   const [stepPhone, setStepPhone] = useState<StepPhone>("web");
   const [stepsChoice, setStepsChoice] = useState<StepsChoice | null>(null);
   const [showStepsPrompt, setShowStepsPrompt] = useState(false);
+  const [connectPrompt, setConnectPrompt] = useState<Record<string, number> | null>(null);
+  const [stepEditPrompt, setStepEditPrompt] = useState<{ day: string; previous: number; next: number } | null>(null);
+  const [stepsSyncNonce, setStepsSyncNonce] = useState(0);
+  const stepFocusRef = useRef<{ day: string; value: number } | null>(null);
+  const weeklyDataRef = useRef(weeklyData);
+  weeklyDataRef.current = weeklyData;
   const [journeyDataReady, setJourneyDataReady] = useState(false);
 
   // State for streak tracking
@@ -1533,6 +1544,7 @@ const Dashboard = () => {
     setIsWeek3Complete(false);
     setIsWeek4Complete(false);
     setJourneyComplete(false);
+    releaseStepSyncForNewJourney();
     setWeightLossStartDate("");
     localStorage.removeItem("dashboardWeightLossStartDate");
     setStartingWeight(fourAvg > 0 ? fourAvg.toFixed(2) : "");
@@ -1729,6 +1741,7 @@ const Dashboard = () => {
     setIsWeek3Complete(false);
     setIsWeek4Complete(false);
     setJourneyComplete(false);
+    releaseStepSyncForNewJourney();
     localStorage.removeItem("numiPendingMaintenanceAfterWeek12");
     localStorage.removeItem("dashboardJourneyComplete");
     week12SummaryScheduledRef.current = false;
@@ -1914,31 +1927,107 @@ const Dashboard = () => {
   const rememberStepsChoice = (choice: StepsChoice) => {
     localStorage.setItem(STEPS_CHOICE_KEY, choice);
     localStorage.setItem(STEPS_PROMPT_KEY, "1");
-    if (choice === "health") localStorage.removeItem(STEPS_MANUAL_DATE_KEY);
     setStepsChoice(choice);
     setShowStepsPrompt(false);
   };
 
-  const applyTodayPhoneSteps = useCallback(async () => {
-    if (journeyComplete) return;
-    if (localStorage.getItem(STEPS_MANUAL_DATE_KEY) === todayIsoDate()) return;
-    const steps = await readTodaySteps();
-    if (steps == null || steps <= 0) return;
-    const day = todayWeekdayName();
-    setWeeklyData((prev) => {
-      const current = prev[day as keyof typeof prev];
-      if (!current || current.steps === steps) return prev;
-      return { ...prev, [day]: { ...current, steps } };
+  const releaseStepSyncForNewJourney = () => {
+    clearManualStepDays();
+    clearStepsSyncFrom();
+    setStepsSyncNonce((n) => n + 1);
+  };
+
+  const mergePhoneSteps = useCallback((mode: "replace" | "keep-typed" | "sync", phoneSteps: Record<string, number>) => {
+    const since = stepsSyncFromIso();
+    const days = weekdaysThroughToday().filter((day) => isoForWeekdayThisWeek(day) >= since);
+    const manual = new Set<string>(mode === "sync" ? loadManualStepDays() : []);
+    const prev = weeklyDataRef.current;
+    let changed = false;
+    const next = { ...prev };
+    for (const day of days) {
+      const key = day as keyof typeof prev;
+      const hc = phoneSteps[day] ?? 0;
+      const current = prev[key]?.steps ?? 0;
+      if (mode === "sync") {
+        if (manual.has(day) || hc <= 0 || current === hc) continue;
+        next[key] = { ...prev[key], steps: hc };
+        changed = true;
+        continue;
+      }
+      if (mode === "replace") {
+        if (hc > 0) {
+          if (current !== hc) {
+            next[key] = { ...prev[key], steps: hc };
+            changed = true;
+          }
+        } else if (current > 0) {
+          manual.add(day);
+        }
+        continue;
+      }
+      if (current > 0) {
+        manual.add(day);
+      } else if (hc > 0) {
+        next[key] = { ...prev[key], steps: hc };
+        changed = true;
+      }
+    }
+    if (mode !== "sync") saveManualStepDays([...manual]);
+    if (changed) {
+      weeklyDataRef.current = next;
+      setWeeklyData(next);
+    }
+  }, []);
+
+  const connectAndMaybeWarn = async () => {
+    const allowed = await connectHealthSteps();
+    if (!allowed) {
+      rememberStepsChoice("manual");
+      toast({
+        title: "Type your steps",
+        description: "Health Connect did not allow access, so the day boxes stay open for typing.",
+      });
+      return;
+    }
+    const phoneSteps = await readCurrentWeekSteps();
+    if (!phoneSteps) {
+      rememberStepsChoice("manual");
+      toast({
+        title: "Type your steps",
+        description: "Health Connect did not allow access, so the day boxes stay open for typing.",
+      });
+      return;
+    }
+    setShowStepsPrompt(false);
+    const since = stepsSyncFromIso();
+    const hasTyped = weekdaysThroughToday().some((day) => {
+      if (isoForWeekdayThisWeek(day) < since) return false;
+      return (weeklyDataRef.current[day as keyof typeof weeklyDataRef.current]?.steps || 0) > 0;
     });
-  }, [journeyComplete]);
+    if (hasTyped) {
+      setConnectPrompt(phoneSteps);
+      return;
+    }
+    clearManualStepDays();
+    rememberStepsChoice("health");
+    mergePhoneSteps("replace", phoneSteps);
+  };
 
   useEffect(() => {
-    if (!journeyDataReady || stepsChoice !== "health" || stepPhone !== "new") return;
+    if (!journeyDataReady || stepsChoice !== "health" || stepPhone !== "new" || journeyComplete) return;
+    if (connectPrompt || stepEditPrompt) return;
     let removed = false;
     let handle: { remove: () => Promise<void> } | undefined;
-    void applyTodayPhoneSteps();
+    const run = () => {
+      void (async () => {
+        const phoneSteps = await readCurrentWeekSteps();
+        if (removed || !phoneSteps) return;
+        mergePhoneSteps("sync", phoneSteps);
+      })();
+    };
+    run();
     void App.addListener("appStateChange", ({ isActive }) => {
-      if (isActive) void applyTodayPhoneSteps();
+      if (isActive) run();
     }).then((listener) => {
       if (removed) void listener.remove();
       else handle = listener;
@@ -1947,7 +2036,7 @@ const Dashboard = () => {
       removed = true;
       void handle?.remove();
     };
-  }, [journeyDataReady, stepsChoice, stepPhone, applyTodayPhoneSteps]);
+  }, [journeyDataReady, stepsChoice, stepPhone, journeyComplete, connectPrompt, stepEditPrompt, stepsSyncNonce, mergePhoneSteps]);
 
   const handleAcclimationDataChange = (week: string, day: string, value: number) => {
     // Apply weight limit
@@ -2441,7 +2530,9 @@ const Dashboard = () => {
     // Move current week to previous week for comparison
     setPreviousWeekData({ ...weeklyData });
 
-    // Reset current week
+    // Reset current week. Do not copy this week's phone steps back into the new week.
+    clearManualStepDays();
+    setStepsSyncFromTomorrow();
     setWeeklyData({
       Monday: { steps: 0, calories: 0, weight: 0 },
       Tuesday: { steps: 0, calories: 0, weight: 0 },
@@ -2505,6 +2596,8 @@ const Dashboard = () => {
       Saturday: { steps: 0, calories: 0, weight: 0 },
       Sunday: { steps: 0, calories: 0, weight: 0 }
     });
+    clearManualStepDays();
+    setStepsSyncNonce((n) => n + 1);
     setCurrentStreak(0);
   };
 
@@ -2773,7 +2866,7 @@ const Dashboard = () => {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {stepPhone === "new"
-                ? "This phone can fill today's steps from Health Connect, or you can type them in the day boxes."
+                ? "This phone can fill this week's steps, up to today, from Health Connect, or you can type them in the day boxes."
                 : "This phone does not include Health Connect. Enter your steps in the day boxes."}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -2788,18 +2881,7 @@ const Dashboard = () => {
                 <AlertDialogAction
                   onClick={(event) => {
                     event.preventDefault();
-                    void (async () => {
-                      const allowed = await connectHealthSteps();
-                      if (!allowed) {
-                        rememberStepsChoice("manual");
-                        toast({
-                          title: "Type your steps",
-                          description: "Health Connect did not allow access, so the day boxes stay open for typing.",
-                        });
-                        return;
-                      }
-                      rememberStepsChoice("health");
-                    })();
+                    void connectAndMaybeWarn();
                   }}
                 >
                   Use Health Connect
@@ -2810,6 +2892,75 @@ const Dashboard = () => {
                 OK
               </AlertDialogAction>
             )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={connectPrompt != null}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Use Health Connect for this week?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have chosen to connect to Health Connect. This will override any data you have entered previously, do you wish to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={(event) => {
+                event.preventDefault();
+                if (!connectPrompt) return;
+                mergePhoneSteps("keep-typed", connectPrompt);
+                rememberStepsChoice("health");
+                setConnectPrompt(null);
+              }}
+            >
+              No
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                if (!connectPrompt) return;
+                clearManualStepDays();
+                mergePhoneSteps("replace", connectPrompt);
+                rememberStepsChoice("health");
+                setConnectPrompt(null);
+              }}
+            >
+              Yes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={stepEditPrompt != null}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Use your number for {stepEditPrompt?.day}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have manually entered steps for {stepEditPrompt?.day}. This will override the phone's recorded steps. Do you wish to proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={(event) => {
+                event.preventDefault();
+                if (!stepEditPrompt) return;
+                handleWeeklyDataChange(stepEditPrompt.day, "steps", stepEditPrompt.previous);
+                setStepEditPrompt(null);
+              }}
+            >
+              No
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                if (!stepEditPrompt) return;
+                const manual = new Set(loadManualStepDays());
+                manual.add(stepEditPrompt.day);
+                saveManualStepDays([...manual]);
+                setStepEditPrompt(null);
+              }}
+            >
+              Yes
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -3471,7 +3622,7 @@ const Dashboard = () => {
               <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-on-surface-variant">
                 <span>
                   {stepsChoice === "health"
-                    ? "Today's steps come from your phone. You can still type over today if you need to."
+                    ? "Steps for this week, up to today, come from your phone. You can still type over a day if you need to."
                     : "You are typing your steps."}
                 </span>
                 <Button
@@ -3484,18 +3635,7 @@ const Dashboard = () => {
                       rememberStepsChoice("manual");
                       return;
                     }
-                    void (async () => {
-                      const allowed = await connectHealthSteps();
-                      if (!allowed) {
-                        rememberStepsChoice("manual");
-                        toast({
-                          title: "Type your steps",
-                          description: "Health Connect did not allow access, so the day boxes stay open for typing.",
-                        });
-                        return;
-                      }
-                      rememberStepsChoice("health");
-                    })();
+                    void connectAndMaybeWarn();
                   }}
                 >
                   {stepsChoice === "health" ? "Type them instead" : "Use phone steps"}
@@ -3529,10 +3669,19 @@ const Dashboard = () => {
                         value={stepsValue > 0 ? stepsValue.toLocaleString() : ''}
                         onChange={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '').replace(/[^0-9]/g, '');
-                          if (stepsChoice === "health" && day === todayWeekdayName()) {
-                            localStorage.setItem(STEPS_MANUAL_DATE_KEY, todayIsoDate());
-                          }
                           handleWeeklyDataChange(day, 'steps', parseInt(rawValue, 10) || 0);
+                        }}
+                        onFocus={() => {
+                          stepFocusRef.current = { day, value: stepsValue };
+                        }}
+                        onBlur={(e) => {
+                          if (stepsChoice !== "health") return;
+                          const focus = stepFocusRef.current;
+                          if (!focus || focus.day !== day) return;
+                          const rawValue = e.target.value.replace(/,/g, '').replace(/[^0-9]/g, '');
+                          const next = parseInt(rawValue, 10) || 0;
+                          if (next === focus.value) return;
+                          setStepEditPrompt({ day, previous: focus.value, next });
                         }}
                         className="w-16 h-7 text-xs text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         placeholder="0"
@@ -5084,6 +5233,7 @@ const Dashboard = () => {
                       Saturday: { steps: 0, calories: 0, weight: 0 },
                       Sunday: { steps: 0, calories: 0, weight: 0 }
                     });
+                    releaseStepSyncForNewJourney();
                     // If journey was complete, un-complete it since we now have fewer weeks
                     if (journeyComplete) {
                       setJourneyComplete(false);

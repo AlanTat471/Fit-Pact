@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v16.15 - Page guide, Classification wrap, badge, icon, Health Connect
+echo   Numi v16.16 - Health Connect fills this week, with a warning before it replaces typed steps
 echo ============================================================
 echo.
 
@@ -51,8 +51,8 @@ git status --short
 echo.
 
 git commit ^
-  -m "v16.15: page guide, Classification wrap, badge text, icon, Health Connect choice" ^
-  -m "The four-stop guide shows once for every signed-in person after this update. Prices stay $0, $8.99/month and $6.00/month billed $72 yearly. Android versionCode 25."
+  -m "v16.16: Health Connect can fill this week, and asks before replacing typed steps" ^
+  -m "Typed days stay when the person says no. Completed weeks are left as saved. Prices stay $0, $8.99/month and $6.00/month billed $72 yearly. Android versionCode 26."
 
 if errorlevel 1 (
     echo.
@@ -107,7 +107,7 @@ if errorlevel 1 (
 
 echo.
 echo ============================================================
-echo   Push complete.  v16.15
+echo   Push complete.  v16.16
 echo.
 echo   Confirm nothing important is left behind:
 git status --short
@@ -134,7 +134,7 @@ echo        npx supabase login
 echo        npx supabase functions deploy billing
 echo.
 echo   5. ANDROID. The phone app does not change when the website does.
-echo      This build is versionCode 25, versionName 1.0
+echo      This build is versionCode 26, versionName 1.0
 echo      Oldest phone that can install it: Android 8.
 echo        Double-click build-and-android-sync.bat
 echo      Then Android Studio, open the android folder,
