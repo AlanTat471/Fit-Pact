@@ -39,7 +39,8 @@ Vercel stays. The public privacy page and the password-reset link use https://fi
 
 ## 2b. What version 26 adds (local, not on Play until you upload)
 
-- Acclimation M–S day boxes open a one-day weight editor. Save Changes stores that day. Discard Changes warns only if the value changed. Complete Week remains the only way to mark a week complete.
+- Acclimation week labels wrap as Week N / Weight (kg). M–S day boxes open a one-day weight editor. Save Changes stores that day. Discard Changes warns only if the value changed. Complete Week remains the only way to mark a week complete and is allowed with missing days after a miss/inconsistency warning.
+- Profile achievement icons stay hidden until Achievements is rolled out.
 - Phone Average Weight is centred. Desktop Average Weight stays bottom-right.
 - Clear All Data and Collapse Section stay inside the Acclimation card on phones.
 - Header sits under the phone status bar. Bell shows “Notifications coming soon”.

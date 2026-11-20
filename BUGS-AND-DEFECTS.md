@@ -4,7 +4,9 @@ This is the audit file for Numi (the app folder is still named Fit-Pact / sweat-
 
 ### 20 November 2026 — mobile repair (versionCode 26)
 
-- Acclimation M–S days open a one-day editor with Save Changes / Discard Changes. Discard warns only when the value changed. Complete Week is the only path that marks a week complete and triggers Week 4 / paywall. Editing a completed day down to blank or zero marks that week incomplete again; filling the seventh day never auto-completes.
+- Acclimation week labels wrap as `Week N` then `Weight (kg)`.
+- Acclimation M–S days open a one-day editor with Save Changes / Discard Changes. Discard warns only when the value changed. Complete Week is the only path that marks a week complete and triggers Week 4 / paywall. Filling the seventh day never auto-completes. Complete Week is allowed with missing days; blank/0, under-10 kg, or a day 5 kg+ off the week mean shows: "It looks like you've missed a weigh-in or have entered data that is inconsistent and may cause inaccurate calculation. Do you wish to proceed?" Yes completes; No returns to the Dashboard. Editing a completed day down to blank or zero marks that week incomplete again.
+- Profile achievement icons (including Big Stepper) and the Badges count stay hidden until Achievements is rolled out. The Achievements nav item remains Coming Soon.
 - Phone Average Weight sits in the centre. Desktop Average Weight stays bottom-right.
 - Clear All Data and Collapse Section stay inside the Acclimation card and share one responsive action row on phones.
 - Fixed header uses Android top safe-area inset so the menu and bell sit under the status bar. The bell shows “Notifications coming soon”.

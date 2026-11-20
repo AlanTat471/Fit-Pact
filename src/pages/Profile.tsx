@@ -813,7 +813,7 @@ const Profile = () => {
       {/* Stats Row — values use auto-fit-text so long numbers shrink to stay on one line */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-surface-container-low p-4 rounded-xl border border-border text-center transition-all duration-300  hover:border-primary overflow-hidden">
-          <span className="block text-2xl font-black text-primary auto-fit-text">{getCompletedAchievements().length}</span>
+          <span className="block text-2xl font-black text-primary auto-fit-text">—</span>
           <span className="text-[10px] uppercase tracking-widest text-on-surface-variant">Badges</span>
         </div>
         <div className="bg-surface-container-low p-4 rounded-xl border border-border text-center transition-all duration-300  hover:border-primary overflow-hidden">
@@ -833,30 +833,7 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Completed Achievement Icons */}
-      {(() => {
-        const completedAchievements = getCompletedAchievements();
-        if (completedAchievements.length === 0) return null;
-        return (
-          <div className="flex flex-wrap gap-2 justify-center">
-            {completedAchievements.map((achievement) => (
-              <TooltipProvider key={achievement.id}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className={`w-8 h-8 rounded-full ${achievement.bgColor} flex items-center justify-center cursor-pointer hover:scale-110 transition-transform`}>
-                      <MaterialIcon name={achievement.icon} size="sm" className={achievement.color} />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="font-medium">{achievement.title}</p>
-                    <p className="text-xs text-muted-foreground">{achievement.description}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ))}
-          </div>
-        );
-      })()}
+      {/* Achievement icons stay hidden until Achievements is rolled out. */}
 
       {/* My Why Card */}
       <section className="space-y-4">

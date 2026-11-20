@@ -364,6 +364,7 @@ const Dashboard = () => {
     value: number;
   } | null>(null);
   const [showDiscardAcclimationEdit, setShowDiscardAcclimationEdit] = useState(false);
+  const [pendingAcclimationCompleteWeek, setPendingAcclimationCompleteWeek] = useState<1 | 2 | 3 | 4 | null>(null);
   
   // State for starting weight
   const [startingWeight, setStartingWeight] = useState<string>("");
@@ -2078,14 +2079,21 @@ const Dashboard = () => {
     }
   };
 
-  // Handle completing acclimation week
-  const handleCompleteAcclimationWeek = (weekNumber: 1 | 2 | 3 | 4) => {
+  const acclimationWeekNeedsCompleteWarning = (weekNumber: 1 | 2 | 3 | 4) => {
     const weekKey = `week${weekNumber}` as keyof typeof acclimationData;
-    const weekHasData = Object.values(acclimationData[weekKey]).every(v => v > 0);
-    if (!weekHasData) {
-      alert(`Please fill in all 7 days of Week ${weekNumber} before completing it.`);
-      return;
+    const values = Object.values(acclimationData[weekKey]);
+    const positive = values.filter((weight) => weight > 0);
+    if (positive.length === 0) return true;
+    if (values.some((weight) => weight <= 0)) return true;
+    if (positive.some((weight) => weight > 0 && weight < 10)) return true;
+    if (positive.length >= 2) {
+      const mean = positive.reduce((sum, weight) => sum + weight, 0) / positive.length;
+      if (positive.some((weight) => Math.abs(weight - mean) >= 5)) return true;
     }
+    return false;
+  };
+
+  const finalizeAcclimationWeekComplete = (weekNumber: 1 | 2 | 3 | 4) => {
     if (weekNumber === 1) setIsWeek1Complete(true);
     if (weekNumber === 2) setIsWeek2Complete(true);
     if (weekNumber === 3) setIsWeek3Complete(true);
@@ -2098,16 +2106,25 @@ const Dashboard = () => {
           setAcclimationCompleteMode("first_paywall");
         }
         setShowAcclimationCompleteDialog(true);
-        const minCal = userGender === 'female' ? 1300 : 1500;
-        if (acclimationCalories > 0 && (acclimationCalories - minCal) <= 200) {
-          const alreadyWarned = localStorage.getItem('dashboardLowCalorieHeadroomWarned');
+        const minCal = userGender === "female" ? 1300 : 1500;
+        if (acclimationCalories > 0 && acclimationCalories - minCal <= 200) {
+          const alreadyWarned = localStorage.getItem("dashboardLowCalorieHeadroomWarned");
           if (!alreadyWarned) {
-            localStorage.setItem('dashboardLowCalorieHeadroomWarned', 'true');
+            localStorage.setItem("dashboardLowCalorieHeadroomWarned", "true");
             setTimeout(() => setShowLowCalorieHeadroomDialog(true), 800);
           }
         }
       }
     }
+  };
+
+  // Handle completing acclimation week. Missing or odd values warn first; Yes still completes.
+  const handleCompleteAcclimationWeek = (weekNumber: 1 | 2 | 3 | 4) => {
+    if (acclimationWeekNeedsCompleteWarning(weekNumber)) {
+      setPendingAcclimationCompleteWeek(weekNumber);
+      return;
+    }
+    finalizeAcclimationWeekComplete(weekNumber);
   };
 
   const openAcclimationDayEditor = (weekNumber: 1 | 2 | 3 | 4, day: string) => {
@@ -3302,7 +3319,10 @@ const Dashboard = () => {
                   return (
                     <Card key={`acclimation-week-mobile-${weekNumber}`} className="rounded-[20px] border-0 bg-muted p-4 shadow-none">
                       <div className="mb-3 flex items-center justify-between text-sm">
-                        <span className="font-extrabold">{`Week ${weekNumber} Weight (kg)`}</span>
+                        <span className="min-w-0 font-extrabold leading-tight">
+                          <span className="block">{`Week ${weekNumber}`}</span>
+                          <span className="block">Weight (kg)</span>
+                        </span>
                         <span className="text-muted-foreground">Avg <b className="text-primary">{weekAvg}</b></span>
                       </div>
                       <div className="grid grid-cols-7 gap-1.5">
@@ -3369,7 +3389,10 @@ const Dashboard = () => {
                     return (
                       <React.Fragment key={`acclimation-week-${weekNumber}`}>
                         <div className="grid grid-cols-9 gap-2 items-center p-3 rounded-lg bg-muted/30 mt-4">
-                          <div className="font-medium text-sm">{`Week ${weekNumber} Weight (kg)`}</div>
+                          <div className="min-w-0 text-sm font-medium leading-tight">
+                            <span className="block">{`Week ${weekNumber}`}</span>
+                            <span className="block">Weight (kg)</span>
+                          </div>
                           {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
                             <div key={`week-${weekNumber}-${day}`} className="flex justify-center">
                               <button
@@ -5332,7 +5355,7 @@ const Dashboard = () => {
                   placeholder="0.0"
                   autoFocus
                 />
-                <p className="break-words text-xs text-muted-foreground">Enter a weight above 0 kg, up to 200 kg. Complete Week still needs all seven days filled.</p>
+                <p className="break-words text-xs text-muted-foreground">Enter a weight above 0 kg, up to 200 kg. You can still press Complete Week if a day is missing.</p>
               </div>
             )}
             <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
@@ -5376,6 +5399,38 @@ const Dashboard = () => {
                 onClick={(event) => {
                   event.preventDefault();
                   closeAcclimationDayEditor();
+                }}
+              >
+                Yes
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={pendingAcclimationCompleteWeek != null}>
+          <AlertDialogContent className="max-w-sm rounded-2xl border-outline-variant bg-surface-container-lowest text-on-surface">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="break-words text-foreground">
+                It looks like you&apos;ve missed a weigh-in or have entered data that is inconsistent and may cause inaccurate calculation. Do you wish to proceed?
+              </AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+              <AlertDialogCancel
+                className="h-auto min-h-[52px] min-w-0 whitespace-normal px-3 text-center leading-tight"
+                onClick={(event) => {
+                  event.preventDefault();
+                  setPendingAcclimationCompleteWeek(null);
+                }}
+              >
+                No
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="h-auto min-h-[52px] min-w-0 whitespace-normal px-3 text-center leading-tight"
+                onClick={(event) => {
+                  event.preventDefault();
+                  const weekNumber = pendingAcclimationCompleteWeek;
+                  setPendingAcclimationCompleteWeek(null);
+                  if (weekNumber) finalizeAcclimationWeekComplete(weekNumber);
                 }}
               >
                 Yes
