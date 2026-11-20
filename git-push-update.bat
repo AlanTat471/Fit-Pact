@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   Numi v16.16 - Health Connect fills this week, with a warning before it replaces typed steps
+echo   Numi v16.17 - Mobile Acclimation editor, safe area, black icon, versionCode 26
 echo ============================================================
 echo.
 
@@ -51,8 +51,8 @@ git status --short
 echo.
 
 git commit ^
-  -m "v16.16: Health Connect can fill this week, and asks before replacing typed steps" ^
-  -m "Typed days stay when the person says no. Completed weeks are left as saved. Prices stay $0, $8.99/month and $6.00/month billed $72 yearly. Android versionCode 26."
+  -m "v16.17: mobile Acclimation one-day editor, safe area, black icon" ^
+  -m "Complete Week still marks weeks complete. Prices stay $0, $8.99/month and $6.00/month billed $72 yearly. Android versionCode 26. No Supabase or Stripe deploy needed for this UI pass."
 
 if errorlevel 1 (
     echo.
@@ -107,7 +107,7 @@ if errorlevel 1 (
 
 echo.
 echo ============================================================
-echo   Push complete.  v16.16
+echo   Push complete.  v16.17
 echo.
 echo   Confirm nothing important is left behind:
 git status --short
@@ -118,20 +118,19 @@ echo   1. VERCEL: wait 2-3 minutes, then open
 echo      https://fit-pact.vercel.app
 echo      and press Ctrl+Shift+R.
 echo.
-echo   2. STRIPE is unchanged. Prices on screen stay
-echo      Monthly $8.99 and Annual $6.00/month billed $72 yearly.
-echo      Subscriptions are NOT Google Play Billing yet.
+echo   2. STRIPE is unchanged for this UI pass.
+echo      Prices stay Monthly $8.99 and Annual $6.00/month billed $72 yearly.
+echo      Do NOT deploy Stripe or create live prices for this release.
 echo.
-echo   3. TEST on the website:
-echo      - Annual badge is ONE line: BEST VALUE (OVER 4 MONTHS FREE)
-echo        It sits just inside the top of the Annual card.
-echo      - Monthly: $8.99 /month
-echo      - Dashboard Classification shows the full word, wrapping if needed
+echo   3. SUPABASE: no function deploy is required for this UI pass.
+echo      Only deploy billing if you are fixing Stripe webhooks separately:
+echo        deploy-supabase-functions.bat
 echo.
-echo   4. SUPABASE billing function. The website push does NOT do this.
-echo      In Command Prompt, from this folder:
-echo        npx supabase login
-echo        npx supabase functions deploy billing
+echo   4. TEST on the website after hard refresh:
+echo      - Acclimation day boxes open a one-day editor
+echo      - Clear All / Collapse stay inside the Acclimation card
+echo      - Average Weight is centred on a narrow window
+echo      - Cancel-selection buttons wrap on a narrow window
 echo.
 echo   5. ANDROID. The phone app does not change when the website does.
 echo      This build is versionCode 26, versionName 1.0
@@ -140,5 +139,6 @@ echo        Double-click build-and-android-sync.bat
 echo      Then Android Studio, open the android folder,
 echo      Build, Generate Signed Bundle / APK, Android App Bundle.
 echo      Use the existing key file android\numi-release-key.jks
+echo      The finished file is C:\numi-build\app\outputs\bundle\release\app-release.aab
 echo ============================================================
 pause

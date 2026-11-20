@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { MOTIV_QUOTE_SESSION_KEY } from "@/lib/motivationalQuotes";
 import { clearExplicitLoginThisDocument } from "@/lib/authSessionGate";
 import { flushPendingJourneySave, waitForInFlightSaves } from "@/lib/journeySaveFlush";
+import { toast } from "@/hooks/use-toast";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -136,7 +137,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="app-aurora min-h-screen flex flex-col w-full text-foreground">
-      <header className="fixed top-0 z-50 grid w-full grid-cols-[44px_1fr_44px] items-center gap-3 bg-black/40 px-4 py-3 backdrop-blur-xl">
+      <header
+        className="fixed top-0 z-50 grid w-full grid-cols-[44px_1fr_44px] items-center gap-3 bg-black/40 px-4 pb-3 pt-3 backdrop-blur-xl"
+        style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top, 0px))" }}
+      >
         <div className="flex min-w-0 items-center">
           <HamburgerMenu />
         </div>
@@ -149,13 +153,24 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <NumiLogo height={26} />
         </button>
         <div className="relative z-10 shrink-0 justify-self-end">
-          <button className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/[0.08] text-white transition-colors hover:bg-white/15">
+          <button
+            type="button"
+            aria-label="Notifications coming soon"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/[0.08] text-white transition-colors hover:bg-white/15"
+            onClick={() => toast({ title: "Notifications coming soon", description: "This button will show your Numi notifications in a future update." })}
+          >
             <MaterialIcon name="notifications" size="md" />
           </button>
         </div>
       </header>
 
-      <main className="flex-1 pt-20 pb-36 px-4 sm:px-6 overflow-x-hidden max-w-2xl mx-auto w-full" style={{ paddingBottom: "calc(9rem + env(safe-area-inset-bottom, 0))" }}>
+      <main
+        className="mx-auto w-full max-w-2xl flex-1 overflow-x-hidden px-4 pb-36 sm:px-6"
+        style={{
+          paddingTop: "calc(5rem + env(safe-area-inset-top, 0px))",
+          paddingBottom: "calc(9rem + env(safe-area-inset-bottom, 0px))",
+        }}
+      >
         {children}
       </main>
 

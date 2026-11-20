@@ -356,11 +356,14 @@ const Dashboard = () => {
     data: typeof weeklyData;
   } | null>(null);
   
-  // State for editing acclimation weeks
-  const [editingAcclimationWeek, setEditingAcclimationWeek] = useState<{
+  // One-day Acclimation editor. Values stay temporary until Save Changes.
+  const [editingAcclimationDay, setEditingAcclimationDay] = useState<{
     weekNumber: 1 | 2 | 3 | 4;
-    data: { Monday: number; Tuesday: number; Wednesday: number; Thursday: number; Friday: number; Saturday: number; Sunday: number };
+    day: string;
+    originalValue: number;
+    value: number;
   } | null>(null);
+  const [showDiscardAcclimationEdit, setShowDiscardAcclimationEdit] = useState(false);
   
   // State for starting weight
   const [startingWeight, setStartingWeight] = useState<string>("");
@@ -2038,18 +2041,6 @@ const Dashboard = () => {
     };
   }, [journeyDataReady, stepsChoice, stepPhone, journeyComplete, connectPrompt, stepEditPrompt, stepsSyncNonce, mergePhoneSteps]);
 
-  const handleAcclimationDataChange = (week: string, day: string, value: number) => {
-    // Apply weight limit
-    if (value > 200) {
-      value = 200;
-    }
-    
-    setAcclimationData(prev => ({
-      ...prev,
-      [week]: { ...prev[week as keyof typeof prev], [day]: value }
-    }));
-  };
-
   // Check if acclimation is complete (both weeks marked as complete)
   const isAcclimationComplete = () => {
     return isWeek1Complete && isWeek2Complete && isWeek3Complete && isWeek4Complete;
@@ -2117,6 +2108,47 @@ const Dashboard = () => {
         }
       }
     }
+  };
+
+  const openAcclimationDayEditor = (weekNumber: 1 | 2 | 3 | 4, day: string) => {
+    const weekKey = `week${weekNumber}` as keyof typeof acclimationData;
+    const value = acclimationData[weekKey][day as keyof typeof acclimationData[typeof weekKey]] || 0;
+    setEditingAcclimationDay({ weekNumber, day, originalValue: value, value });
+  };
+
+  const setAcclimationWeekComplete = (weekNumber: 1 | 2 | 3 | 4, complete: boolean) => {
+    if (weekNumber === 1) setIsWeek1Complete(complete);
+    if (weekNumber === 2) setIsWeek2Complete(complete);
+    if (weekNumber === 3) setIsWeek3Complete(complete);
+    if (weekNumber === 4) setIsWeek4Complete(complete);
+  };
+
+  const closeAcclimationDayEditor = () => {
+    setShowDiscardAcclimationEdit(false);
+    setEditingAcclimationDay(null);
+  };
+
+  const requestDiscardAcclimationEdit = () => {
+    if (!editingAcclimationDay) return;
+    if (editingAcclimationDay.value !== editingAcclimationDay.originalValue) {
+      setShowDiscardAcclimationEdit(true);
+      return;
+    }
+    closeAcclimationDayEditor();
+  };
+
+  const saveAcclimationDayEdit = () => {
+    if (!editingAcclimationDay) return;
+    const { weekNumber, day, value } = editingAcclimationDay;
+    const weekKey = `week${weekNumber}` as keyof typeof acclimationData;
+    const safeValue = Number.isFinite(value) ? Math.min(200, Math.max(0, value)) : 0;
+    const nextWeek = { ...acclimationData[weekKey], [day]: safeValue };
+    setAcclimationData((prev) => ({ ...prev, [weekKey]: nextWeek }));
+    // Never auto-complete here. Complete Week must stay the only path that
+    // marks a week complete and triggers the Week 4 / paywall flow.
+    const remainsComplete = Object.values(nextWeek).every((weight) => weight > 0 && weight <= 200);
+    if (!remainsComplete) setAcclimationWeekComplete(weekNumber, false);
+    closeAcclimationDayEditor();
   };
 
   // Get today's day name
@@ -3174,10 +3206,10 @@ const Dashboard = () => {
         {/* Acclimation Phase Section */}
         <Card className="bg-background border-outline-variant transition-all duration-300 hover:shadow-primary">
           <CardHeader>
-            <div className="flex w-full items-start justify-between gap-4">
-              <CardTitle className="flex items-center gap-2 text-foreground">
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <CardTitle className="flex min-w-0 items-center gap-2 text-foreground">
                 <MaterialIcon name="event" size="sm" className="text-yellow-500" />
-                Acclimation Phase
+                <span className="min-w-0 break-words">Acclimation Phase</span>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <MaterialIcon name="help_outline" size="sm" className="text-muted-foreground cursor-help" />
@@ -3187,7 +3219,7 @@ const Dashboard = () => {
                   </TooltipContent>
                 </Tooltip>
               </CardTitle>
-              <div className="ml-auto flex shrink-0 flex-col items-stretch gap-2">
+              <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:w-auto sm:shrink-0 sm:grid-cols-1">
                 <Button
                   onClick={() => {
                     if (confirm('Are you sure you want to clear all acclimation data?')) {
@@ -3205,7 +3237,7 @@ const Dashboard = () => {
                   }}
                   variant="outline"
                   size="sm"
-                  className="text-xs"
+                  className="min-w-0 px-2 text-[11px] sm:px-4 sm:text-xs"
                 >
                   Clear All Data
                 </Button>
@@ -3213,7 +3245,7 @@ const Dashboard = () => {
                   onClick={() => setAcclimationCollapsed(prev => !prev)}
                   variant="outline"
                   size="sm"
-                  className="text-xs"
+                  className="min-w-0 px-2 text-[11px] sm:px-4 sm:text-xs"
                 >
                   {acclimationCollapsed ? 'Expand Section' : 'Collapse Section'}
                 </Button>
@@ -3277,45 +3309,35 @@ const Dashboard = () => {
                         {days.map((day) => (
                           <div key={day} className="flex min-w-0 flex-col items-center gap-1">
                             <span className="text-[10px] text-muted-foreground">{day[0]}</span>
-                            <Input
-                              type="number"
-                              step="0.1"
-                              max="200"
+                            <button
+                              type="button"
                               aria-label={`Week ${weekNumber} ${day}`}
-                              value={acclimationData[weekKey][day as keyof typeof acclimationData[typeof weekKey]] || ''}
-                              onChange={(e) => handleAcclimationDataChange(weekKey, day, parseFloat(e.target.value) || 0)}
-                              className="h-11 w-full px-0 text-center text-xs"
-                              placeholder="0"
-                              disabled={isComplete}
-                            />
+                              onClick={() => openAcclimationDayEditor(weekNumber as 1 | 2 | 3 | 4, day)}
+                              className="flex h-11 w-full min-w-0 items-center justify-center rounded-full border border-input bg-background px-0 text-center text-xs transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                              <span className="max-w-full truncate px-0.5">
+                                {acclimationData[weekKey][day as keyof typeof acclimationData[typeof weekKey]] || 0}
+                              </span>
+                            </button>
                           </div>
                         ))}
                       </div>
                       <div className="mt-3">
-                        {!isComplete ? (
-                          <Button
-                            onClick={() => handleCompleteAcclimationWeek(weekNumber as 1 | 2 | 3 | 4)}
-                            variant="outline"
-                            className="w-full"
-                          >
-                            {`Complete Week ${weekNumber}`}
-                          </Button>
-                        ) : (
-                          <Button
-                            onClick={() => setEditingAcclimationWeek({ weekNumber: weekNumber as 1 | 2 | 3 | 4, data: { ...acclimationData[weekKey] } })}
-                            variant="outline"
-                            className="w-full"
-                          >
-                            {`Edit Week ${weekNumber}`}
-                          </Button>
-                        )}
+                        <Button
+                          onClick={() => handleCompleteAcclimationWeek(weekNumber as 1 | 2 | 3 | 4)}
+                          variant="outline"
+                          className="w-full"
+                          disabled={isComplete}
+                        >
+                          {isComplete ? 'Week Complete ✓' : 'Complete Week'}
+                        </Button>
                       </div>
                     </Card>
                   );
                 })}
-                <div className="flex justify-end">
-                <div className="inline-flex w-fit items-center gap-3 rounded-[22px] bg-gradient-primary px-4 py-2 text-[#0A0A0C]">
-                  <span className="text-sm font-extrabold">Average Weight (Kg)</span>
+                <div className="flex justify-center">
+                <div className="inline-flex max-w-full items-center justify-center gap-3 rounded-[22px] bg-gradient-primary px-4 py-2 text-center text-[#0A0A0C]">
+                  <span className="min-w-0 break-words text-sm font-extrabold">Average Weight (Kg)</span>
                   <span className="text-sm font-extrabold">
                     {(() => {
                       const acclimationAvg = getTotalAcclimationAverage();
@@ -3350,16 +3372,14 @@ const Dashboard = () => {
                           <div className="font-medium text-sm">{`Week ${weekNumber} Weight (kg)`}</div>
                           {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
                             <div key={`week-${weekNumber}-${day}`} className="flex justify-center">
-                              <Input
-                                type="number"
-                                step="0.1"
-                                max="200"
-                                value={acclimationData[weekKey][day as keyof typeof acclimationData[typeof weekKey]] || ''}
-                                onChange={(e) => handleAcclimationDataChange(weekKey, day, parseFloat(e.target.value) || 0)}
-                                className="w-16 h-7 text-xs text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                placeholder="0"
-                                disabled={isComplete}
-                              />
+                              <button
+                                type="button"
+                                aria-label={`Week ${weekNumber} ${day}`}
+                                onClick={() => openAcclimationDayEditor(weekNumber as 1 | 2 | 3 | 4, day)}
+                                className="flex h-7 w-16 items-center justify-center rounded-full border border-input bg-background text-center text-xs transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              >
+                                {acclimationData[weekKey][day as keyof typeof acclimationData[typeof weekKey]] || 0}
+                              </button>
                             </div>
                           ))}
                           <div className="flex justify-center">
@@ -3375,21 +3395,14 @@ const Dashboard = () => {
                         </div>
                         <div className="grid grid-cols-9 gap-2 items-center mt-2">
                           <div className="col-span-8 flex justify-center">
-                            {!isComplete ? (
-                              <Button onClick={() => handleCompleteAcclimationWeek(weekNumber as 1 | 2 | 3 | 4)} variant="outline" size="sm">
-                                {`Complete Week ${weekNumber}`}
-                              </Button>
-                            ) : (
-                              <div className="flex items-center gap-2 justify-center">
-                                <Button
-                                  onClick={() => setEditingAcclimationWeek({ weekNumber: weekNumber as 1 | 2 | 3 | 4, data: { ...acclimationData[weekKey] } })}
-                                  variant="outline"
-                                  size="sm"
-                                >
-                                  {`Edit Week ${weekNumber}`}
-                                </Button>
-                              </div>
-                            )}
+                            <Button
+                              onClick={() => handleCompleteAcclimationWeek(weekNumber as 1 | 2 | 3 | 4)}
+                              variant="outline"
+                              size="sm"
+                              disabled={isComplete}
+                            >
+                              {isComplete ? 'Week Complete ✓' : 'Complete Week'}
+                            </Button>
                           </div>
                           <div></div>
                         </div>
@@ -5283,79 +5296,93 @@ const Dashboard = () => {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Acclimation Phase Edit Dialog */}
-        <AlertDialog open={!!editingAcclimationWeek} onOpenChange={(open) => !open && setEditingAcclimationWeek(null)}>
-          <AlertDialogContent className="bg-surface-container-lowest text-on-surface border-outline-variant rounded-2xl max-w-4xl">
+        {/* Acclimation one-day editor */}
+        <AlertDialog
+          open={!!editingAcclimationDay}
+          onOpenChange={(open) => {
+            if (!open && !showDiscardAcclimationEdit) requestDiscardAcclimationEdit();
+          }}
+        >
+          <AlertDialogContent className="max-w-sm rounded-2xl border-outline-variant bg-surface-container-lowest text-on-surface">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-foreground">
-                Edit Acclimation Phase - Week {editingAcclimationWeek?.weekNumber}
+              <AlertDialogTitle className="break-words text-foreground">
+                Week {editingAcclimationDay?.weekNumber} — {editingAcclimationDay?.day}
               </AlertDialogTitle>
+              <AlertDialogDescription>
+                Enter the weight for this day. Changes are not used until you press Save Changes.
+              </AlertDialogDescription>
             </AlertDialogHeader>
-            {editingAcclimationWeek && (
-              <div className="space-y-4">
-                <div className="overflow-x-auto">
-                  <div className="min-w-[700px] space-y-2">
-                    {/* Header */}
-                    <div className="grid grid-cols-8 gap-2 text-xs font-semibold">
-                      <div></div>
-                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-                        <div key={day} className="text-center">{day}</div>
-                      ))}
-                    </div>
-                    
-                    {/* Weight Row */}
-                    <div className="grid grid-cols-8 gap-2 items-center p-2 bg-muted/30 rounded">
-                      <div className="font-medium text-sm">Weight (kg)</div>
-                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
-                        <div key={day} className="flex justify-center">
-                          <Input
-                            type="number"
-                            step="0.1"
-                            max="200"
-                            value={editingAcclimationWeek.data[day as keyof typeof editingAcclimationWeek.data] || ''}
-                            onChange={(e) => {
-                              const value = parseFloat(e.target.value) || 0;
-                              setEditingAcclimationWeek({
-                                ...editingAcclimationWeek,
-                                data: {
-                                  ...editingAcclimationWeek.data,
-                                  [day]: value > 200 ? 200 : value
-                                }
-                              });
-                            }}
-                            className="w-16 h-7 text-xs text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            placeholder="0"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+            {editingAcclimationDay && (
+              <div className="space-y-2">
+                <Label htmlFor="acclimation-day-weight">Weight (kg)</Label>
+                <Input
+                  id="acclimation-day-weight"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  min="0"
+                  max="200"
+                  value={editingAcclimationDay.value || ''}
+                  onChange={(event) => {
+                    const parsed = Number.parseFloat(event.target.value);
+                    const value = Number.isFinite(parsed) ? Math.min(200, Math.max(0, parsed)) : 0;
+                    setEditingAcclimationDay((current) => current ? { ...current, value } : current);
+                  }}
+                  className="w-full text-base"
+                  placeholder="0.0"
+                  autoFocus
+                />
+                <p className="break-words text-xs text-muted-foreground">Enter a weight above 0 kg, up to 200 kg. Complete Week still needs all seven days filled.</p>
               </div>
             )}
-            <AlertDialogFooter>
-              <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">
-                Cancel
-              </AlertDialogCancel>
+            <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
               <AlertDialogAction
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => {
-                  if (editingAcclimationWeek) {
-                    // Update the acclimation week with the edited data
-                    const weekKey = `week${editingAcclimationWeek.weekNumber}` as keyof typeof acclimationData;
-                    setAcclimationData(prev => ({
-                      ...prev,
-                      [weekKey]: editingAcclimationWeek.data
-                    }));
-                    setEditingAcclimationWeek(null);
-                  }
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={(event) => {
+                  event.preventDefault();
+                  saveAcclimationDayEdit();
                 }}
               >
-              Save Changes
-            </AlertDialogAction>
+                Save Changes
+              </AlertDialogAction>
+              <AlertDialogCancel
+                className="w-full border-border bg-background text-foreground hover:bg-muted"
+                onClick={(event) => {
+                  event.preventDefault();
+                  requestDiscardAcclimationEdit();
+                }}
+              >
+                Discard Changes
+              </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+        <AlertDialog open={showDiscardAcclimationEdit}>
+          <AlertDialogContent className="max-w-sm rounded-2xl border-outline-variant bg-surface-container-lowest text-on-surface">
+            <AlertDialogHeader>
+              <AlertDialogTitle>You have made changes. Do you wish to discard?</AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+              <AlertDialogCancel
+                onClick={(event) => {
+                  event.preventDefault();
+                  setShowDiscardAcclimationEdit(false);
+                }}
+              >
+                No
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(event) => {
+                  event.preventDefault();
+                  closeAcclimationDayEditor();
+                }}
+              >
+                Yes
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
       {/* Maintenance Phase Edit Dialog */}
       <AlertDialog open={!!editingMaintenanceWeek} onOpenChange={(open) => !open && setEditingMaintenanceWeek(null)}>

@@ -748,9 +748,11 @@ export const SettingsContent = ({ embedded = false }: { embedded?: boolean }) =>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-background text-foreground hover:bg-muted border-border">No</AlertDialogCancel>
+            <AlertDialogCancel className="h-auto min-h-[52px] min-w-0 whitespace-normal border-border bg-background px-3 text-center leading-tight text-foreground hover:bg-muted">
+              No
+            </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="h-auto min-h-[52px] min-w-0 whitespace-normal bg-destructive px-3 text-center leading-tight text-destructive-foreground hover:bg-destructive/90"
               onClick={(event) => {
                 event.preventDefault();
                 void handleCancelSubscription();

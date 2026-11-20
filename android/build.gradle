@@ -24,6 +24,13 @@ allprojects {
     }
 }
 
+// The project lives in a long OneDrive path. Windows then fails inside
+// desugar_graph\...\dirs_bucket_* while building the release bundle.
+// Build output goes to C:\numi-build instead. The app source stays where it is.
+subprojects { subproject ->
+    subproject.layout.buildDirectory.set(new File("C:/numi-build/${subproject.name}"))
+}
+
 task clean(type: Delete) {
     delete rootProject.buildDir
 }

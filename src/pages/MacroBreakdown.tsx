@@ -790,13 +790,10 @@ const MacroBreakdown = () => {
       </div>
 
       {/* Insight Card */}
-      <div className="bg-tertiary-container/40 p-6 rounded-xl flex gap-4 items-start border border-white/50 backdrop-blur-sm">
-        <div className="p-3 bg-white rounded-full shrink-0">
-          <MaterialIcon name="analytics" size="md" className="text-primary" filled />
-        </div>
-        <div>
+      <div className="rounded-xl border border-white/50 bg-tertiary-container/40 p-6 text-left backdrop-blur-sm">
+        <div className="min-w-0">
           <h4 className="font-bold text-on-primary-container mb-1">Activity insight</h4>
-          <p className="text-sm text-on-primary-container/80 leading-relaxed">
+          <p className="break-words text-sm leading-relaxed text-on-primary-container/80">
             Your activity level ({activityLevel.charAt(0).toUpperCase() + activityLevel.slice(1)}) suggests a <strong>{defaultPercentages.protein}% Protein / {defaultPercentages.carbs}% Carbs / {defaultPercentages.fats}% Fats</strong> split.
           </p>
         </div>

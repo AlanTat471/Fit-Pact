@@ -1,13 +1,25 @@
 # Numi — Bugs, Defects, Fixes, and How the App Works
 
-This is the audit file for Numi (the app folder is still named Fit-Pact / sweat-script-buddy). Older numbered items below are the history. **If an older item disagrees with this section, follow this section.** Last brought up to date: 18 November 2026.
+This is the audit file for Numi (the app folder is still named Fit-Pact / sweat-script-buddy). Older numbered items below are the history. **If an older item disagrees with this section, follow this section.** Last brought up to date: 20 November 2026.
+
+### 20 November 2026 — mobile repair (versionCode 26)
+
+- Acclimation M–S days open a one-day editor with Save Changes / Discard Changes. Discard warns only when the value changed. Complete Week is the only path that marks a week complete and triggers Week 4 / paywall. Editing a completed day down to blank or zero marks that week incomplete again; filling the seventh day never auto-completes.
+- Phone Average Weight sits in the centre. Desktop Average Weight stays bottom-right.
+- Clear All Data and Collapse Section stay inside the Acclimation card and share one responsive action row on phones.
+- Fixed header uses Android top safe-area inset so the menu and bell sit under the status bar. The bell shows “Notifications coming soon”.
+- Activity Insight no longer shows a blank white oval; the text starts on the left.
+- Pending-plan cancel buttons wrap on phones so “Yes, cancel selection” no longer overflows the dialog.
+- Launcher icon is a transparent white wordmark over solid black adaptive background. Opaque dark-red foreground was the cause of the brown strip. versionCode is **26**. Signed AAB still goes to `C:\numi-build\app\outputs\bundle\release\app-release.aab`.
+- Known pre-existing issues still open: Clear All Dashboard can race the autosave flush; Settings card add/edit is local-only and not Stripe; checked-in Stripe schema still mentions weekly/fortnightly; prefer `deploy-supabase-functions.bat` when deploying billing. Google Play Billing is still deferred.
 
 ### 18 November 2026
 
 - Dashboard Classification card wraps the full word. "Overweight" is no longer chopped to "Overwei...".
 - Annual badge text is now "over 4 months free". Prices are unchanged: Monthly $8.99, Annual $6.00 a month billed $72 a year. Best Value stays the small one-line pill just inside the Annual card.
-- Phone home-screen icon uses the dark-red numi picture. The white logo inside the app is unchanged. The Play Store listing icon is a separate upload Alan does in Play Console.
-- Android 14 and newer: the Dashboard can fill Monday through today from Health Connect. Tomorrow stays empty. A typed day asks before it replaces the phone's number. Yes keeps the typed number for the rest of that week. No puts the phone's number back. Connecting when days already have numbers asks first. Yes replaces a day only when the phone has steps above 0. No keeps typed days, fills blank days, and keeps filling from today onward. Completed weeks are never rewritten. Android 8 through 13 stay on typing. The website does not ask. The recommended step goal still changes only from weight loss. versionCode is 26 because 25 was already uploaded.
+- Phone home-screen icon used the dark-red numi picture in version 25. Replaced by the black adaptive icon in the 20 November section above.
+- The signed Android file is written to `C:\numi-build\app\outputs\bundle\release\app-release.aab`. The project path on OneDrive is too long for Windows, and the release build was stopping inside `desugar_graph\...\dirs_bucket_6`. Source files stay in the OneDrive folder.
+- Android 14 and newer: the Dashboard can fill Monday through today from Health Connect. Tomorrow stays empty. A typed day asks before it replaces the phone's number. Yes keeps the typed number for the rest of that week. No puts the phone's number back. Connecting when days already have numbers asks first. Yes replaces a day only when the phone has steps above 0. No keeps typed days, fills blank days, and keeps filling from today onward. Completed weeks are never rewritten. Android 8 through 13 stay on typing. The website does not ask. The recommended step goal still changes only from weight loss. versionCode 25 was the Health Connect / page-guide release; the next phone upload is 26.
 - Login "too many tries" is still Supabase's own message on the password button. It is not an email template.
 - Page guide (18 November 2026, version 1): after sign-in, Profile, TDEE, Dashboard, then Macros are highlighted one at a time. The blur stops at the button's own edge, with no extra line around it. Next, or a tap on the blur, moves on. Done on the last stop stores `numiPageGuideVersion` = `1` on that phone or browser. Anyone without that value sees it, including people who already had an account. Bump `PAGE_GUIDE_VERSION` in `src/components/PageGuide.tsx` to show a new guide later.
 

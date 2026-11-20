@@ -14,9 +14,9 @@ variant of the launcher icon and splash screen into
 
 | File                | Purpose                       | Required size       |
 | ------------------- | ----------------------------- | ------------------- |
-| `icon.png`          | App launcher icon (legacy + adaptive foreground) | **1024 × 1024 px** |
-| `icon-foreground.png` | (Optional) icon foreground only — for adaptive icons | 1024 × 1024 |
-| `icon-background.png` | (Optional) icon background only — for adaptive icons | 1024 × 1024 |
+| `icon.png`          | Black legacy icon with centred white Numi wordmark | **1024 × 1024 px** |
+| `icon-foreground.png` | Transparent adaptive foreground containing only the white wordmark | 1024 × 1024 |
+| `icon-background.png` | Solid black adaptive background | 1024 × 1024 |
 | `splash.png`        | Splash screen image (centred logo on plain background) | **2732 × 2732 px** |
 | `splash-dark.png`   | (Optional) dark-mode splash | 2732 × 2732 |
 
@@ -25,11 +25,11 @@ defaults for everything else.
 
 ## How to add them
 
-1. Save the Numi icon image you sent in chat as **`icon.png`** in this folder.
-   (Right-click → Save image as → name it `icon.png` → save here.)
-2. (Recommended) Save the same image as **`splash.png`** as well — the
-   generator will centre it on a cream background. Or create a dedicated
-   2732×2732 splash with the logo centred and lots of padding.
+1. Keep the three icon files above together. Do not replace only one layer:
+   an opaque coloured foreground over a different background caused the
+   brown strip visible in version 25.
+2. Splash images are separate. Do not replace them when changing only the
+   home-screen icon.
 3. From the project root, run:
    ```
    npx capacitor-assets generate --android
